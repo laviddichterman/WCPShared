@@ -15,7 +15,9 @@ function HandleBlockedOffTime(blockedOff, time) {
 
 class WDateUtils {
 
-  static DATE_STRING_INTERNAL_FORMAT = "YYYYMMDDZZ";
+  static get DATE_STRING_INTERNAL_FORMAT() {
+    return "YYYYMMDDZZ";
+  }
 
   static MinutesToDate(minutes) {
     if(isNaN(minutes) || minutes < 0) {
@@ -227,4 +229,3 @@ class WDateUtils {
 }
 
 module.exports = WDateUtils;
-

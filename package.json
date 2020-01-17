@@ -1,6 +1,6 @@
 {
   "name": "@wcp/wcpshared",
-  "version": "1.0.0",
+  "version": "1.0.4",
   "description": "Shared Javascript modules for Windy City Pie",
   "main": "wcpshared.js",
   "scripts": {
@@ -15,5 +15,8 @@
   "bugs": {
     "url": "https://github.com/laviddichterman/WCPShared/issues"
   },
-  "homepage": "https://github.com/laviddichterman/WCPShared#readme"
+  "homepage": "https://github.com/laviddichterman/WCPShared#readme",
+  "dependencies": {
+    "moment": "^2.24.0"
+  }
 }
