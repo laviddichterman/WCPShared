@@ -1,6 +1,6 @@
 {
   "name": "@wcp/wcpshared",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Shared Javascript modules for Windy City Pie",
   "main": "wcpshared.js",
   "scripts": {
