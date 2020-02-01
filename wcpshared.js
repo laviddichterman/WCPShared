@@ -109,7 +109,6 @@ class WDateUtils {
     if (!intervals.length) {
       return [];
     }
-    console.log(intervals);
     return WDateUtils.ComputeUnionsForIntervals(intervals);
   }
 
