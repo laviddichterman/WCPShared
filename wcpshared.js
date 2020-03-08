@@ -16,7 +16,7 @@ function HandleBlockedOffTime(blockedOff, time) {
 class WDateUtils {
 
   static get DATE_STRING_INTERNAL_FORMAT() {
-    return "YYYYMMDDZZ";
+    return "YYYYMMDD";
   }
 
   static MinutesToDate(minutes) {
