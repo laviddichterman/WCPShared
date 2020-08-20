@@ -331,8 +331,8 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
         shortname_components_list = ComponentsList(additional_options.whole, function (x) { return x.shortname; });
         if (menu_match[LEFT_SIDE].piid === menu_match[RIGHT_SIDE].piid) {
           if (!is_compare_to_base[LEFT_SIDE] || PRODUCT_CLASS.display_flags.show_name_of_base_product) {
-            name_components_list.unshift(menu_match[LEFT_SIDE].item.display_name);
-            shortname_components_list.unshift(menu_match[LEFT_SIDE].item.display_name);
+            name_components_list.unshift(menu_match[LEFT_SIDE].name);
+            shortname_components_list.unshift(menu_match[LEFT_SIDE].name);
           }
           name_components_list.push("(" + split_options.join(" | ") + ")");
           shortname_components_list.push("(" + short_split_options.join(" | ") + ")");
@@ -341,8 +341,8 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
           // split product, different product instance match on each side
           // logical assertion: if name_components for a given side are all false, then it's an exact match
           var names = [
-            (menu_match_compare[LEFT_SIDE] === AT_LEAST || !is_compare_to_base[LEFT_SIDE]) ? [menu_match[LEFT_SIDE].name] : [],
-            (menu_match_compare[RIGHT_SIDE] === AT_LEAST || !is_compare_to_base[RIGHT_SIDE]) ? [menu_match[RIGHT_SIDE].name] : []
+            (!is_compare_to_base[LEFT_SIDE] || PRODUCT_CLASS.display_flags.show_name_of_base_product) ? [menu_match[LEFT_SIDE].name] : [],
+            (!is_compare_to_base[RIGHT_SIDE] || PRODUCT_CLASS.display_flags.show_name_of_base_product) ? [menu_match[RIGHT_SIDE].name] : []
           ];
           var shortnames = names.slice();
           if (additional_options.left.length) {
