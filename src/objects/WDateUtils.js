@@ -1,6 +1,6 @@
 const moment = require("moment");
 
-function HandleBlockedOffTime(blockedOff, time) {
+export function HandleBlockedOffTime(blockedOff, time) {
   // param: blockedOff - the blocked off times for the date being processed
   // param: time - the minutes since the day started
   // return: time if time isn't blocked off, otherwise the next available time
@@ -13,7 +13,7 @@ function HandleBlockedOffTime(blockedOff, time) {
   return pushedTime;
 };
 
-class WDateUtils {
+export class WDateUtils {
 
   static get DATE_STRING_INTERNAL_FORMAT() {
     return "YYYYMMDD";
@@ -37,7 +37,7 @@ class WDateUtils {
     const meridian = hour >= 12 ? "PM" : "AM";
     const printHour = (hour % 12 === 0 ? 12 : hour % 12).toString();
     const printMinute = (minute < 10 ? "0" : "").concat(minute.toString());
-    return printHour.concat(":").concat(printMinute + meridian);
+    return `${printHour}:${printMinute}${meridian}`;
   }
 
   static IsSameDay(date1, date2) {
@@ -86,10 +86,6 @@ class WDateUtils {
         ++k;
       }
       else {
-        debugger
-        console.log("WHATHAPPENED?? k: " + k + " j: " + j);
-        console.log(intervals);
-        console.log(interval_unions);
         break;
       }
     }
@@ -227,4 +223,4 @@ class WDateUtils {
 
 }
 
-module.exports = WDateUtils;
+export default WDateUtils;

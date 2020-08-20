@@ -1,9 +1,10 @@
 {
   "name": "@wcp/wcpshared",
-  "version": "1.1.0",
-  "description": "Shared Javascript modules for Windy City Pie",
-  "main": "wcpshared.js",
+  "version": "2.0.0",
+  "description": "Shared Javascript modules for WARIO",
+  "main": "dist/wcpshared.js",
   "scripts": {
+    "build": "webpack npx babel src --out-dir dist",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -17,6 +18,17 @@
   },
   "homepage": "https://github.com/laviddichterman/WCPShared#readme",
   "dependencies": {
-    "moment": "^2.24.0"
+    "@babel/polyfill": "^7.10.4",
+    "moment": "^2.27.0"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.10.5",
+    "@babel/core": "^7.11.1",
+    "@babel/plugin-transform-arrow-functions": "^7.10.4",
+    "@babel/preset-env": "^7.11.0",
+    "babel-loader": "^8.1.0",
+    "webpack": "^4.44.1",
+    "webpack-cli": "^3.3.12",
+    "webpack-dev-server": "^3.11.0"
   }
 }

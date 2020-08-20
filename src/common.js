@@ -1,0 +1,9 @@
+export var TOPPING_NONE = 0;
+export var TOPPING_LEFT = 1;
+export var TOPPING_RIGHT = 2;
+export var TOPPING_WHOLE = 3;
+export var NO_MATCH = 0;
+export var AT_LEAST = 1;
+export var EXACT_MATCH = 2;
+export var LEFT_SIDE = 0;
+export var RIGHT_SIDE = 1;
