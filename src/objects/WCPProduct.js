@@ -186,7 +186,7 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
       match_matrix: modifiers_match_matrix,
       match: [ExtractMatchForSide(LEFT_SIDE, modifiers_match_matrix), ExtractMatchForSide(RIGHT_SIDE, modifiers_match_matrix)]
     };
-    console.log(temp);
+//    console.log(temp);
     return temp;
   }
 

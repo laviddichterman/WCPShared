@@ -3,7 +3,7 @@ const path = require('path');
 module.exports = [
   'source-map'
 ].map(devtool => ({
-  mode: 'development',
+  //mode: 'development',
   entry: './src/index.js',
   module: {
     rules: [

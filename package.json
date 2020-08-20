@@ -1,10 +1,11 @@
 {
   "name": "@wcp/wcpshared",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Shared Javascript modules for WARIO",
   "main": "dist/wcpshared.js",
   "scripts": {
-    "build": "webpack npx babel src --out-dir dist",
+    "build": "npx webpack --mode development src --out-dir dist",
+    "buildprod": "npx webpack --mode production src --out-dir dist",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
