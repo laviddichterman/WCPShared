@@ -23,8 +23,11 @@ export class WFunctional {
           WFunctional.ProcessAbstractExpressionStatement(product_instance, stmt.operandB);
       case "NOT":
         return !WFunctional.ProcessAbstractExpressionStatement(product_instance, stmt.operandA);
-      case "EQUALS":
+      case "EQ":
         return WFunctional.ProcessAbstractExpressionStatement(product_instance, stmt.operandA) ===
+          WFunctional.ProcessAbstractExpressionStatement(product_instance, stmt.operandB);
+      case "NE":
+        return WFunctional.ProcessAbstractExpressionStatement(product_instance, stmt.operandA) !==
           WFunctional.ProcessAbstractExpressionStatement(product_instance, stmt.operandB);
       case "GT":
         return WFunctional.ProcessAbstractExpressionStatement(product_instance, stmt.operandA) >
