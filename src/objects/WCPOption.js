@@ -1,4 +1,5 @@
 import { TOPPING_NONE, TOPPING_LEFT, TOPPING_RIGHT, TOPPING_WHOLE, LEFT_SIDE, RIGHT_SIDE } from "../common";
+import { WFunctional } from "./WFunctional";
 
 export const WCPOption = function (w_modifier, w_option, index, enable_function) {
   this.modifier = w_modifier;
@@ -63,7 +64,7 @@ export const WCPOption = function (w_modifier, w_option, index, enable_function)
     var has_room_on_left = bake_after[LEFT_SIDE] <= BAKE_MAX && flavor_after[LEFT_SIDE] <= FLAVOR_MAX;
     var has_room_on_right = bake_after[RIGHT_SIDE] <= BAKE_MAX && flavor_after[RIGHT_SIDE] <= FLAVOR_MAX;
 
-    return this.enable_filter(product, location, MENU) && has_room_on_left && has_room_on_right && passes_bake_diff_test;
+    return (!this.enable_filter || WFunctional.ProcessProductInstanceFunction(product, this.enable_filter)) && has_room_on_left && has_room_on_right && passes_bake_diff_test;
   };
 };
 

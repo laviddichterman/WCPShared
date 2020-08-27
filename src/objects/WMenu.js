@@ -61,7 +61,7 @@ export const WMenu = function (catalog) {
     return prods;
   };
 
-  function ComputeCategories(cat) {
+  function ComputeCategories(cat, product_classes) {
     var cats = {};
     for (var catid in cat.categories) {
       var category_entry = {
@@ -71,7 +71,7 @@ export const WMenu = function (catalog) {
         subtitle: cat.categories[catid].category.subheading ? cat.categories[catid].category.subheading : null,
       }
       cat.categories[catid].products.forEach(function (product_class) {
-        category_entry.menu = category_entry.menu.concat(menu.product_classes[product_class].instances_list);
+        category_entry.menu = category_entry.menu.concat(product_classes[product_class].instances_list);
       })
       category_entry.menu.sort(function (a, b) { return a.ordinal - b.ordinal; });
       cats[catid] = category_entry;
@@ -83,7 +83,7 @@ export const WMenu = function (catalog) {
   // product_classes are { PID: { product: WARIO product class, instances_list: [WCPProduct], instances: {PIID: WCPProduct} } }
   this.product_classes = ComputeProducts(catalog);
   // categories are {CID: { menu: [WCPProducts], children: [CID], menu_name: HTML safe string, subtitle: HTML safe string } }
-  this.categories = ComputeCategories(catalog);
+  this.categories = ComputeCategories(catalog, this.product_classes);
   // initialize everything
   for (var pid in this.product_classes) {
     this.product_classes[pid].instances_list.forEach((pi) => pi.Initialize(this));
