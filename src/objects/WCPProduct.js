@@ -374,6 +374,12 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
           // assign PIID
           product.piid = menu_match[LEFT_SIDE].piid;
           product.description = menu_match[LEFT_SIDE].description;
+          product.ordinal = menu_match[LEFT_SIDE].ordinal;
+          product.disable_data = menu_match[LEFT_SIDE].disable_data;
+          product.is_base = menu_match[LEFT_SIDE].is_base;
+          product.display_flags = menu_match[LEFT_SIDE].display_flags;
+          // TODO: reexamine this since is there any case where the child product variation would cost something different than the parent + mods?
+          product.base_price = menu_match[LEFT_SIDE].base_price;
         }
       }
       product.name = name_components_list.join(" + ");
