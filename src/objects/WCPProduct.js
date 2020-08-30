@@ -21,6 +21,13 @@ function ExtractMatchForSide(side, matrix) {
   })));
 };
 
+export function CopyWCPProduct(pi) {
+  return new WCPProduct(pi.PRODUCT_CLASS, pi.piid, pi.name, pi.description, pi.ordinal, pi.modifiers, pi.shortcode, pi.base_price, pi.disable_data, pi.is_base, pi.display_flags);
+}
+export function WCPProductFromDTO(dto, MENU) {
+  return new WCPProduct(MENU.product_classes[dto.pid].product, "", "", "", 0, dto.modifiers, "", 0, null, false, {});
+}
+
 // we need to take a map of these fields and allow name to be null if piid is _NOT_ set, piid should only be set if it's an exact match of a product instance in the catalog
 export const WCPProduct = function (product_class, piid, name, description, ordinal, modifiers, shortcode, base_price, disable_data, is_base, display_flags) {
   this.PRODUCT_CLASS = product_class;
@@ -32,8 +39,12 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
   this.is_base = is_base;
   this.shortcode = shortcode;
   this.display_flags = display_flags;
-  // base price is passed in, computed price represents the item with modifiers
+  // base price is passed in, current thinking is that it should be the base price of the base product instance.
+  // cases where the base price of a certain configuration is different should be handled by different means
+  // passed in price can either be the configured price for this instance or the base product price. only the base_price of the
+  // base product instance is used
   this.base_price = base_price;
+  this.base_product_piid = null;
   // product.modifiers[mtid] = [[placement, option_id]]
   // enum is 0: none, 1: left, 2: right, 3: both
   this.modifiers = DeepCopyPlacedOptions(modifiers);
@@ -44,7 +55,7 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
   this.flavor_count = [0, 0];
 
   this.ComputePrice = function(MENU) {
-    var price = this.base_price;
+    var price = MENU.product_classes[this.PRODUCT_CLASS._id].instances[this.base_product_piid].base_price;
     for (var mt in this.modifiers) {
       this.modifiers[mt].forEach(function(opt) {
         if (opt[0] != TOPPING_NONE) {
@@ -211,11 +222,7 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
 
     // at this point we only know what product class we belong to. we might be an unmodified product, 
     // but that will need to be determined.
-    var BASE_PRODUCT_INSTANCE = PRODUCT_CLASS_MENU_ENTRY.instances_list.find(function (prod) { return prod.is_base === true; });
-    if (!BASE_PRODUCT_INSTANCE) {
-      console.error(`Cannot find base product instance of ${JSON.stringify(this.PRODUCT_CLASS)}.`);
-      return;
-    }
+    var BASE_PRODUCT_INSTANCE = PRODUCT_CLASS_MENU_ENTRY.instances[this.base_product_piid];
 
     var shortcodes = [BASE_PRODUCT_INSTANCE.shortcode, BASE_PRODUCT_INSTANCE.shortcode];
     var menu_match = [null, null];
@@ -378,8 +385,6 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
           product.disable_data = menu_match[LEFT_SIDE].disable_data;
           product.is_base = menu_match[LEFT_SIDE].is_base;
           product.display_flags = menu_match[LEFT_SIDE].display_flags;
-          // TODO: reexamine this since is there any case where the child product variation would cost something different than the parent + mods?
-          product.base_price = menu_match[LEFT_SIDE].base_price;
         }
       }
       product.name = name_components_list.join(" + ");
@@ -389,6 +394,7 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
     // iterate through menu, until has_left and has_right are true
     // a name can be assigned once an exact or at least match is found for a given side
     // NOTE the guarantee of ordering the instances in most modified to base product isn't guaranteed and shouldn't be assumed, but we need it here. how can we order the instances in a helpful way? Need to figure this out
+    // answer: pull out the base product from the list and make sure it's last in the ordered list we handle here
     for (var pi_index = 0; pi_index < PRODUCT_CLASS_MENU_ENTRY.instances_list.length; ++pi_index) {
       var comparison_product = PRODUCT_CLASS_MENU_ENTRY.instances_list[pi_index];
       var comparison_info = Compare(this, PRODUCT_CLASS_MENU_ENTRY.instances_list[pi_index], MENU);
@@ -439,8 +445,18 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
     return options_sections;
   };
 
-  // rename to initialize
+  this.SetBaseProductPIID = function (MENU) {
+    var PRODUCT_CLASS_MENU_ENTRY = MENU.product_classes[this.PRODUCT_CLASS._id];
+    var BASE_PRODUCT_INSTANCE = this.is_base ? this : PRODUCT_CLASS_MENU_ENTRY.instances_list.find(function (prod) { return prod.is_base === true; });
+    if (!BASE_PRODUCT_INSTANCE) {
+      console.error(`Cannot find base product instance of ${JSON.stringify(this.PRODUCT_CLASS)}.`);
+      return;
+    }
+    this.base_product_piid = BASE_PRODUCT_INSTANCE.piid;
+  }
+
   this.Initialize = function (MENU) {
+    this.SetBaseProductPIID(MENU);
     this.price = this.ComputePrice(MENU);
     this.RecomputeMetadata(MENU);
     this.RecomputeName(MENU);
@@ -450,7 +466,6 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
   this.ToDTO = function () {
     return {
       pid: this.PRODUCT_CLASS._id,
-      base_price: this.base_price,
       modifiers: this.modifiers
     };
   };
