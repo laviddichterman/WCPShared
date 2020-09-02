@@ -447,7 +447,7 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
 
   this.SetBaseProductPIID = function (MENU) {
     var PRODUCT_CLASS_MENU_ENTRY = MENU.product_classes[this.PRODUCT_CLASS._id];
-    var BASE_PRODUCT_INSTANCE = this.is_base ? this : PRODUCT_CLASS_MENU_ENTRY.instances_list.find(function (prod) { return prod.is_base === true; });
+    var BASE_PRODUCT_INSTANCE = PRODUCT_CLASS_MENU_ENTRY.instances_list.find(function (prod) { return prod.is_base === true; });
     if (!BASE_PRODUCT_INSTANCE) {
       console.error(`Cannot find base product instance of ${JSON.stringify(this.PRODUCT_CLASS)}.`);
       return;
