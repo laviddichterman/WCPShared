@@ -1,6 +1,6 @@
 {
   "name": "@wcp/wcpshared",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "description": "Shared Javascript modules for WARIO",
   "main": "dist/wcpshared.js",
   "scripts": {
