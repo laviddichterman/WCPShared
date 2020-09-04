@@ -26,6 +26,11 @@ module.exports = [
     libraryTarget: 'umd',
     globalObject: 'this',
   },
+  devServer: {
+    contentBase: path.join(__dirname, 'dist'),
+    compress: true,
+    port: 9000
+  },
   //devtool,
   // optimization: {
   //   runtimeChunk: true

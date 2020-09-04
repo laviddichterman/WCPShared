@@ -91,12 +91,6 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
   };
 
   function Compare(first, other, MENU) {
-    var modifier_option_find_function_factory = function (moid) {
-      return function (val) {
-        return val[1] === moid;
-      };
-    };
-
     var modifiers_match_matrix = [];
 
     // need to compare PIDs of first and other, then use the PID to develop the modifiers matrix since one of the two product instances might not have a value for every modifier.
@@ -111,13 +105,6 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
     first.PRODUCT_CLASS.modifiers.forEach(function (MID) {
       modifiers_match_matrix.push(MENU.modifiers[MID].options_list.map(function () { return [EXACT_MATCH, EXACT_MATCH]; }));
     })
-
-    // identify the base PIID of this product class
-    // var BASE_PRODUCT_INSTANCE = MENU.catalog.products[first.pid].instances_list.find(function(prod) { return prod.is_base === true; });
-    // if (!BASE_PRODUCT_INSTANCE) { 
-    //   console.error(`Cannot find base product instance of ${JSON.stringify(this.PRODUCT_CLASS)}.`);
-    //   return { mirror: false, match: [[[NO_MATCH, NO_MATCH]]] }
-    // }
 
     var is_mirror = true;
     // main comparison loop!
@@ -134,7 +121,8 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
         if (first_option[1] !== other_option[1]) {
           // OID doesn't match, need to set AT_LEAST for JUST the option on the "first" product
           CATALOG_MODIFIER_INFO.options_list.forEach(function (option, oidx) {
-            if (first_option[1] === option.moid) {
+            // eslint-disable-next-line
+            if (first_option[1] == option.moid) {
               modifiers_match_matrix[midx][oidx] = [AT_LEAST, AT_LEAST];
               is_mirror = false;
             }
@@ -145,9 +133,11 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
         // CASE: MULTI select modifier
         CATALOG_MODIFIER_INFO.options_list.forEach(function (option, oidx) {
           // todo: since the options will be in order, we can be smarter about not using a find here and track 2 indices instead   
-          var finder = modifier_option_find_function_factory(option.moid);       
-          var first_option = first_option_list.find(finder);
-          var other_option = other_option_list.find(finder);
+          //var finder = modifier_option_find_function_factory(option.moid);     
+          // eslint-disable-next-line
+          var first_option = first_option_list.find(val => val[1] == option.moid );
+          // eslint-disable-next-line
+          var other_option = other_option_list.find(val => val[1] == option.moid );
           var first_option_placement = first_option ? first_option[0] : TOPPING_NONE;
           var other_option_placement = other_option ? other_option[0] : TOPPING_NONE;
           switch (other_option_placement) {
@@ -197,7 +187,7 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
       match_matrix: modifiers_match_matrix,
       match: [ExtractMatchForSide(LEFT_SIDE, modifiers_match_matrix), ExtractMatchForSide(RIGHT_SIDE, modifiers_match_matrix)]
     };
-//    console.log(temp);
+    //console.log(JSON.stringify(temp));
     return temp;
   }
 
@@ -215,7 +205,7 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
       // and we should find that product and assume its name.
       var catalog_pi = PRODUCT_CLASS_MENU_ENTRY.instances[this.piid];
       this.name = catalog_pi.name;
-      this.shortname = catalog_pi.shortname;
+      this.shortname = catalog_pi.shortcode;
       this.shortcode = catalog_pi.shortcode;
       return;
     }
@@ -256,7 +246,8 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
               if (option_match[side] === AT_LEAST) {
                 found_selection = oid_index;
               }
-              if (MENU.modifiers[mtid].options_list[oid_index].moid === base_moid) {
+              // eslint-disable-next-line
+              if (MENU.modifiers[mtid].options_list[oid_index].moid == base_moid) {
                 base_moidx = oid_index;
               }
             });
