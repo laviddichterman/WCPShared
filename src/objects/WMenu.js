@@ -34,6 +34,9 @@ export const WMenu = function (catalog) {
     var prods = {};
     for (var pid in cat.products) {
       var product_class = cat.products[pid].product;
+      // be sure to sort the modifiers, just in case...
+      // TODO: better expectations around sorting
+      product_class.modifiers.sort((a, b) => cat.modifiers[a].modifier_type.ordinal - cat.modifiers[b].modifier_type.ordinal);
       var product_entry = { product: product_class, instances_list: [], instances: {} };
       cat.products[pid].instances.sort((a, b) => a.ordinal - b.ordinal).forEach((prod) => {
         var modifiers = {};

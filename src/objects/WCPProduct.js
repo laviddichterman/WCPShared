@@ -446,8 +446,19 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
     this.base_product_piid = BASE_PRODUCT_INSTANCE.piid;
   }
 
+  this.OrderModifiersAndOptions = function(MENU) { 
+    var new_obj = {};
+    var sorted_mtids = Object.keys(this.modifiers).sort((a, b) => MENU.modifiers[a].modifier_type.ordinal - MENU.modifiers[b].modifier_type.ordinal)
+    for (var mtidx = 0; mtidx < sorted_mtids.length; ++mtidx) {
+      const mtid = sorted_mtids[mtidx];
+      new_obj[mtid] = this.modifiers[mtid].sort((a, b) => MENU.modifiers[mtid].options[a[1]].ordinal - MENU.modifiers[mtid].options[b[1]].ordinal);
+    }
+    this.modifiers = new_obj;
+  }
+
   this.Initialize = function (MENU) {
     this.SetBaseProductPIID(MENU);
+    this.OrderModifiersAndOptions(MENU);
     this.price = this.ComputePrice(MENU);
     this.RecomputeMetadata(MENU);
     this.RecomputeName(MENU);
