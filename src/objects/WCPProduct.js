@@ -115,18 +115,22 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
       var CATALOG_MODIFIER_INFO = MENU.modifiers[MID];
       if (CATALOG_MODIFIER_INFO.modifier_type.min_selected === 1 && CATALOG_MODIFIER_INFO.modifier_type.max_selected === 1) {
         // CASE: SINGLE select modifier, this logic isn't very well-defined. TODO: rework
-        console.assert(first_option_list.length === 1 && other_option_list.length === 1, "Split options for single select modifiers not supported yet");
-        var first_option = first_option_list[0];
-        var other_option = other_option_list[0];
-        if (first_option[1] !== other_option[1]) {
-          // OID doesn't match, need to set AT_LEAST for JUST the option on the "first" product
-          CATALOG_MODIFIER_INFO.options_list.forEach(function (option, oidx) {
-            // eslint-disable-next-line
-            if (first_option[1] == option.moid) {
-              modifiers_match_matrix[midx][oidx] = [AT_LEAST, AT_LEAST];
-              is_mirror = false;
-            }
-          });
+        if (first_option_list.length === 1) {
+          var first_option = first_option_list[0];
+          var other_option = other_option_list.length === 1 ? other_option_list[0] : "";
+          if (first_option[1] !== other_option[1]) {
+            // OID doesn't match, need to set AT_LEAST for JUST the option on the "first" product
+            CATALOG_MODIFIER_INFO.options_list.forEach(function (option, oidx) {
+              // eslint-disable-next-line
+              if (first_option[1] == option.moid) {
+                modifiers_match_matrix[midx][oidx] = [AT_LEAST, AT_LEAST];
+                is_mirror = false;
+              }
+            });
+          }
+        }
+        else { // both sides of the comparison have an unset value for a single select modifier
+          console.log(`no option selected on either side of the comparison for ${MID}`);
         }
       }
       else {
