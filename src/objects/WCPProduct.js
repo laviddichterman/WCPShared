@@ -244,14 +244,14 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
             // then single select options THAT ARE SELECTED need to be displayed even if they're exact matches
             //TODO: figure this one out
             var found_selection = -1;
-            var base_moid = BASE_PRODUCT_INSTANCE.modifiers[mtid][0][1];
+            var base_moid = BASE_PRODUCT_INSTANCE.modifiers[mtid].length === 1 ? BASE_PRODUCT_INSTANCE.modifiers[mtid][0][1] : "";
             var base_moidx = -1;
             comparison.match_matrix[mid_index].forEach(function (option_match, oid_index) {
               if (option_match[side] === AT_LEAST) {
                 found_selection = oid_index;
               }
               // eslint-disable-next-line
-              if (MENU.modifiers[mtid].options_list[oid_index].moid == base_moid) {
+              if (base_moid && MENU.modifiers[mtid].options_list[oid_index].moid == base_moid) {
                 base_moidx = oid_index;
               }
             });
