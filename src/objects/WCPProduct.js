@@ -258,7 +258,8 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
             if (found_selection >= 0) {
               name_components[mid_index][found_selection][side] = true;
             }
-            else if (is_compare_to_base && !PRODUCT_CLASS.display_flags.show_name_of_base_product) {
+            // base_moidx >= 0 checks that there actually is something selected on the base product instance for this modifier
+            else if (is_compare_to_base && !PRODUCT_CLASS.display_flags.show_name_of_base_product && base_moidx >= 0) {
               // whatever we have selected is the default option, use the BASE_PRODUCT_INSTANCE to grab that info
               // since the display flag show_name_of_base_product is OFF
               name_components[mid_index][base_moidx][side] = true;
