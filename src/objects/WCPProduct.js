@@ -225,10 +225,10 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
     // that makes this a list of list of the tuple <display_left, display_right>
     // note that every modifier that belongs to this product class exists in this list, meaning if a pizza has no toppings, there's still an empty array for that modifier type
     // from the index in this array, we can determine the name or shortnames like this:
-    // name_components[mid_index][option_index][side_index] ? MENU.modifiers[this.PRODUCT_CLASS.modifiers[mid_index]].options_list[option_index].item.display_name : ""
+    // name_components[mid_index].options[option_index][side_index] ? MENU.modifiers[this.PRODUCT_CLASS.modifiers[mid_index]].options_list[option_index].item.display_name : ""
     var name_components = [];
     PRODUCT_CLASS.modifiers.forEach(function (MID) {
-      name_components.push(MENU.modifiers[MID].options_list.map(function () { return [false, false]; }));
+      name_components.push({ incomplete: false, options: MENU.modifiers[MID].options_list.map(function () { return [false, false]; }) });
     })
 
     function ComputeForSide(side, comparison, comparison_product) {
@@ -256,20 +256,22 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
               }
             });
             if (found_selection >= 0) {
-              name_components[mid_index][found_selection][side] = true;
+              name_components[mid_index].options[found_selection][side] = true;
             }
             // base_moidx >= 0 checks that there actually is something selected on the base product instance for this modifier
             else if (is_compare_to_base && !PRODUCT_CLASS.display_flags.show_name_of_base_product && base_moidx >= 0) {
               // whatever we have selected is the default option, use the BASE_PRODUCT_INSTANCE to grab that info
               // since the display flag show_name_of_base_product is OFF
-              name_components[mid_index][base_moidx][side] = true;
+              name_components[mid_index].options[base_moidx][side] = true;
             }
-            
+            else { //(found_selection === -1) 
+              name_components[mid_index].incomplete = true;
+            }
           }
           else if (comparison.match[side] === AT_LEAST) {
             comparison.match_matrix[mid_index].forEach(function (option_match, oid_index) {
               if (option_match[side] === AT_LEAST) {
-                name_components[mid_index][oid_index][side] = true;
+                name_components[mid_index].options[oid_index][side] = true;
               }
             });
           }
@@ -294,44 +296,48 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
       // each entry in these arrays represents the modifier index on the product class and the option index in that particular modifier
       var additional_options = { left: [], right: [], whole: [] };
       for (var mt_index = 0; mt_index < name_components.length; ++mt_index) {
-        for (var opt_index = 0; opt_index < name_components[mt_index].length; ++opt_index) {
-          if (name_components[mt_index][opt_index][LEFT_SIDE] === true &&
-            name_components[mt_index][opt_index][RIGHT_SIDE] === true) {
+        const modifier_name_component_info = name_components[mt_index];
+        for (var opt_index = 0; opt_index < modifier_name_component_info.options.length; ++opt_index) {
+          if (modifier_name_component_info.options[opt_index][LEFT_SIDE] === true &&
+            modifier_name_component_info.options[opt_index][RIGHT_SIDE] === true) {
             additional_options.whole.push([mt_index, opt_index]);
           }
-          else if (name_components[mt_index][opt_index][LEFT_SIDE] === true &&
-            name_components[mt_index][opt_index][RIGHT_SIDE] === false) {
+          else if (modifier_name_component_info.options[opt_index][LEFT_SIDE] === true &&
+            modifier_name_component_info.options[opt_index][RIGHT_SIDE] === false) {
             additional_options.left.push([mt_index, opt_index]);
           }
-          else if (name_components[mt_index][opt_index][LEFT_SIDE] === false &&
-            name_components[mt_index][opt_index][RIGHT_SIDE] === true) {
+          else if (modifier_name_component_info.options[opt_index][LEFT_SIDE] === false &&
+            modifier_name_component_info.options[opt_index][RIGHT_SIDE] === true) {
             additional_options.right.push([mt_index, opt_index]);
           }
+        }
+        if (modifier_name_component_info.incomplete) {
+          additional_options.whole.push([mt_index, -1]);
         }
       }
 
       function ComponentsList(source, getter) {
         return source.map(function (x) {
-          return getter(MENU.modifiers[PRODUCT_CLASS.modifiers[x[0]]].options_list[x[1]]);
+          return x[1] === -1 ? "your choice!" : getter(MENU.modifiers[PRODUCT_CLASS.modifiers[x[0]]].options_list[x[1]]);
         });
       }
 
       var split_options = ["∅", "∅"];
       var short_split_options = ["∅", "∅"];
       if (additional_options.left.length) {
-        split_options[LEFT_SIDE] = ComponentsList(additional_options.left, function (x) { return x.name; }).join(" + ");
-        short_split_options[LEFT_SIDE] = ComponentsList(additional_options.left, function (x) { return x.shortname; }).join(" + ");
+        split_options[LEFT_SIDE] = ComponentsList(additional_options.left, x => x.name).join(" + ");
+        short_split_options[LEFT_SIDE] = ComponentsList(additional_options.left, x => x.shortname).join(" + ");
       }
       if (additional_options.right.length) {
-        split_options[RIGHT_SIDE] = ComponentsList(additional_options.right, function (x) { return x.name; }).join(" + ");
-        short_split_options[RIGHT_SIDE] = ComponentsList(additional_options.right, function (x) { return x.shortname; }).join(" + ");
+        split_options[RIGHT_SIDE] = ComponentsList(additional_options.right, x => x.name).join(" + ");
+        short_split_options[RIGHT_SIDE] = ComponentsList(additional_options.right, x => x.shortname).join(" + ");
       }
 
       var name_components_list = null;
       var shortname_components_list = null;
       if (product.is_split) {
-        name_components_list = ComponentsList(additional_options.whole, function (x) { return x.name; });
-        shortname_components_list = ComponentsList(additional_options.whole, function (x) { return x.shortname; });
+        name_components_list = ComponentsList(additional_options.whole, x => x.name);
+        shortname_components_list = ComponentsList(additional_options.whole, x => x.shortname);
         if (menu_match[LEFT_SIDE].piid === menu_match[RIGHT_SIDE].piid) {
           if (!is_compare_to_base[LEFT_SIDE] || PRODUCT_CLASS.display_flags.show_name_of_base_product) {
             name_components_list.unshift(menu_match[LEFT_SIDE].name);
@@ -365,8 +371,8 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
         }
       } // end is_split case
       else {
-        name_components_list = ComponentsList(additional_options.whole, function (x) { return x.name; });
-        shortname_components_list = ComponentsList(additional_options.whole, function (x) { return x.shortname; });
+        name_components_list = ComponentsList(additional_options.whole, x => x.name);
+        shortname_components_list = ComponentsList(additional_options.whole, x => x.shortname);
         // we're using the left side because we know left and right are the same
         // if exact match to base product, no need to show the name
         if (!is_compare_to_base[LEFT_SIDE] || PRODUCT_CLASS.display_flags.show_name_of_base_product) {
