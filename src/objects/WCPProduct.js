@@ -264,7 +264,7 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
               // since the display flag show_name_of_base_product is OFF
               name_components[mid_index].options[base_moidx][side] = true;
             }
-            else { //(found_selection === -1) 
+            else if (base_moidx === -1 && found_selection === -1) {
               name_components[mid_index].incomplete = true;
             }
           }
