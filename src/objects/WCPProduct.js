@@ -297,12 +297,12 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
       
       // split out options beyond the base product into left additions, right additions, and whole additions
       // each entry in these arrays represents the modifier index on the product class and the option index in that particular modifier
-      var additional_options = { left: [], right: [], whole: [] };
-      var exhaustive_options = { left: [], right: [], whole: [] };
-      product.additional_options = additional_options;
-      product.exhaustive_options = exhaustive_options;
+      product.additional_options = { left: [], right: [], whole: [] };
+      product.exhaustive_options = { left: [], right: [], whole: [] };
+      const additional_options = product.additional_options;
+      const exhaustive_options = product.exhaustive_options;
       PRODUCT_CLASS.modifiers.forEach(function (mtid, mtidx) {
-        var CATALOG_MODIFIER_INFO = MENU.modifiers[mtid];
+        const CATALOG_MODIFIER_INFO = MENU.modifiers[mtid];
         const is_single_select = CATALOG_MODIFIER_INFO.modifier_type.min_selected === 1 && CATALOG_MODIFIER_INFO.modifier_type.max_selected === 1;
         const is_base_product_edge_case = is_single_select && !PRODUCT_CLASS.display_flags.show_name_of_base_product;
         const num_selected = [0, 0];
@@ -332,16 +332,18 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
             }
           });
         }
-        // here's where we'd check for incomplete modifier
-        if (num_selected[LEFT_SIDE] < CATALOG_MODIFIER_INFO.modifier_type.min_selected && 
-            num_selected[RIGHT_SIDE] < CATALOG_MODIFIER_INFO.modifier_type.min_selected) {
-          exhaustive_options.whole.push([mtid, -1]);
-        }
-        else if (num_selected[LEFT_SIDE] < CATALOG_MODIFIER_INFO.modifier_type.min_selected) {
-          exhaustive_options.left.push([mtid, -1]);
-        }
-        else if (num_selected[RIGHT_SIDE] < CATALOG_MODIFIER_INFO.modifier_type.min_selected) {
-          exhaustive_options.right.push([mtid, -1]);
+        // we check for an incomplete modifier and add an entry if the empty_display_as flag is anything other than OMIT
+        if (CATALOG_MODIFIER_INFO.modifier_type.display_flags.empty_display_as !== "OMIT") {
+          if (num_selected[LEFT_SIDE] < CATALOG_MODIFIER_INFO.modifier_type.min_selected && 
+              num_selected[RIGHT_SIDE] < CATALOG_MODIFIER_INFO.modifier_type.min_selected) {
+            exhaustive_options.whole.push([mtid, -1]);
+          }
+          else if (num_selected[LEFT_SIDE] < CATALOG_MODIFIER_INFO.modifier_type.min_selected) {
+            exhaustive_options.left.push([mtid, -1]);
+          }
+          else if (num_selected[RIGHT_SIDE] < CATALOG_MODIFIER_INFO.modifier_type.min_selected) {
+            exhaustive_options.right.push([mtid, -1]);
+          }
         }
       });
 
@@ -463,7 +465,19 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
   this.DisplayOptions = function (MENU) {
     var options_sections = [];
     const HandleOption = (x) => {
-      return x[1] === -1 ? "CHOICE OF" : GetModifierOptionFromMIDOID(MENU, x[0], x[1]).name;
+      if (x[1] === -1) {
+        const CATALOG_MODIFIER_INFO = MENU.modifiers[x[0]];
+        switch (CATALOG_MODIFIER_INFO.modifier_type.display_flags.empty_display_as) {
+          case "YOUR_CHOICE_OF": return `Your choice of ${String(CATALOG_MODIFIER_INFO.modifier_type.display_name ? CATALOG_MODIFIER_INFO.modifier_type.display_name : CATALOG_MODIFIER_INFO.modifier_type.name).toLowerCase()}`;
+          case "LIST_CHOICES": 
+            const choices = CATALOG_MODIFIER_INFO.options_list.map(x=>x.name);
+            return choices.length < 3 ? choices.join(" or ") : [choices.slice(0, -1).join(", "), choices[choices.length-1]].join(", or ");
+          default: console.error(`Unknown value for empty_display_as flag: ${CATALOG_MODIFIER_INFO.modifier_type.display_flags.empty_display_as}`); return "";
+        }
+      }
+      else {
+        return GetModifierOptionFromMIDOID(MENU, x[0], x[1]).name
+      }
     }
     if (this.exhaustive_options.whole.length > 0) {
       var option_names = this.exhaustive_options.whole.map(HandleOption);
