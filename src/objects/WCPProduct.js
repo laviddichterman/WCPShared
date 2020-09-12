@@ -251,7 +251,6 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
       match_matrix: modifiers_match_matrix,
       match: [ExtractMatch(modifiers_match_matrix[LEFT_SIDE]), ExtractMatch(modifiers_match_matrix[RIGHT_SIDE])]
     };
-    //console.log(JSON.stringify(temp));
     return temp;
   }
 
@@ -264,15 +263,6 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
   this.RecomputeName = function (MENU) {
     var PRODUCT_CLASS = this.PRODUCT_CLASS;
     var PRODUCT_CLASS_MENU_ENTRY = MENU.product_classes[PRODUCT_CLASS._id];
-    if (this.piid) {
-      // if we have a PI ID then that means we're an unmodified product instance from the catalog
-      // and we should find that product and assume its name.
-      var catalog_pi = PRODUCT_CLASS_MENU_ENTRY.instances[this.piid];
-      this.name = catalog_pi.name;
-      this.shortname = catalog_pi.shortcode;
-      this.shortcode = catalog_pi.shortcode;
-      return;
-    }
 
     // at this point we only know what product class we belong to. we might be an unmodified product, 
     // but that will need to be determined.
@@ -285,16 +275,6 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
       comparison: [[], []],
       comparison_value: [EXACT_MATCH, EXACT_MATCH]
     }
-
-    // name_components is an ordered list of things that are AT_LEAST compared to the menu match, on a per-side basis
-    // that makes this a list of list of the tuple <display_left, display_right>
-    // note that every modifier that belongs to this product class exists in this list, meaning if a pizza has no toppings, there's still an empty array for that modifier type
-    // from the index in this array, we can determine the name or shortnames like this:
-    // name_components[mid_index].options[option_index][side_index] ? MENU.modifiers[this.PRODUCT_CLASS.modifiers[mid_index]].options_list[option_index].item.display_name : ""
-    var name_components = [];
-    PRODUCT_CLASS.modifiers.forEach(function (MID) {
-      name_components.push({ incomplete: [false, false], options: MENU.modifiers[MID].options_list.map(function () { return [false, false]; }) });
-    })
 
     function CheckMatchForSide(side, comparison, comparison_product) {
       if (match_info.product[side] === null && comparison.match[side] !== NO_MATCH) {
@@ -362,6 +342,15 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
           exhaustive_options.right.push([mtid, -1]);
         }
       });
+
+      if (product.piid) {
+        // if we have a PI ID then that means we're an unmodified product instance from the catalog
+        // and we should find that product and assume its name.
+        var catalog_pi = PRODUCT_CLASS_MENU_ENTRY.instances[product.piid];
+        this.name = catalog_pi.name;
+        this.shortname = catalog_pi.shortcode;
+        return;
+      }
 
       function ComponentsList(source, getter) {
         return source.map(function (x) {
