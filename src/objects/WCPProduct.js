@@ -363,34 +363,37 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
 
       function ComponentsList(source, getter) {
         return source.map(function (x) {
-          return getter(MENU.modifiers[x[0]].options[x[1]]);
+          return getter(x);
         });
       }
       const ComponentsListName = (source) => {
         return ComponentsList(source, x=>x.name);
       }
       const ComponentsListShortname = (source) => {
-        return ComponentsList(source, x => x.shortname);
+        return ComponentsList(source.filter(x => !x.display_flags || !x.display_flags.omit_from_shortname), x => x.shortname);
       }
 
-      console.log(exhaustive_options);
+      var additional_options_objects = { };
+      Object.keys(additional_options).forEach(loc => {
+        additional_options_objects[loc] = additional_options[loc].map(x => GetModifierOptionFromMIDOID(MENU, x[0], x[1]));
+      });
 
       var split_options = ["∅", "∅"];
       var short_split_options = ["∅", "∅"];
       if (additional_options.left.length) {
-        split_options[LEFT_SIDE] = ComponentsListName(additional_options.left).join(" + ");
-        short_split_options[LEFT_SIDE] = ComponentsListShortname(additional_options.left).join(" + ");
+        split_options[LEFT_SIDE] = ComponentsListName(additional_options_objects.left).join(" + ");
+        short_split_options[LEFT_SIDE] = ComponentsListShortname(additional_options_objects.left).join(" + ");
       }
       if (additional_options.right.length) {
-        split_options[RIGHT_SIDE] = ComponentsListName(additional_options.right).join(" + ");
-        short_split_options[RIGHT_SIDE] = ComponentsListShortname(additional_options.right).join(" + ");
+        split_options[RIGHT_SIDE] = ComponentsListName(additional_options_objects.right).join(" + ");
+        short_split_options[RIGHT_SIDE] = ComponentsListShortname(additional_options_objects.right).join(" + ");
       }
 
       var name_components_list = null;
       var shortname_components_list = null;
       if (product.is_split) {
-        name_components_list = ComponentsListName(additional_options.whole);
-        shortname_components_list = ComponentsListShortname(additional_options.whole);
+        name_components_list = ComponentsListName(additional_options_objects.whole);
+        shortname_components_list = ComponentsListShortname(additional_options_objects.whole);
         if (match_info.product[LEFT_SIDE].piid === match_info.product[RIGHT_SIDE].piid) {
           if (!is_compare_to_base[LEFT_SIDE] || PRODUCT_CLASS.display_flags.show_name_of_base_product) {
             name_components_list.unshift(match_info.product[LEFT_SIDE].name);
@@ -407,11 +410,11 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
             (!is_compare_to_base[RIGHT_SIDE] || PRODUCT_CLASS.display_flags.show_name_of_base_product) ? [match_info.product[RIGHT_SIDE].name] : []
           ];
           var shortnames = names.slice();
-          if (additional_options.left.length) {
+          if (additional_options_objects.left.length) {
             names[LEFT_SIDE] = names[LEFT_SIDE].concat(split_options[LEFT_SIDE]);
             shortnames[LEFT_SIDE] = shortnames[LEFT_SIDE].concat(short_split_options[LEFT_SIDE]);
           }
-          if (additional_options.right.length) {
+          if (additional_options_objects.right.length) {
             names[RIGHT_SIDE] = names[RIGHT_SIDE].concat(split_options[RIGHT_SIDE]);
             shortnames[RIGHT_SIDE] = shortnames[RIGHT_SIDE].concat(short_split_options[RIGHT_SIDE]);
           }
@@ -424,8 +427,8 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
         }
       } // end is_split case
       else {
-        name_components_list = ComponentsListName(additional_options.whole);
-        shortname_components_list = ComponentsListShortname(additional_options.whole);
+        name_components_list = ComponentsListName(additional_options_objects.whole);
+        shortname_components_list = ComponentsListShortname(additional_options_objects.whole);
         // we're using the left side because we know left and right are the same
         // if exact match to base product, no need to show the name
         if (!is_compare_to_base[LEFT_SIDE] || PRODUCT_CLASS.display_flags.show_name_of_base_product) {
@@ -443,7 +446,9 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
         }
       }
       product.name = name_components_list.join(" + ");
-      product.shortname = shortname_components_list.length === 0 ? "BASE PRODUCT" : shortname_components_list.join(" + ");
+      product.shortname = shortname_components_list.length === 0 ? match_info.product[LEFT_SIDE].shortname : shortname_components_list.join(" + ");
+      product.additional_options = additional_options;
+      product.exhaustive_options = exhaustive_options;
     }
 
     // iterate through menu, until has_left and has_right are true
@@ -462,38 +467,21 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
     }
   };
 
-  this.SplitOptionsList = function () {
-    // generates three lists ordered from top to bottom: whole, left only, right only
-    // returns a list of <MTID, MOID> tuples
-    var ret = { left: [], right: [], whole: [] };
-    for (var mid in this.modifiers) {
-      this.modifiers[mid].forEach(function (option_placement) {
-        switch (option_placement[0]) {
-          case TOPPING_LEFT: ret.left.push([mid, option_placement[1]]); break;
-          case TOPPING_RIGHT: ret.right.push([mid, option_placement[1]]); break;
-          case TOPPING_WHOLE: ret.whole.push([mid, option_placement[1]]); break;
-          default: break;
-        }
-      });
-    };``
-    return ret;
-  };
-
-
   this.DisplayOptions = function (MENU) {
-    var split_options = this.SplitOptionsList();
     var options_sections = [];
-
-    if (split_options.whole.length > 0) {
-      var option_names = split_options.whole.map(function (x) { return GetModifierOptionFromMIDOID(MENU, x[0], x[1]).name; });
+    const HandleOption = (x) => {
+      return x[1] === -1 ? "CHOICE OF" : GetModifierOptionFromMIDOID(MENU, x[0], x[1]).name;
+    }
+    if (this.exhaustive_options.whole.length > 0) {
+      var option_names = this.exhaustive_options.whole.map(HandleOption);
       options_sections.push(["Whole", option_names.join(" + ")]);
     }
-    if (split_options.left.length > 0) {
-      var option_names = split_options.left.map(function (x) { return GetModifierOptionFromMIDOID(MENU, x[0], x[1]).name; });
+    if (this.exhaustive_options.left.length > 0) {
+      var option_names = this.exhaustive_options.left.map(HandleOption);
       options_sections.push(["Left", option_names.join(" + ")]);
     }
-    if (split_options.right.length > 0) {
-      var option_names = split_options.right.map(function (x) { return GetModifierOptionFromMIDOID(MENU, x[0], x[1]).name; });
+    if (this.exhaustive_options.right.length > 0) {
+      var option_names = this.exhaustive_options.right.map(HandleOption);
       options_sections.push(["Right", option_names.join(" + ")]);
     }
     return options_sections;
