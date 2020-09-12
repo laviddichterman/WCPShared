@@ -129,9 +129,6 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
             });
           }
         }
-        else { // both sides of the comparison have an unset value for a single select modifier
-          console.log(`no option selected on either side of the comparison for ${MID}`);
-        }
       }
       else {
         // CASE: MULTI select modifier
@@ -289,7 +286,7 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
       console.assert(match_info.product[LEFT_SIDE] !== null && match_info.product[RIGHT_SIDE] !== null, "We should have both matches determined by now.");
       // assign shortcode (easy)
       product.shortcode = product.is_split && match_info.shortcodes[LEFT_SIDE] !== match_info.shortcodes[RIGHT_SIDE] ? match_info.shortcodes.join("|") : match_info.shortcodes[LEFT_SIDE];
-
+      product.incomplete = false;
       // determine if we're comparing to the base product on the left and right sides
       var is_compare_to_base = [
         BASE_PRODUCT_INSTANCE.piid === match_info.product[LEFT_SIDE].piid,
@@ -337,12 +334,15 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
           if (num_selected[LEFT_SIDE] < CATALOG_MODIFIER_INFO.modifier_type.min_selected && 
               num_selected[RIGHT_SIDE] < CATALOG_MODIFIER_INFO.modifier_type.min_selected) {
             exhaustive_options.whole.push([mtid, -1]);
+            product.incomplete = true;
           }
           else if (num_selected[LEFT_SIDE] < CATALOG_MODIFIER_INFO.modifier_type.min_selected) {
             exhaustive_options.left.push([mtid, -1]);
+            product.incomplete = true;
           }
           else if (num_selected[RIGHT_SIDE] < CATALOG_MODIFIER_INFO.modifier_type.min_selected) {
             exhaustive_options.right.push([mtid, -1]);
+            product.incomplete = true;
           }
         }
       });
