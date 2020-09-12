@@ -1,4 +1,4 @@
-import { TOPPING_NONE, TOPPING_LEFT, TOPPING_RIGHT, TOPPING_WHOLE, NO_MATCH, AT_LEAST, EXACT_MATCH, LEFT_SIDE, RIGHT_SIDE } from "../common";
+import { TOPPING_NONE, TOPPING_LEFT, TOPPING_RIGHT, TOPPING_WHOLE, NO_MATCH, AT_LEAST, EXACT_MATCH, LEFT_SIDE, RIGHT_SIDE, GetPlacementFromMIDOID } from "../common";
 
 function DeepCopyPlacedOptions(modifiers) {
   var ret = {};
@@ -12,12 +12,10 @@ function GetModifierOptionFromMIDOID(menu, mid, oid) {
   return menu.modifiers[mid].options[oid];
 }
 
-function ExtractMatchForSide(side, matrix) {
+function ExtractMatch(matrix) {
   // we take the min of EXACT_MATCH and the thing we just computed because if there are no modifiers, then we'll get Infinity
   return Math.min(EXACT_MATCH, Math.min.apply(0, matrix.map(function (modcompare_arr) {
-    return Math.min.apply(0, modcompare_arr.map(function (comp) {
-      return comp[side];
-    }));
+    return Math.min.apply(0, modcompare_arr);
   })));
 };
 
@@ -91,19 +89,20 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
   };
 
   function Compare(first, other, MENU) {
-    var modifiers_match_matrix = [];
+    var modifiers_match_matrix = [ [], [] ];
 
     // need to compare PIDs of first and other, then use the PID to develop the modifiers matrix since one of the two product instances might not have a value for every modifier.
     if (first.PRODUCT_CLASS._id != other.PRODUCT_CLASS._id) {
       // no match on PID so we need to return 0
-      return { mirror: false, match_matrix: modifiers_match_matrix, match: [[[NO_MATCH, NO_MATCH]]] }
+      return { mirror: false, match_matrix: modifiers_match_matrix, match: [[[NO_MATCH]], [[NO_MATCH]]] }
     }
 
     // this is a multi-dim array, in order of the MTID as it exists in the product class definition
     // disabled modifier types and modifier options are all present as they shouldn't contribute to comparison mismatch
     // elements of the modifiers_match_matrix are arrays of <LEFT_MATCH, RIGHT_MATCH> tuples
     first.PRODUCT_CLASS.modifiers.forEach(function (MID) {
-      modifiers_match_matrix.push(MENU.modifiers[MID].options_list.map(function () { return [EXACT_MATCH, EXACT_MATCH]; }));
+      modifiers_match_matrix[LEFT_SIDE].push(new Array(MENU.modifiers[MID].options_list.length).fill(EXACT_MATCH));
+      modifiers_match_matrix[RIGHT_SIDE].push(new Array(MENU.modifiers[MID].options_list.length).fill(EXACT_MATCH));
     })
 
     var is_mirror = true;
@@ -123,7 +122,8 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
             CATALOG_MODIFIER_INFO.options_list.forEach(function (option, oidx) {
               // eslint-disable-next-line
               if (first_option[1] == option.moid) {
-                modifiers_match_matrix[midx][oidx] = [AT_LEAST, AT_LEAST];
+                modifiers_match_matrix[LEFT_SIDE][midx][oidx] = AT_LEAST;
+                modifiers_match_matrix[RIGHT_SIDE][midx][oidx] = AT_LEAST;
                 is_mirror = false;
               }
             });
@@ -147,37 +147,97 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
           switch (other_option_placement) {
             case TOPPING_NONE:
               switch (first_option_placement) {
-                case TOPPING_NONE: modifiers_match_matrix[midx][oidx] = [EXACT_MATCH, EXACT_MATCH]; break;
-                case TOPPING_LEFT: modifiers_match_matrix[midx][oidx] = [AT_LEAST, EXACT_MATCH]; is_mirror = false; break;
-                case TOPPING_RIGHT: modifiers_match_matrix[midx][oidx] = [EXACT_MATCH, AT_LEAST]; is_mirror = false; break;
-                case TOPPING_WHOLE: modifiers_match_matrix[midx][oidx] = [AT_LEAST, AT_LEAST]; is_mirror = false; break;
+                case TOPPING_NONE: 
+                  modifiers_match_matrix[LEFT_SIDE][midx][oidx] = EXACT_MATCH;
+                  modifiers_match_matrix[RIGHT_SIDE][midx][oidx] = EXACT_MATCH;
+                  break;
+                case TOPPING_LEFT: 
+                  modifiers_match_matrix[LEFT_SIDE][midx][oidx] = AT_LEAST;
+                  modifiers_match_matrix[RIGHT_SIDE][midx][oidx] = EXACT_MATCH;
+                  is_mirror = false;
+                  break;
+                case TOPPING_RIGHT: 
+                  modifiers_match_matrix[LEFT_SIDE][midx][oidx] = EXACT_MATCH;
+                  modifiers_match_matrix[RIGHT_SIDE][midx][oidx] = AT_LEAST;
+                  is_mirror = false;
+                  break;
+                case TOPPING_WHOLE: 
+                  modifiers_match_matrix[LEFT_SIDE][midx][oidx] = AT_LEAST;
+                  modifiers_match_matrix[RIGHT_SIDE][midx][oidx] = AT_LEAST;
+                  is_mirror = false;
+                  break;
                 default: console.assert(false, "invalid topping value");
               }
               break;
             case TOPPING_LEFT:
               switch (first_option_placement) {
-                case TOPPING_NONE: modifiers_match_matrix[midx][oidx] = [NO_MATCH, EXACT_MATCH]; is_mirror = false; break;
-                case TOPPING_LEFT: modifiers_match_matrix[midx][oidx] = [EXACT_MATCH, EXACT_MATCH]; is_mirror = false; break;
-                case TOPPING_RIGHT: modifiers_match_matrix[midx][oidx] = [NO_MATCH, NO_MATCH]; break;
-                case TOPPING_WHOLE: modifiers_match_matrix[midx][oidx] = [EXACT_MATCH, AT_LEAST]; is_mirror = false; break;
+                case TOPPING_NONE: 
+                  modifiers_match_matrix[LEFT_SIDE][midx][oidx] = NO_MATCH;
+                  modifiers_match_matrix[RIGHT_SIDE][midx][oidx] = EXACT_MATCH;
+                  is_mirror = false;
+                  break;
+                case TOPPING_LEFT: 
+                  modifiers_match_matrix[LEFT_SIDE][midx][oidx] = EXACT_MATCH;
+                  modifiers_match_matrix[RIGHT_SIDE][midx][oidx] = EXACT_MATCH;
+                  is_mirror = false;
+                  break;
+                case TOPPING_RIGHT: 
+                  modifiers_match_matrix[LEFT_SIDE][midx][oidx] = NO_MATCH;
+                  modifiers_match_matrix[RIGHT_SIDE][midx][oidx] = NO_MATCH;
+                  break;
+                case TOPPING_WHOLE: 
+                  modifiers_match_matrix[LEFT_SIDE][midx][oidx] = EXACT_MATCH;
+                  modifiers_match_matrix[RIGHT_SIDE][midx][oidx] = AT_LEAST;
+                  is_mirror = false;
+                  break;
                 default: console.assert(false, "invalid topping value");
               }
               break;
             case TOPPING_RIGHT:
               switch (first_option_placement) {
-                case TOPPING_NONE: modifiers_match_matrix[midx][oidx] = [EXACT_MATCH, NO_MATCH]; is_mirror = false; break;
-                case TOPPING_LEFT: modifiers_match_matrix[midx][oidx] = [NO_MATCH, NO_MATCH]; break;
-                case TOPPING_RIGHT: modifiers_match_matrix[midx][oidx] = [EXACT_MATCH, EXACT_MATCH]; is_mirror = false; break;
-                case TOPPING_WHOLE: modifiers_match_matrix[midx][oidx] = [AT_LEAST, EXACT_MATCH]; is_mirror = false; break;
+                case TOPPING_NONE: 
+                  modifiers_match_matrix[LEFT_SIDE][midx][oidx] = EXACT_MATCH;
+                  modifiers_match_matrix[RIGHT_SIDE][midx][oidx] = NO_MATCH;
+                  is_mirror = false;
+                  break;
+                case TOPPING_LEFT: 
+                  modifiers_match_matrix[LEFT_SIDE][midx][oidx] = NO_MATCH;
+                  modifiers_match_matrix[RIGHT_SIDE][midx][oidx] = NO_MATCH;
+                  break;
+                case TOPPING_RIGHT: 
+                  modifiers_match_matrix[LEFT_SIDE][midx][oidx] = EXACT_MATCH;
+                  modifiers_match_matrix[RIGHT_SIDE][midx][oidx] = EXACT_MATCH;
+                  is_mirror = false;
+                  break;
+                case TOPPING_WHOLE: 
+                  modifiers_match_matrix[LEFT_SIDE][midx][oidx] = AT_LEAST;
+                  modifiers_match_matrix[RIGHT_SIDE][midx][oidx] = EXACT_MATCH;
+                  is_mirror = false;
+                  break;
                 default: console.assert(false, "invalid topping value");
               }
               break;
             case TOPPING_WHOLE:
               switch (first_option_placement) {
-                case TOPPING_NONE: modifiers_match_matrix[midx][oidx] = [NO_MATCH, NO_MATCH]; is_mirror = false; break;
-                case TOPPING_LEFT: modifiers_match_matrix[midx][oidx] = [EXACT_MATCH, NO_MATCH]; is_mirror = false; break;
-                case TOPPING_RIGHT: modifiers_match_matrix[midx][oidx] = [NO_MATCH, EXACT_MATCH]; is_mirror = false; break;
-                case TOPPING_WHOLE: modifiers_match_matrix[midx][oidx] = [EXACT_MATCH, EXACT_MATCH]; break;
+                case TOPPING_NONE: 
+                  modifiers_match_matrix[LEFT_SIDE][midx][oidx] = NO_MATCH;
+                  modifiers_match_matrix[RIGHT_SIDE][midx][oidx] = NO_MATCH;
+                  is_mirror = false;
+                  break;
+                case TOPPING_LEFT: 
+                  modifiers_match_matrix[LEFT_SIDE][midx][oidx] = EXACT_MATCH;
+                  modifiers_match_matrix[RIGHT_SIDE][midx][oidx] = NO_MATCH;
+                  is_mirror = false;
+                  break;
+                case TOPPING_RIGHT: 
+                  modifiers_match_matrix[LEFT_SIDE][midx][oidx] = NO_MATCH;
+                  modifiers_match_matrix[RIGHT_SIDE][midx][oidx] = EXACT_MATCH;
+                  is_mirror = false;
+                  break;
+                case TOPPING_WHOLE: 
+                  modifiers_match_matrix[LEFT_SIDE][midx][oidx] = EXACT_MATCH;
+                  modifiers_match_matrix[RIGHT_SIDE][midx][oidx] = EXACT_MATCH;
+                  break;
                 default: console.assert(false, "invalid topping value");
               }
               break;
@@ -189,7 +249,7 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
     var temp = {
       mirror: is_mirror,
       match_matrix: modifiers_match_matrix,
-      match: [ExtractMatchForSide(LEFT_SIDE, modifiers_match_matrix), ExtractMatchForSide(RIGHT_SIDE, modifiers_match_matrix)]
+      match: [ExtractMatch(modifiers_match_matrix[LEFT_SIDE]), ExtractMatch(modifiers_match_matrix[RIGHT_SIDE])]
     };
     //console.log(JSON.stringify(temp));
     return temp;
@@ -218,9 +278,14 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
     // but that will need to be determined.
     var BASE_PRODUCT_INSTANCE = PRODUCT_CLASS_MENU_ENTRY.instances[this.base_product_piid];
 
-    var shortcodes = [BASE_PRODUCT_INSTANCE.shortcode, BASE_PRODUCT_INSTANCE.shortcode];
-    var menu_match = [null, null];
-    var menu_match_compare = [EXACT_MATCH, EXACT_MATCH];
+    var match_info = { 
+      // TODO: we don't need to track shortcode separately since we can pull it from the matched product
+      shortcodes: [BASE_PRODUCT_INSTANCE.shortcode, BASE_PRODUCT_INSTANCE.shortcode],
+      product: [null, null],
+      comparison: [[], []],
+      comparison_value: [EXACT_MATCH, EXACT_MATCH]
+    }
+
     // name_components is an ordered list of things that are AT_LEAST compared to the menu match, on a per-side basis
     // that makes this a list of list of the tuple <display_left, display_right>
     // note that every modifier that belongs to this product class exists in this list, meaning if a pizza has no toppings, there's still an empty array for that modifier type
@@ -228,120 +293,109 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
     // name_components[mid_index].options[option_index][side_index] ? MENU.modifiers[this.PRODUCT_CLASS.modifiers[mid_index]].options_list[option_index].item.display_name : ""
     var name_components = [];
     PRODUCT_CLASS.modifiers.forEach(function (MID) {
-      name_components.push({ incomplete: false, options: MENU.modifiers[MID].options_list.map(function () { return [false, false]; }) });
+      name_components.push({ incomplete: [false, false], options: MENU.modifiers[MID].options_list.map(function () { return [false, false]; }) });
     })
 
-    function ComputeForSide(side, comparison, comparison_product) {
-      if (menu_match[side] !== null) {
-        return;
-      }
-      var is_compare_to_base = BASE_PRODUCT_INSTANCE.piid === comparison_product.piid;
-      if (comparison.match[side] !== NO_MATCH) {
-        PRODUCT_CLASS.modifiers.forEach(function (mtid, mid_index) {
-          var CATALOG_MODIFIER_INFO = MENU.modifiers[mtid];
-          if (CATALOG_MODIFIER_INFO.modifier_type.min_selected === 1 && CATALOG_MODIFIER_INFO.modifier_type.max_selected === 1) {
-            // if the comparison is to the base product instance, 
-            // then single select options THAT ARE SELECTED need to be displayed even if they're exact matches
-            //TODO: figure this one out
-            var found_selection = -1;
-            var base_moid = BASE_PRODUCT_INSTANCE.modifiers.hasOwnProperty(mtid) && BASE_PRODUCT_INSTANCE.modifiers[mtid].length === 1 ? BASE_PRODUCT_INSTANCE.modifiers[mtid][0][1] : "";
-            var base_moidx = -1;
-            comparison.match_matrix[mid_index].forEach(function (option_match, oid_index) {
-              if (option_match[side] === AT_LEAST) {
-                found_selection = oid_index;
-              }
-              // eslint-disable-next-line
-              if (base_moid && MENU.modifiers[mtid].options_list[oid_index].moid == base_moid) {
-                base_moidx = oid_index;
-              }
-            });
-            if (found_selection >= 0) {
-              name_components[mid_index].options[found_selection][side] = true;
-            }
-            // base_moidx >= 0 checks that there actually is something selected on the base product instance for this modifier
-            else if (is_compare_to_base && !PRODUCT_CLASS.display_flags.show_name_of_base_product && base_moidx >= 0) {
-              // whatever we have selected is the default option, use the BASE_PRODUCT_INSTANCE to grab that info
-              // since the display flag show_name_of_base_product is OFF
-              name_components[mid_index].options[base_moidx][side] = true;
-            }
-            else if (base_moidx === -1 && found_selection === -1) {
-              name_components[mid_index].incomplete = true;
-            }
-          }
-          else if (comparison.match[side] === AT_LEAST) {
-            comparison.match_matrix[mid_index].forEach(function (option_match, oid_index) {
-              if (option_match[side] === AT_LEAST) {
-                name_components[mid_index].options[oid_index][side] = true;
-              }
-            });
-          }
-        });
-        menu_match[side] = comparison_product;
-        menu_match_compare[side] = comparison.match[side];
-        shortcodes[side] = comparison_product.shortcode;
+    function CheckMatchForSide(side, comparison, comparison_product) {
+      if (match_info.product[side] === null && comparison.match[side] !== NO_MATCH) {
+        match_info.product[side] = comparison_product;
+        match_info.comparison[side] = comparison.match_matrix[side];
+        match_info.comparison_value[side] = comparison.match[side];
+        match_info.shortcodes[side] = comparison_product.shortcode;
       }
     }
 
     function BuildName(product) {
-      console.assert(menu_match[LEFT_SIDE] !== null && menu_match[RIGHT_SIDE] !== null, "We should have both matches determined by now.");
+      console.assert(match_info.product[LEFT_SIDE] !== null && match_info.product[RIGHT_SIDE] !== null, "We should have both matches determined by now.");
       // assign shortcode (easy)
-      product.shortcode = product.is_split && shortcodes[LEFT_SIDE] !== shortcodes[RIGHT_SIDE] ? shortcodes.join("|") : shortcodes[LEFT_SIDE];
+      product.shortcode = product.is_split && match_info.shortcodes[LEFT_SIDE] !== match_info.shortcodes[RIGHT_SIDE] ? match_info.shortcodes.join("|") : match_info.shortcodes[LEFT_SIDE];
 
       // determine if we're comparing to the base product on the left and right sides
       var is_compare_to_base = [
-        BASE_PRODUCT_INSTANCE.piid === menu_match[LEFT_SIDE].piid,
-        BASE_PRODUCT_INSTANCE.piid === menu_match[RIGHT_SIDE].piid];  
+        BASE_PRODUCT_INSTANCE.piid === match_info.product[LEFT_SIDE].piid,
+        BASE_PRODUCT_INSTANCE.piid === match_info.product[RIGHT_SIDE].piid];  
       
       // split out options beyond the base product into left additions, right additions, and whole additions
       // each entry in these arrays represents the modifier index on the product class and the option index in that particular modifier
       var additional_options = { left: [], right: [], whole: [] };
-      for (var mt_index = 0; mt_index < name_components.length; ++mt_index) {
-        const modifier_name_component_info = name_components[mt_index];
-        for (var opt_index = 0; opt_index < modifier_name_component_info.options.length; ++opt_index) {
-          if (modifier_name_component_info.options[opt_index][LEFT_SIDE] === true &&
-            modifier_name_component_info.options[opt_index][RIGHT_SIDE] === true) {
-            additional_options.whole.push([mt_index, opt_index]);
+      var exhaustive_options = { left: [], right: [], whole: [] };
+      PRODUCT_CLASS.modifiers.forEach(function (mtid, mtidx) {
+        var CATALOG_MODIFIER_INFO = MENU.modifiers[mtid];
+        const is_single_select = CATALOG_MODIFIER_INFO.modifier_type.min_selected === 1 && CATALOG_MODIFIER_INFO.modifier_type.max_selected === 1;
+        const is_base_product_edge_case = is_single_select && !PRODUCT_CLASS.display_flags.show_name_of_base_product;
+         is_compare_to_base[side] && EXACT_MATCH
+        const num_selected = [0, 0];
+        product.modifiers[mtid].forEach(function (placed_option) {
+          const moid = placed_option[1];
+          const location = placed_option[0];
+          // eslint-disable-next-line
+          const moidx = CATALOG_MODIFIER_INFO.options[moid].index;
+          switch (location) {
+            case TOPPING_LEFT: exhaustive_options.left.push([mtid, moid]); ++num_selected[LEFT_SIDE]; break;
+            case TOPPING_RIGHT: exhaustive_options.right.push([mtid, moid]); ++num_selected[RIGHT_SIDE]; break;
+            case TOPPING_WHOLE: exhaustive_options.whole.push([mtid, moid]); ++num_selected[LEFT_SIDE]; ++num_selected[RIGHT_SIDE]; break;
+            default: break;
           }
-          else if (modifier_name_component_info.options[opt_index][LEFT_SIDE] === true &&
-            modifier_name_component_info.options[opt_index][RIGHT_SIDE] === false) {
-            additional_options.left.push([mt_index, opt_index]);
+          const opt_compare_info = [match_info.comparison[LEFT_SIDE][mtidx][moidx], match_info.comparison[RIGHT_SIDE][mtidx][moidx]];
+          if ((opt_compare_info[LEFT_SIDE] === AT_LEAST && 
+            opt_compare_info[RIGHT_SIDE] === AT_LEAST) || (is_base_product_edge_case && is_compare_to_base[LEFT_SIDE] && is_compare_to_base[RIGHT_SIDE] && opt_compare_info[LEFT_SIDE] === EXACT_MATCH &&
+              opt_compare_info[RIGHT_SIDE] === EXACT_MATCH)) {
+            additional_options.whole.push([mtid, moid]);
           }
-          else if (modifier_name_component_info.options[opt_index][LEFT_SIDE] === false &&
-            modifier_name_component_info.options[opt_index][RIGHT_SIDE] === true) {
-            additional_options.right.push([mt_index, opt_index]);
+          else if (opt_compare_info[RIGHT_SIDE] === AT_LEAST || (is_base_product_edge_case && is_compare_to_base[RIGHT_SIDE] && opt_compare_info[RIGHT_SIDE] === EXACT_MATCH)) {
+            additional_options.right.push([mtid, moid]);
           }
+          else if (opt_compare_info[LEFT_SIDE] === AT_LEAST || (is_base_product_edge_case && is_compare_to_base[LEFT_SIDE] && opt_compare_info[LEFT_SIDE] === EXACT_MATCH)) {
+            additional_options.left.push([mtid, moid]);
+          }
+        });
+        // here's where we'd check for incomplete modifier
+        if (num_selected[LEFT_SIDE] < CATALOG_MODIFIER_INFO.modifier_type.min_selected && 
+            num_selected[RIGHT_SIDE] < CATALOG_MODIFIER_INFO.modifier_type.min_selected) {
+          exhaustive_options.whole.push([mtid, -1]);
         }
-        if (modifier_name_component_info.incomplete) {
-          additional_options.whole.push([mt_index, -1]);
+        else if (num_selected[LEFT_SIDE] < CATALOG_MODIFIER_INFO.modifier_type.min_selected) {
+          exhaustive_options.left.push([mtid, -1]);
         }
-      }
+        else if (num_selected[RIGHT_SIDE] < CATALOG_MODIFIER_INFO.modifier_type.min_selected) {
+          exhaustive_options.right.push([mtid, -1]);
+        }
+      });
 
       function ComponentsList(source, getter) {
         return source.map(function (x) {
-          return x[1] === -1 ? "your choice!" : getter(MENU.modifiers[PRODUCT_CLASS.modifiers[x[0]]].options_list[x[1]]);
+          return getter(MENU.modifiers[x[0]].options[x[1]]);
         });
       }
+      const ComponentsListName = (source) => {
+        return ComponentsList(source, x=>x.name);
+      }
+      const ComponentsListShortname = (source) => {
+        return ComponentsList(source, x => x.shortname);
+      }
+
+      console.log(exhaustive_options);
 
       var split_options = ["∅", "∅"];
       var short_split_options = ["∅", "∅"];
       if (additional_options.left.length) {
-        split_options[LEFT_SIDE] = ComponentsList(additional_options.left, x => x.name).join(" + ");
-        short_split_options[LEFT_SIDE] = ComponentsList(additional_options.left, x => x.shortname).join(" + ");
+        split_options[LEFT_SIDE] = ComponentsListName(additional_options.left).join(" + ");
+        short_split_options[LEFT_SIDE] = ComponentsListShortname(additional_options.left).join(" + ");
       }
       if (additional_options.right.length) {
-        split_options[RIGHT_SIDE] = ComponentsList(additional_options.right, x => x.name).join(" + ");
-        short_split_options[RIGHT_SIDE] = ComponentsList(additional_options.right, x => x.shortname).join(" + ");
+        split_options[RIGHT_SIDE] = ComponentsListName(additional_options.right).join(" + ");
+        short_split_options[RIGHT_SIDE] = ComponentsListShortname(additional_options.right).join(" + ");
       }
 
       var name_components_list = null;
       var shortname_components_list = null;
       if (product.is_split) {
-        name_components_list = ComponentsList(additional_options.whole, x => x.name);
-        shortname_components_list = ComponentsList(additional_options.whole, x => x.shortname);
-        if (menu_match[LEFT_SIDE].piid === menu_match[RIGHT_SIDE].piid) {
+        name_components_list = ComponentsListName(additional_options.whole);
+        shortname_components_list = ComponentsListShortname(additional_options.whole);
+        if (match_info.product[LEFT_SIDE].piid === match_info.product[RIGHT_SIDE].piid) {
           if (!is_compare_to_base[LEFT_SIDE] || PRODUCT_CLASS.display_flags.show_name_of_base_product) {
-            name_components_list.unshift(menu_match[LEFT_SIDE].name);
-            shortname_components_list.unshift(menu_match[LEFT_SIDE].name);
+            name_components_list.unshift(match_info.product[LEFT_SIDE].name);
+            shortname_components_list.unshift(match_info.product[LEFT_SIDE].name);
           }
           name_components_list.push("(" + split_options.join(" | ") + ")");
           shortname_components_list.push("(" + short_split_options.join(" | ") + ")");
@@ -350,8 +404,8 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
           // split product, different product instance match on each side
           // logical assertion: if name_components for a given side are all false, then it's an exact match
           var names = [
-            (!is_compare_to_base[LEFT_SIDE] || PRODUCT_CLASS.display_flags.show_name_of_base_product) ? [menu_match[LEFT_SIDE].name] : [],
-            (!is_compare_to_base[RIGHT_SIDE] || PRODUCT_CLASS.display_flags.show_name_of_base_product) ? [menu_match[RIGHT_SIDE].name] : []
+            (!is_compare_to_base[LEFT_SIDE] || PRODUCT_CLASS.display_flags.show_name_of_base_product) ? [match_info.product[LEFT_SIDE].name] : [],
+            (!is_compare_to_base[RIGHT_SIDE] || PRODUCT_CLASS.display_flags.show_name_of_base_product) ? [match_info.product[RIGHT_SIDE].name] : []
           ];
           var shortnames = names.slice();
           if (additional_options.left.length) {
@@ -371,22 +425,22 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
         }
       } // end is_split case
       else {
-        name_components_list = ComponentsList(additional_options.whole, x => x.name);
-        shortname_components_list = ComponentsList(additional_options.whole, x => x.shortname);
+        name_components_list = ComponentsListName(additional_options.whole);
+        shortname_components_list = ComponentsListShortname(additional_options.whole);
         // we're using the left side because we know left and right are the same
         // if exact match to base product, no need to show the name
         if (!is_compare_to_base[LEFT_SIDE] || PRODUCT_CLASS.display_flags.show_name_of_base_product) {
-          name_components_list.unshift(menu_match[LEFT_SIDE].name);
-          shortname_components_list.unshift(menu_match[LEFT_SIDE].name);
+          name_components_list.unshift(match_info.product[LEFT_SIDE].name);
+          shortname_components_list.unshift(match_info.product[LEFT_SIDE].name);
         }
-        if (menu_match_compare[LEFT_SIDE] === EXACT_MATCH) {
+        if (match_info.comparison_value[LEFT_SIDE] === EXACT_MATCH) {
           // assign PIID
-          product.piid = menu_match[LEFT_SIDE].piid;
-          product.description = menu_match[LEFT_SIDE].description;
-          product.ordinal = menu_match[LEFT_SIDE].ordinal;
-          product.disable_data = menu_match[LEFT_SIDE].disable_data;
-          product.is_base = menu_match[LEFT_SIDE].is_base;
-          product.display_flags = menu_match[LEFT_SIDE].display_flags;
+          product.piid = match_info.product[LEFT_SIDE].piid;
+          product.description = match_info.product[LEFT_SIDE].description;
+          product.ordinal = match_info.product[LEFT_SIDE].ordinal;
+          product.disable_data = match_info.product[LEFT_SIDE].disable_data;
+          product.is_base = match_info.product[LEFT_SIDE].is_base;
+          product.display_flags = match_info.product[LEFT_SIDE].display_flags;
         }
       }
       product.name = name_components_list.join(" + ");
@@ -400,10 +454,9 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
     for (var pi_index = 0; pi_index < PRODUCT_CLASS_MENU_ENTRY.instances_list.length; ++pi_index) {
       var comparison_product = PRODUCT_CLASS_MENU_ENTRY.instances_list[pi_index];
       var comparison_info = Compare(this, PRODUCT_CLASS_MENU_ENTRY.instances_list[pi_index], MENU);
-      ComputeForSide(LEFT_SIDE, comparison_info, comparison_product);
-      ComputeForSide(RIGHT_SIDE, comparison_info, comparison_product);
-      if (menu_match[LEFT_SIDE] !== null && menu_match[RIGHT_SIDE] !== null) {
-        // TODO: if it's an exact match on both sides, we need to set the PIID accordingly
+      CheckMatchForSide(LEFT_SIDE, comparison_info, comparison_product);
+      CheckMatchForSide(RIGHT_SIDE, comparison_info, comparison_product);
+      if (match_info.product[LEFT_SIDE] !== null && match_info.product[RIGHT_SIDE] !== null) {
         // finished, proceed to build the names and assign shortcodes
         return BuildName(this);
       }
@@ -412,7 +465,7 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
 
   this.SplitOptionsList = function () {
     // generates three lists ordered from top to bottom: whole, left only, right only
-    // returns a list of <MTID, OID> tuples
+    // returns a list of <MTID, MOID> tuples
     var ret = { left: [], right: [], whole: [] };
     for (var mid in this.modifiers) {
       this.modifiers[mid].forEach(function (option_placement) {
@@ -423,7 +476,7 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
           default: break;
         }
       });
-    };
+    };``
     return ret;
   };
 
