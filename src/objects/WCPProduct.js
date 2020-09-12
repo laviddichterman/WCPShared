@@ -468,6 +468,7 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
       if (x[1] === -1) {
         const CATALOG_MODIFIER_INFO = MENU.modifiers[x[0]];
         switch (CATALOG_MODIFIER_INFO.modifier_type.display_flags.empty_display_as) {
+          // TODO: needs to filter disabled or unavailble options
           case "YOUR_CHOICE_OF": return CATALOG_MODIFIER_INFO.modifier_type.display_name ? CATALOG_MODIFIER_INFO.modifier_type.display_name : CATALOG_MODIFIER_INFO.modifier_type.name;
           case "LIST_CHOICES": 
             const choices = CATALOG_MODIFIER_INFO.options_list.map(x=>x.name);
