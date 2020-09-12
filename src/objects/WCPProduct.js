@@ -323,7 +323,6 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
         var CATALOG_MODIFIER_INFO = MENU.modifiers[mtid];
         const is_single_select = CATALOG_MODIFIER_INFO.modifier_type.min_selected === 1 && CATALOG_MODIFIER_INFO.modifier_type.max_selected === 1;
         const is_base_product_edge_case = is_single_select && !PRODUCT_CLASS.display_flags.show_name_of_base_product;
-         is_compare_to_base[side] && EXACT_MATCH
         const num_selected = [0, 0];
         product.modifiers[mtid].forEach(function (placed_option) {
           const moid = placed_option[1];
