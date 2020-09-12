@@ -324,30 +324,32 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
         const is_single_select = CATALOG_MODIFIER_INFO.modifier_type.min_selected === 1 && CATALOG_MODIFIER_INFO.modifier_type.max_selected === 1;
         const is_base_product_edge_case = is_single_select && !PRODUCT_CLASS.display_flags.show_name_of_base_product;
         const num_selected = [0, 0];
-        product.modifiers[mtid].forEach(function (placed_option) {
-          const moid = placed_option[1];
-          const location = placed_option[0];
-          // eslint-disable-next-line
-          const moidx = CATALOG_MODIFIER_INFO.options[moid].index;
-          switch (location) {
-            case TOPPING_LEFT: exhaustive_options.left.push([mtid, moid]); ++num_selected[LEFT_SIDE]; break;
-            case TOPPING_RIGHT: exhaustive_options.right.push([mtid, moid]); ++num_selected[RIGHT_SIDE]; break;
-            case TOPPING_WHOLE: exhaustive_options.whole.push([mtid, moid]); ++num_selected[LEFT_SIDE]; ++num_selected[RIGHT_SIDE]; break;
-            default: break;
-          }
-          const opt_compare_info = [match_info.comparison[LEFT_SIDE][mtidx][moidx], match_info.comparison[RIGHT_SIDE][mtidx][moidx]];
-          if ((opt_compare_info[LEFT_SIDE] === AT_LEAST && 
-            opt_compare_info[RIGHT_SIDE] === AT_LEAST) || (is_base_product_edge_case && is_compare_to_base[LEFT_SIDE] && is_compare_to_base[RIGHT_SIDE] && opt_compare_info[LEFT_SIDE] === EXACT_MATCH &&
-              opt_compare_info[RIGHT_SIDE] === EXACT_MATCH)) {
-            additional_options.whole.push([mtid, moid]);
-          }
-          else if (opt_compare_info[RIGHT_SIDE] === AT_LEAST || (is_base_product_edge_case && is_compare_to_base[RIGHT_SIDE] && opt_compare_info[RIGHT_SIDE] === EXACT_MATCH)) {
-            additional_options.right.push([mtid, moid]);
-          }
-          else if (opt_compare_info[LEFT_SIDE] === AT_LEAST || (is_base_product_edge_case && is_compare_to_base[LEFT_SIDE] && opt_compare_info[LEFT_SIDE] === EXACT_MATCH)) {
-            additional_options.left.push([mtid, moid]);
-          }
-        });
+        if (product.modifiers.hasOwnProperty(mtid)) {
+          product.modifiers[mtid].forEach(function (placed_option) {
+            const moid = placed_option[1];
+            const location = placed_option[0];
+            // eslint-disable-next-line
+            const moidx = CATALOG_MODIFIER_INFO.options[moid].index;
+            switch (location) {
+              case TOPPING_LEFT: exhaustive_options.left.push([mtid, moid]); ++num_selected[LEFT_SIDE]; break;
+              case TOPPING_RIGHT: exhaustive_options.right.push([mtid, moid]); ++num_selected[RIGHT_SIDE]; break;
+              case TOPPING_WHOLE: exhaustive_options.whole.push([mtid, moid]); ++num_selected[LEFT_SIDE]; ++num_selected[RIGHT_SIDE]; break;
+              default: break;
+            }
+            const opt_compare_info = [match_info.comparison[LEFT_SIDE][mtidx][moidx], match_info.comparison[RIGHT_SIDE][mtidx][moidx]];
+            if ((opt_compare_info[LEFT_SIDE] === AT_LEAST && 
+              opt_compare_info[RIGHT_SIDE] === AT_LEAST) || (is_base_product_edge_case && is_compare_to_base[LEFT_SIDE] && is_compare_to_base[RIGHT_SIDE] && opt_compare_info[LEFT_SIDE] === EXACT_MATCH &&
+                opt_compare_info[RIGHT_SIDE] === EXACT_MATCH)) {
+              additional_options.whole.push([mtid, moid]);
+            }
+            else if (opt_compare_info[RIGHT_SIDE] === AT_LEAST || (is_base_product_edge_case && is_compare_to_base[RIGHT_SIDE] && opt_compare_info[RIGHT_SIDE] === EXACT_MATCH)) {
+              additional_options.right.push([mtid, moid]);
+            }
+            else if (opt_compare_info[LEFT_SIDE] === AT_LEAST || (is_base_product_edge_case && is_compare_to_base[LEFT_SIDE] && opt_compare_info[LEFT_SIDE] === EXACT_MATCH)) {
+              additional_options.left.push([mtid, moid]);
+            }
+          });
+        }
         // here's where we'd check for incomplete modifier
         if (num_selected[LEFT_SIDE] < CATALOG_MODIFIER_INFO.modifier_type.min_selected && 
             num_selected[RIGHT_SIDE] < CATALOG_MODIFIER_INFO.modifier_type.min_selected) {
