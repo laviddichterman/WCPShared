@@ -299,6 +299,8 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
       // each entry in these arrays represents the modifier index on the product class and the option index in that particular modifier
       var additional_options = { left: [], right: [], whole: [] };
       var exhaustive_options = { left: [], right: [], whole: [] };
+      product.additional_options = additional_options;
+      product.exhaustive_options = exhaustive_options;
       PRODUCT_CLASS.modifiers.forEach(function (mtid, mtidx) {
         var CATALOG_MODIFIER_INFO = MENU.modifiers[mtid];
         const is_single_select = CATALOG_MODIFIER_INFO.modifier_type.min_selected === 1 && CATALOG_MODIFIER_INFO.modifier_type.max_selected === 1;
@@ -347,8 +349,8 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
         // if we have a PI ID then that means we're an unmodified product instance from the catalog
         // and we should find that product and assume its name.
         var catalog_pi = PRODUCT_CLASS_MENU_ENTRY.instances[product.piid];
-        this.name = catalog_pi.name;
-        this.shortname = catalog_pi.shortcode;
+        product.name = catalog_pi.name;
+        product.shortname = catalog_pi.shortcode;
         return;
       }
 
