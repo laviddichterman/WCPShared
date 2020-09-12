@@ -129,9 +129,6 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
             });
           }
         }
-        else { // both sides of the comparison have an unset value for a single select modifier
-          console.log(`no option selected on either side of the comparison for ${MID}`);
-        }
       }
       else {
         // CASE: MULTI select modifier
