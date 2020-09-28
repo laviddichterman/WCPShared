@@ -64,4 +64,17 @@ export class WFunctional {
   static ProcessProductInstanceFunction(product_instance, func) {
     return WFunctional.ProcessAbstractExpressionStatement(product_instance, func.expression);
   }
+
+  static AbstractExpressionStatementToString(stmt, mods) {
+    switch (stmt.discriminator) {
+      case "ConstLiteral":
+        return stmt.const_literal.value;
+      case "IfElse":
+        return `IF(${WFunctional.AbstractExpressionStatementToString(stmt.if_else.test, mods)}) { ${WFunctional.AbstractExpressionStatementToString(stmt.if_else.true_branch, mods)} } ELSE { ${WFunctional.AbstractExpressionStatementToString(stmt.if_else.false_branch, mods)} }`;
+      case "Logical":
+        return `${WFunctional.AbstractExpressionStatementToString(stmt.logical.operandA, mods)} ${stmt.logical.operator} ${WFunctional.AbstractExpressionStatementToString(stmt.logical.operandB, mods)}`;
+      case "ModifierPlacement":
+        return `${mods[stmt.modifier_placement.mtid].modifier_type.name}.${mods[stmt.modifier_placement.mtid].options.find(x => x._id === stmt.modifier_placement.moid).item.display_name}`;
+    }
+  }
 }
