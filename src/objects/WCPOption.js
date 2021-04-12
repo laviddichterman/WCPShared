@@ -1,6 +1,15 @@
 import { TOPPING_NONE, TOPPING_LEFT, TOPPING_RIGHT, TOPPING_WHOLE, LEFT_SIDE, RIGHT_SIDE } from "../common";
 import { WFunctional } from "./WFunctional";
 
+  // matrix of proposed_delta indexed by [current placement][proposed placement]
+  const DELTA_MATRIX = [
+    [[+0, +0], [+1, +0], [+0, +1], [+1, +1]], // NONE
+    [[-1, +0], [-1, +0], [-1, +1], [+0, +1]], // LEFT
+    [[+0, -1], [+1, -1], [+0, -1], [+1, +0]], // RIGHT
+    [[-1, -1], [+0, -1], [-1, +0], [-1, -1]], // WHOLE
+  //[[ NONE ], [ LEFT ], [ RIGHT], [ WHOLE]]
+  ];
+
 export const WCPOption = function (w_modifier, w_option, index, enable_function) {
   this.modifier = w_modifier;
   this.moid = w_option._id
@@ -26,34 +35,7 @@ export const WCPOption = function (w_modifier, w_option, index, enable_function)
     var BAKE_MAX = display_flags ? display_flags.bake_max : 100;
     var FLAVOR_MAX = display_flags ? display_flags.flavor_max : 100;
     var BAKE_DIFF_MAX = display_flags ? display_flags.bake_differential : 100;
-    var proposed_delta = [0, 0];
-    switch (location) {
-      case TOPPING_LEFT: 
-        switch (modifier_placement) {
-          case TOPPING_NONE: proposed_delta = [+1, +0]; break;  // +1, +0
-          case TOPPING_LEFT: proposed_delta = [-1, +0]; break;  // -1, +0
-          case TOPPING_RIGHT: proposed_delta = [+1, -1]; break; // +1, -1
-          case TOPPING_WHOLE: proposed_delta = [+0, -1]; break; // +0, -1
-        }
-        break;
-      case TOPPING_RIGHT: 
-        switch (modifier_placement) {
-          case TOPPING_NONE: proposed_delta = [+0, +1]; break;  // +0, +1
-          case TOPPING_LEFT: proposed_delta = [-1, +1]; break;  // -1, +1
-          case TOPPING_RIGHT: proposed_delta = [+0, -1]; break; // +0, -1
-          case TOPPING_WHOLE: proposed_delta = [-1, +0]; break; // -1, +0
-        }
-        break;
-      case TOPPING_WHOLE: 
-        switch (modifier_placement) {
-          case TOPPING_NONE: proposed_delta = [+1, +1]; break;  // +1, +1
-          case TOPPING_LEFT: proposed_delta = [+0, +1]; break;  // +0, +1
-          case TOPPING_RIGHT: proposed_delta = [+1, +0]; break; // +1, +0
-          case TOPPING_WHOLE: proposed_delta = [-1, -1]; break; // -1, -1
-        }
-        break;
-      default: console.assert(false, "case not expected"); break;
-    }
+    var proposed_delta = DELTA_MATRIX[modifier_placement][location];
 
     var bake_after = [product.bake_count[LEFT_SIDE] + (this.bake_factor * proposed_delta[LEFT_SIDE]), product.bake_count[RIGHT_SIDE] + (this.bake_factor * proposed_delta[1])];
     var flavor_after = [product.flavor_count[LEFT_SIDE] + (this.flavor_factor * proposed_delta[LEFT_SIDE]), product.flavor_count[RIGHT_SIDE] + (this.flavor_factor * proposed_delta[1])];
