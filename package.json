@@ -1,6 +1,6 @@
 {
   "name": "@wcp/wcpshared",
-  "version": "2.0.7",
+  "version": "2.0.9",
   "description": "Shared Javascript modules for WARIO",
   "main": "dist/wcpshared.js",
   "scripts": {
@@ -21,17 +21,17 @@
   },
   "homepage": "https://github.com/laviddichterman/WCPShared#readme",
   "dependencies": {
-    "@babel/polyfill": "^7.11.5",
-    "moment": "^2.27.0"
+    "@babel/polyfill": "^7.12.1",
+    "moment": "^2.29.1"
   },
   "devDependencies": {
-    "@babel/cli": "^7.11.6",
-    "@babel/core": "^7.11.6",
-    "@babel/plugin-transform-arrow-functions": "^7.10.4",
-    "@babel/preset-env": "^7.11.5",
-    "babel-loader": "^8.1.0",
-    "webpack": "^4.44.1",
+    "@babel/cli": "^7.12.10",
+    "@babel/core": "^7.12.10",
+    "@babel/plugin-transform-arrow-functions": "^7.12.1",
+    "@babel/preset-env": "^7.12.11",
+    "babel-loader": "^8.2.2",
+    "webpack": "^4.46.0",
     "webpack-cli": "^3.3.12",
-    "webpack-dev-server": "^3.11.0"
+    "webpack-dev-server": "^3.11.2"
   }
 }
