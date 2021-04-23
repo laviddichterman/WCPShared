@@ -1,4 +1,4 @@
-import { GetPlacementFromMIDOID } from "../common";
+import { GetPlacementFromMIDOID, TOPPING_NONE } from "../common";
 
 export class WFunctional {
   static ProcessIfElseStatement(product_instance, stmt) {
@@ -48,6 +48,11 @@ export class WFunctional {
     return GetPlacementFromMIDOID(product_instance, stmt.mtid, stmt.moid);
   }
 
+  static ProcessHasAnyOfModifierTypeExtractionOperatorStatement(product_instance, stmt) {
+    return product_instance.modifiers.hasOwnProperty(stmt.mtid) ? 
+      pi.modifiers[stmt.mtid].filter(function (x) { return x[0] !== TOPPING_NONE }).length > 0 : false;
+  }
+
   static ProcessAbstractExpressionStatement(product_instance, stmt) {
     switch (stmt.discriminator) {
       case "ConstLiteral":
@@ -58,6 +63,8 @@ export class WFunctional {
         return WFunctional.ProcessLogicalOperatorStatement(product_instance, stmt.logical);
       case "ModifierPlacement":
         return WFunctional.ProcessModifierPlacementExtractionOperatorStatement(product_instance, stmt.modifier_placement);
+      case "HasAnyOfModifierType":
+        return WFunctional.ProcessHasAnyOfModifierTypeExtractionOperatorStatement(product_instance, stmt.has_any_of_modifier);        
     }
   }
 
@@ -75,6 +82,8 @@ export class WFunctional {
         return `${WFunctional.AbstractExpressionStatementToString(stmt.logical.operandA, mods)} ${stmt.logical.operator} ${WFunctional.AbstractExpressionStatementToString(stmt.logical.operandB, mods)}`;
       case "ModifierPlacement":
         return `${mods[stmt.modifier_placement.mtid].modifier_type.name}.${mods[stmt.modifier_placement.mtid].options.find(x => x._id === stmt.modifier_placement.moid).item.display_name}`;
+      case "HasAnyOfModifierType":
+        return `ANY ${mods[stmt.modifier_placement.mtid].modifier_type.name}`;
     }
   }
 }
