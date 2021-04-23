@@ -100,18 +100,19 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
     // this is a multi-dim array, in order of the MTID as it exists in the product class definition
     // disabled modifier types and modifier options are all present as they shouldn't contribute to comparison mismatch
     // elements of the modifiers_match_matrix are arrays of <LEFT_MATCH, RIGHT_MATCH> tuples
-    first.PRODUCT_CLASS.modifiers.forEach(function (MID) {
-      modifiers_match_matrix[LEFT_SIDE].push(new Array(MENU.modifiers[MID].options_list.length).fill(EXACT_MATCH));
-      modifiers_match_matrix[RIGHT_SIDE].push(new Array(MENU.modifiers[MID].options_list.length).fill(EXACT_MATCH));
+    first.PRODUCT_CLASS.modifiers2.forEach(function (modifier) {
+      modifiers_match_matrix[LEFT_SIDE].push(new Array(MENU.modifiers[modifier.mtid].options_list.length).fill(EXACT_MATCH));
+      modifiers_match_matrix[RIGHT_SIDE].push(new Array(MENU.modifiers[modifier.mtid].options_list.length).fill(EXACT_MATCH));
     })
 
     var is_mirror = true;
     // main comparison loop!
-    first.PRODUCT_CLASS.modifiers.forEach(function (MID, midx) {
-      var first_option_list = first.modifiers.hasOwnProperty(MID) ? first.modifiers[MID] : [];
-      var other_option_list = other.modifiers.hasOwnProperty(MID) ? other.modifiers[MID] : [];
+    first.PRODUCT_CLASS.modifiers2.forEach(function (modifier, midx) {
+      const mtid = modifier.mtid;
+      var first_option_list = first.modifiers.hasOwnProperty(mtid) ? first.modifiers[mtid] : [];
+      var other_option_list = other.modifiers.hasOwnProperty(mtid) ? other.modifiers[mtid] : [];
       // in each modifier, need to determine if it's a SINGLE or MANY select 
-      var CATALOG_MODIFIER_INFO = MENU.modifiers[MID];
+      var CATALOG_MODIFIER_INFO = MENU.modifiers[mtid];
       if (CATALOG_MODIFIER_INFO.modifier_type.min_selected === 1 && CATALOG_MODIFIER_INFO.modifier_type.max_selected === 1) {
         // CASE: SINGLE select modifier, this logic isn't very well-defined. TODO: rework
         if (first_option_list.length === 1) {
@@ -298,7 +299,8 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
       product.exhaustive_options = { left: [], right: [], whole: [] };
       const additional_options = product.additional_options;
       const exhaustive_options = product.exhaustive_options;
-      PRODUCT_CLASS.modifiers.forEach(function (mtid, mtidx) {
+      PRODUCT_CLASS.modifiers2.forEach(function (pc_modifier, mtidx) {
+        const mtid = pc_modifier.mtid;
         const CATALOG_MODIFIER_INFO = MENU.modifiers[mtid];
         const is_single_select = CATALOG_MODIFIER_INFO.modifier_type.min_selected === 1 && CATALOG_MODIFIER_INFO.modifier_type.max_selected === 1;
         const is_base_product_edge_case = is_single_select && !PRODUCT_CLASS.display_flags.show_name_of_base_product;
