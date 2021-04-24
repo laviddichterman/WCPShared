@@ -83,7 +83,7 @@ export class WFunctional {
       case "ModifierPlacement":
         return `${mods[stmt.modifier_placement.mtid].modifier_type.name}.${mods[stmt.modifier_placement.mtid].options.find(x => x._id === stmt.modifier_placement.moid).item.display_name}`;
       case "HasAnyOfModifierType":
-        return `ANY ${mods[stmt.modifier_placement.mtid].modifier_type.name}`;
+        return `ANY ${mods[stmt.has_any_of_modifier.mtid].modifier_type.name}`;
     }
   }
 }
