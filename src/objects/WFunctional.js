@@ -50,7 +50,7 @@ export class WFunctional {
 
   static ProcessHasAnyOfModifierTypeExtractionOperatorStatement(product_instance, stmt) {
     return product_instance.modifiers.hasOwnProperty(stmt.mtid) ? 
-      pi.modifiers[stmt.mtid].filter(function (x) { return x[0] !== TOPPING_NONE }).length > 0 : false;
+      product_instance.modifiers[stmt.mtid].filter(function (x) { return x[0] !== TOPPING_NONE }).length > 0 : false;
   }
 
   static ProcessAbstractExpressionStatement(product_instance, stmt) {
