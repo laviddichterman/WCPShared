@@ -80,7 +80,7 @@ export class WFunctional {
         return `IF(${WFunctional.AbstractExpressionStatementToString(stmt.if_else.test, mods)}) { ${WFunctional.AbstractExpressionStatementToString(stmt.if_else.true_branch, mods)} } ELSE { ${WFunctional.AbstractExpressionStatementToString(stmt.if_else.false_branch, mods)} }`;
       case "Logical":
         const operandAString = WFunctional.AbstractExpressionStatementToString(stmt.logical.operandA, mods);
-        return stmt.logical.operator === "NOT" ? `NOT ${operandAString}` : `${operandAString} ${stmt.logical.operator} ${WFunctional.AbstractExpressionStatementToString(stmt.logical.operandB, mods)}`;
+        return stmt.logical.operator === "NOT" ? `NOT (${operandAString})` : `(${operandAString} ${stmt.logical.operator} ${WFunctional.AbstractExpressionStatementToString(stmt.logical.operandB, mods)})`;
       case "ModifierPlacement":
         return `${mods[stmt.modifier_placement.mtid].modifier_type.name}.${mods[stmt.modifier_placement.mtid].options.find(x => x._id === stmt.modifier_placement.moid).item.display_name}`;
       case "HasAnyOfModifierType":
