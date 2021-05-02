@@ -218,7 +218,8 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
         BASE_PRODUCT_INSTANCE.piid === match_info.product[LEFT_SIDE].piid,
         BASE_PRODUCT_INSTANCE.piid === match_info.product[RIGHT_SIDE].piid];  
       
-      product.modifiers_map = {};
+      // mod map is { MTID: { has_selectable: boolean, meets_minimum: boolean, options: { MOID: {placement, enable_left, enable_right, enable_whole } } } }
+      product.modifier_map = {};
       product.advanced_option_eligible = false;
       product.advanced_option_selected = false;
       // split out options beyond the base product into left additions, right additions, and whole additions
@@ -231,7 +232,7 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
         const CATALOG_MODIFIER_INFO = MENU.modifiers[mtid];
         const is_single_select = CATALOG_MODIFIER_INFO.modifier_type.min_selected === 1 && CATALOG_MODIFIER_INFO.modifier_type.max_selected === 1;
         const is_base_product_edge_case = is_single_select && !PRODUCT_CLASS.display_flags.show_name_of_base_product;
-        product.modifiers_map[mtid] = { has_selectable: false, meets_minimum: false, options: {} };
+        product.modifier_map[mtid] = { has_selectable: false, meets_minimum: false, options: {} };
         const enable_modifier_type = modifier_type_enable_function === null || WFunctional.ProcessProductInstanceFunction(product, modifier_type_enable_function);
         for (var moidx = 0; moidx < CATALOG_MODIFIER_INFO.options_list.length; ++moidx) {
           const option_object = CATALOG_MODIFIER_INFO.options_list[moidx];
@@ -245,8 +246,8 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
           };
           const enable_left_or_right = option_info.enable_left || option_info.enable_right;
           product.advanced_option_eligible = product.advanced_option_eligible || enable_left_or_right;
-          product.modifiers_map[mtid].options[option_object.moid] = option_info;
-          product.modifiers_map[mtid].has_selectable = product.modifiers_map[mtid].has_selectable || enable_left_or_right || option_info.enable_whole;
+          product.modifier_map[mtid].options[option_object.moid] = option_info;
+          product.modifier_map[mtid].has_selectable = product.modifier_map[mtid].has_selectable || enable_left_or_right || option_info.enable_whole;
         }
 
         const num_selected = [0, 0];
@@ -255,7 +256,7 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
             const moid = placed_option[1];
             const location = placed_option[0];
             const moidx = CATALOG_MODIFIER_INFO.options[moid].index;
-            product.modifiers_map[mtid].options[moid].placement = location;
+            product.modifier_map[mtid].options[moid].placement = location;
             switch (location) {
               case TOPPING_LEFT: product.exhaustive_options.left.push([mtid, moid]); ++num_selected[LEFT_SIDE]; product.advanced_option_selected = true; break;
               case TOPPING_RIGHT: product.exhaustive_options.right.push([mtid, moid]); ++num_selected[RIGHT_SIDE]; product.advanced_option_selected = true; break;
@@ -283,23 +284,23 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
         // we check for an incomplete modifier and add an entry if the empty_display_as flag is anything other than OMIT
         if (num_selected[LEFT_SIDE] < MIN_SELECTED && 
             num_selected[RIGHT_SIDE] < MIN_SELECTED) {
-          if (EMPTY_DISPLAY_AS !== "OMIT" && product.modifiers_map[mtid].has_selectable) { product.exhaustive_options.whole.push([mtid, -1]); }
-          product.modifiers_map[mtid].meets_minimum = !product.modifiers_map[mtid].has_selectable;
-          product.incomplete = product.incomplete || product.modifiers_map[mtid].has_selectable;
+          if (EMPTY_DISPLAY_AS !== "OMIT" && product.modifier_map[mtid].has_selectable) { product.exhaustive_options.whole.push([mtid, -1]); }
+          product.modifier_map[mtid].meets_minimum = !product.modifier_map[mtid].has_selectable;
+          product.incomplete = product.incomplete || product.modifier_map[mtid].has_selectable;
         }
         else if (num_selected[LEFT_SIDE] < MIN_SELECTED) {
-          if (EMPTY_DISPLAY_AS !== "OMIT" && product.modifiers_map[mtid].has_selectable) { product.exhaustive_options.left.push([mtid, -1]); }
-          product.modifiers_map[mtid].meets_minimum = !product.modifiers_map[mtid].has_selectable;
-          product.incomplete = product.incomplete || product.modifiers_map[mtid].has_selectable;
+          if (EMPTY_DISPLAY_AS !== "OMIT" && product.modifier_map[mtid].has_selectable) { product.exhaustive_options.left.push([mtid, -1]); }
+          product.modifier_map[mtid].meets_minimum = !product.modifier_map[mtid].has_selectable;
+          product.incomplete = product.incomplete || product.modifier_map[mtid].has_selectable;
         }
         else if (num_selected[RIGHT_SIDE] < MIN_SELECTED) {
-          if (EMPTY_DISPLAY_AS !== "OMIT" && product.modifiers_map[mtid].has_selectable) { product.exhaustive_options.right.push([mtid, -1]); }
-          product.modifiers_map[mtid].meets_minimum = !product.modifiers_map[mtid].has_selectable;
-          product.incomplete = product.incomplete || product.modifiers_map[mtid].has_selectable;
+          if (EMPTY_DISPLAY_AS !== "OMIT" && product.modifier_map[mtid].has_selectable) { product.exhaustive_options.right.push([mtid, -1]); }
+          product.modifier_map[mtid].meets_minimum = !product.modifier_map[mtid].has_selectable;
+          product.incomplete = product.incomplete || product.modifier_map[mtid].has_selectable;
         }
         else {
           // both left and right meet the minimum selected criteria
-          product.modifiers_map[mtid].meets_minimum = true;
+          product.modifier_map[mtid].meets_minimum = true;
         }
       });
 
