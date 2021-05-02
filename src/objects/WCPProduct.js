@@ -21,6 +21,18 @@ function ExtractMatch(matrix) {
   })));
 };
 
+const ComponentsList = (source, getter) => {
+  return source.map(function (x) {
+    return getter(x);
+  });
+}
+const ComponentsListName = (source) => {
+  return ComponentsList(source.filter(x => !x.display_flags || !x.display_flags.omit_from_shortname), x=>x.name);
+}
+const ComponentsListShortname = (source) => {
+  return ComponentsList(source.filter(x => !x.display_flags || !x.display_flags.omit_from_shortname), x => x.shortname);
+}
+
 export function CopyWCPProduct(pi) {
   return new WCPProduct(pi.PRODUCT_CLASS, pi.piid, pi.name, pi.description, pi.ordinal, pi.modifiers, pi.shortcode, pi.base_price, pi.disable_data, pi.is_base, pi.display_flags);
 }
@@ -311,18 +323,6 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
         product.name = catalog_pi.name;
         product.shortname = catalog_pi.shortcode;
         return;
-      }
-
-      function ComponentsList(source, getter) {
-        return source.map(function (x) {
-          return getter(x);
-        });
-      }
-      const ComponentsListName = (source) => {
-        return ComponentsList(source.filter(x => !x.display_flags || !x.display_flags.omit_from_shortname), x=>x.name);
-      }
-      const ComponentsListShortname = (source) => {
-        return ComponentsList(source.filter(x => !x.display_flags || !x.display_flags.omit_from_shortname), x => x.shortname);
       }
 
       var additional_options_objects = { };
