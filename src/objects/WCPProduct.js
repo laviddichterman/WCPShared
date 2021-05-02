@@ -1,5 +1,5 @@
 import { TOPPING_NONE, TOPPING_LEFT, TOPPING_RIGHT, TOPPING_WHOLE, NO_MATCH, AT_LEAST, EXACT_MATCH, LEFT_SIDE, RIGHT_SIDE, WFunctional, DisableDataCheck } from "../common";
-import { moment } from 'moment';
+const moment = require("moment");
 
 function DeepCopyPlacedOptions(modifiers) {
   var ret = {};

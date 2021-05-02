@@ -1,4 +1,4 @@
-import { moment } from 'moment';
+const moment = require("moment");
 
 export function HandleBlockedOffTime(blockedOff, time) {
   // param: blockedOff - the blocked off times for the date being processed
