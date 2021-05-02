@@ -199,6 +199,15 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
     }
 
     function BuildName(product, service_time) {
+      /* NOTE/TODO: 2021_05_02, current issue with the following code is a questionable dependency on what makes a complete product if 
+          modifier options are disabled for non-dependent reasons (like, OOS or some other combination disable that isn't actually intended to make it impossible to complete a product)
+          it's very possible that a more correct logic doesn't look at has_selectable in the modifier map for determining if the product is complete but rather looks at enable_modifier_type.
+          if this is changed, then we need to catch creation of impossible-to-build products in the catalog, before they're surfaced to a customer.
+
+          additionally, since we don't have any checks that we're not exceeding MAX_SELECTED as defined by the modifier type, the modifier_map values for enable_left, enable_right, enable_whole
+          are not actually correct. but the fix for that might need to live in the WOption.IsEnabled method... but probably not since this is the function where we determine very specifically what 
+          our selection count is for LEFT/RIGHT/WHOLE
+      */
       console.assert(match_info.product[LEFT_SIDE] !== null && match_info.product[RIGHT_SIDE] !== null, "We should have both matches determined by now.");
       // assign shortcode (easy)
       product.shortcode = product.is_split && match_info.shortcodes[LEFT_SIDE] !== match_info.shortcodes[RIGHT_SIDE] ? match_info.shortcodes.join("|") : match_info.shortcodes[LEFT_SIDE];
@@ -422,19 +431,20 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
         }
       }
       else {
-        return GetModifierOptionFromMIDOID(MENU, x[0], x[1]).name
+        const OPTION = GetModifierOptionFromMIDOID(MENU, x[0], x[1]);
+        return (!OPTION.display_flags || !OPTION.display_flags.omit_from_shortname) ? GetModifierOptionFromMIDOID(MENU, x[0], x[1]).name : "";
       }
     }
     if (this.exhaustive_options.whole.length > 0) {
-      var option_names = this.exhaustive_options.whole.map(HandleOption);
+      var option_names = this.exhaustive_options.whole.map(HandleOption).filter(x => x !== "");
       options_sections.push(["Whole", option_names.join(" + ")]);
     }
     if (this.exhaustive_options.left.length > 0) {
-      var option_names = this.exhaustive_options.left.map(HandleOption);
+      var option_names = this.exhaustive_options.left.map(HandleOption).filter(x => x !== "");
       options_sections.push(["Left", option_names.join(" + ")]);
     }
     if (this.exhaustive_options.right.length > 0) {
-      var option_names = this.exhaustive_options.right.map(HandleOption);
+      var option_names = this.exhaustive_options.right.map(HandleOption).filter(x => x !== "");
       options_sections.push(["Right", option_names.join(" + ")]);
     }
     return options_sections;
