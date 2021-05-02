@@ -173,49 +173,7 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
       (comparison_info.match[LEFT_SIDE] === EXACT_MATCH && comparison_info.match[RIGHT_SIDE] === EXACT_MATCH);
   };
 
-  this.BuildModifierMetadata = function (MENU, service_time) { 
-    var selection_modifiers_map = {};
-    var advanced_option_eligible = false;
-    var advanced_option_selected = false;
-    for (var mtidx = 0; mtidx < this.PRODUCT_CLASS.modifiers2.length; ++mtidx) {
-      var mtid = this.PRODUCT_CLASS.modifiers2[mtidx].mtid;
-      var modifier_type_enable_function = this.PRODUCT_CLASS.modifiers2[mtidx].enable;
-      var modifier_entry = MENU.modifiers[mtid];
-      selection_modifiers_map[mtid] = { has_selectable: false, meets_minimum: false, options: {} };
-      var enable_modifier_type = modifier_type_enable_function === null || WFunctional.ProcessProductInstanceFunction(this, modifier_type_enable_function);
-      for (var moidx = 0; moidx < modifier_entry.options_list.length; ++moidx) {
-        var option_object = modifier_entry.options_list[moidx];
-        var is_enabled = enable_modifier_type && DisableDataCheck(option_object.disable_data, service_time)
-        var option_info = { 
-          placement: TOPPING_NONE, 
-          // do we need to figure out if we can de-select? answer: probably
-          enable_left: is_enabled && option_object.can_split && option_object.IsEnabled(this, TOPPING_LEFT, MENU),
-          enable_right: is_enabled && option_object.can_split && option_object.IsEnabled(this, TOPPING_RIGHT, MENU),
-          enable_whole: is_enabled && option_object.IsEnabled(this, TOPPING_WHOLE, MENU),
-        };
-        var enable_left_or_right = option_info.enable_left || option_info.enable_right;
-        advanced_option_eligible = this.advanced_option_eligible || enable_left_or_right;
-        selection_modifiers_map[mtid].options[option_object.moid] = option_info;
-        selection_modifiers_map[mtid].has_selectable = selection_modifiers_map[mtid].has_selectable || enable_left_or_right || option_info.enable_whole;
-      }
-      var num_selected = 0;
-      if (this.modifiers.hasOwnProperty(mtid)) {
-        num_selected = this.modifiers[mtid].length;
-        for (var moidx = 0; moidx < this.modifiers[mtid].length; ++moidx) {
-          var option_placement = this.modifiers[mtid][moidx];
-          selection_modifiers_map[mtid].options[option_placement[1]].placement = option_placement[0];
-          advanced_option_selected = advanced_option_selected || (option_placement[0] !== TOPPING_WHOLE && option_placement[0] !== TOPPING_NONE);
-        }
-      }
-      // TODO: need to check that left/right/whole doesn't exceed the max_selected number
-      selection_modifiers_map[mtid].meets_minimum = !selection_modifiers_map[mtid].has_selectable || num_selected >= modifier_entry.modifier_type.min_selected;
-    }
-    this.modifier_map = selection_modifiers_map;
-    this.advanced_option_eligible = advanced_option_eligible;
-    this.advanced_option_selected = advanced_option_selected;
-  }
-
-  this.RecomputeName = function (MENU) {
+  this.RecomputeName = function (MENU, service_time) {
     var PRODUCT_CLASS = this.PRODUCT_CLASS;
     var PRODUCT_CLASS_MENU_ENTRY = MENU.product_classes[PRODUCT_CLASS._id];
 
@@ -240,7 +198,7 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
       }
     }
 
-    function BuildName(product) {
+    function BuildName(product, service_time) {
       console.assert(match_info.product[LEFT_SIDE] !== null && match_info.product[RIGHT_SIDE] !== null, "We should have both matches determined by now.");
       // assign shortcode (easy)
       product.shortcode = product.is_split && match_info.shortcodes[LEFT_SIDE] !== match_info.shortcodes[RIGHT_SIDE] ? match_info.shortcodes.join("|") : match_info.shortcodes[LEFT_SIDE];
@@ -251,56 +209,88 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
         BASE_PRODUCT_INSTANCE.piid === match_info.product[LEFT_SIDE].piid,
         BASE_PRODUCT_INSTANCE.piid === match_info.product[RIGHT_SIDE].piid];  
       
+      product.modifiers_map = {};
+      product.advanced_option_eligible = false;
+      product.advanced_option_selected = false;
       // split out options beyond the base product into left additions, right additions, and whole additions
       // each entry in these arrays represents the modifier index on the product class and the option index in that particular modifier
       product.additional_options = { left: [], right: [], whole: [] };
       product.exhaustive_options = { left: [], right: [], whole: [] };
       PRODUCT_CLASS.modifiers2.forEach(function (pc_modifier, mtidx) {
         const mtid = pc_modifier.mtid;
+        const modifier_type_enable_function = pc_modifier.enable;
         const CATALOG_MODIFIER_INFO = MENU.modifiers[mtid];
         const is_single_select = CATALOG_MODIFIER_INFO.modifier_type.min_selected === 1 && CATALOG_MODIFIER_INFO.modifier_type.max_selected === 1;
         const is_base_product_edge_case = is_single_select && !PRODUCT_CLASS.display_flags.show_name_of_base_product;
+        product.modifiers_map[mtid] = { has_selectable: false, meets_minimum: false, options: {} };
+        const enable_modifier_type = modifier_type_enable_function === null || WFunctional.ProcessProductInstanceFunction(product, modifier_type_enable_function);
+        for (var moidx = 0; moidx < CATALOG_MODIFIER_INFO.options_list.length; ++moidx) {
+          const option_object = CATALOG_MODIFIER_INFO.options_list[moidx];
+          const is_enabled = enable_modifier_type && DisableDataCheck(option_object.disable_data, service_time)
+          const option_info = { 
+            placement: TOPPING_NONE, 
+            // do we need to figure out if we can de-select? answer: probably
+            enable_left: is_enabled && option_object.can_split && option_object.IsEnabled(product, TOPPING_LEFT, MENU),
+            enable_right: is_enabled && option_object.can_split && option_object.IsEnabled(product, TOPPING_RIGHT, MENU),
+            enable_whole: is_enabled && option_object.IsEnabled(product, TOPPING_WHOLE, MENU),
+          };
+          const enable_left_or_right = option_info.enable_left || option_info.enable_right;
+          product.advanced_option_eligible = product.advanced_option_eligible || enable_left_or_right;
+          product.modifiers_map[mtid].options[option_object.moid] = option_info;
+          product.modifiers_map[mtid].has_selectable = product.modifiers_map[mtid].has_selectable || enable_left_or_right || option_info.enable_whole;
+        }
+
         const num_selected = [0, 0];
         if (product.modifiers.hasOwnProperty(mtid)) {
           product.modifiers[mtid].forEach(function (placed_option) {
             const moid = placed_option[1];
             const location = placed_option[0];
             const moidx = CATALOG_MODIFIER_INFO.options[moid].index;
+            product.modifiers_map[mtid].options[moid].placement = location;
             switch (location) {
-              case TOPPING_LEFT: product.exhaustive_options.left.push([mtid, moid]); ++num_selected[LEFT_SIDE]; break;
-              case TOPPING_RIGHT: product.exhaustive_options.right.push([mtid, moid]); ++num_selected[RIGHT_SIDE]; break;
+              case TOPPING_LEFT: product.exhaustive_options.left.push([mtid, moid]); ++num_selected[LEFT_SIDE]; product.advanced_option_selected = true; break;
+              case TOPPING_RIGHT: product.exhaustive_options.right.push([mtid, moid]); ++num_selected[RIGHT_SIDE]; product.advanced_option_selected = true; break;
               case TOPPING_WHOLE: product.exhaustive_options.whole.push([mtid, moid]); ++num_selected[LEFT_SIDE]; ++num_selected[RIGHT_SIDE]; break;
               default: break;
             }
             const opt_compare_info = [match_info.comparison[LEFT_SIDE][mtidx][moidx], match_info.comparison[RIGHT_SIDE][mtidx][moidx]];
-            if ((opt_compare_info[LEFT_SIDE] === AT_LEAST && 
-              opt_compare_info[RIGHT_SIDE] === AT_LEAST) || (is_base_product_edge_case && is_compare_to_base[LEFT_SIDE] && is_compare_to_base[RIGHT_SIDE] && opt_compare_info[LEFT_SIDE] === EXACT_MATCH &&
-                opt_compare_info[RIGHT_SIDE] === EXACT_MATCH)) {
+            if ((opt_compare_info[LEFT_SIDE] === AT_LEAST && opt_compare_info[RIGHT_SIDE] === AT_LEAST) || 
+                (is_base_product_edge_case && is_compare_to_base[LEFT_SIDE] && is_compare_to_base[RIGHT_SIDE] && 
+                  opt_compare_info[LEFT_SIDE] === EXACT_MATCH && opt_compare_info[RIGHT_SIDE] === EXACT_MATCH)) {
               product.additional_options.whole.push([mtid, moid]);
             }
-            else if (opt_compare_info[RIGHT_SIDE] === AT_LEAST || (is_base_product_edge_case && is_compare_to_base[RIGHT_SIDE] && opt_compare_info[RIGHT_SIDE] === EXACT_MATCH)) {
+            else if (opt_compare_info[RIGHT_SIDE] === AT_LEAST || 
+              (is_base_product_edge_case && is_compare_to_base[RIGHT_SIDE] && opt_compare_info[RIGHT_SIDE] === EXACT_MATCH)) {
               product.additional_options.right.push([mtid, moid]);
             }
-            else if (opt_compare_info[LEFT_SIDE] === AT_LEAST || (is_base_product_edge_case && is_compare_to_base[LEFT_SIDE] && opt_compare_info[LEFT_SIDE] === EXACT_MATCH)) {
+            else if (opt_compare_info[LEFT_SIDE] === AT_LEAST || 
+              (is_base_product_edge_case && is_compare_to_base[LEFT_SIDE] && opt_compare_info[LEFT_SIDE] === EXACT_MATCH)) {
               product.additional_options.left.push([mtid, moid]);
             }
           });
         }
+        const EMPTY_DISPLAY_AS = CATALOG_MODIFIER_INFO.modifier_type.display_flags.empty_display_as;
+        const MIN_SELECTED = CATALOG_MODIFIER_INFO.modifier_type.min_selected;
         // we check for an incomplete modifier and add an entry if the empty_display_as flag is anything other than OMIT
-        if (CATALOG_MODIFIER_INFO.modifier_type.display_flags.empty_display_as !== "OMIT") {
-          if (num_selected[LEFT_SIDE] < CATALOG_MODIFIER_INFO.modifier_type.min_selected && 
-              num_selected[RIGHT_SIDE] < CATALOG_MODIFIER_INFO.modifier_type.min_selected) {
-            product.exhaustive_options.whole.push([mtid, -1]);
-            product.incomplete = true;
-          }
-          else if (num_selected[LEFT_SIDE] < CATALOG_MODIFIER_INFO.modifier_type.min_selected) {
-            product.exhaustive_options.left.push([mtid, -1]);
-            product.incomplete = true;
-          }
-          else if (num_selected[RIGHT_SIDE] < CATALOG_MODIFIER_INFO.modifier_type.min_selected) {
-            product.exhaustive_options.right.push([mtid, -1]);
-            product.incomplete = true;
-          }
+        if (num_selected[LEFT_SIDE] < MIN_SELECTED && 
+            num_selected[RIGHT_SIDE] < MIN_SELECTED) {
+          if (EMPTY_DISPLAY_AS !== "OMIT" && product.modifiers_map[mtid].has_selectable) { product.exhaustive_options.whole.push([mtid, -1]); }
+          product.modifiers_map[mtid].meets_minimum = !product.modifiers_map[mtid].has_selectable;
+          product.incomplete = product.incomplete || product.modifiers_map[mtid].has_selectable;
+        }
+        else if (num_selected[LEFT_SIDE] < MIN_SELECTED) {
+          if (EMPTY_DISPLAY_AS !== "OMIT" && product.modifiers_map[mtid].has_selectable) { product.exhaustive_options.left.push([mtid, -1]); }
+          product.modifiers_map[mtid].meets_minimum = !product.modifiers_map[mtid].has_selectable;
+          product.incomplete = product.incomplete || product.modifiers_map[mtid].has_selectable;
+        }
+        else if (num_selected[RIGHT_SIDE] < MIN_SELECTED) {
+          if (EMPTY_DISPLAY_AS !== "OMIT" && product.modifiers_map[mtid].has_selectable) { product.exhaustive_options.right.push([mtid, -1]); }
+          product.modifiers_map[mtid].meets_minimum = !product.modifiers_map[mtid].has_selectable;
+          product.incomplete = product.incomplete || product.modifiers_map[mtid].has_selectable;
+        }
+        else {
+          // both left and right meet the minimum selected criteria
+          product.modifiers_map[mtid].meets_minimum = true;
         }
       });
 
@@ -412,7 +402,7 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
       CheckMatchForSide(RIGHT_SIDE, comparison_info, comparison_product);
       if (match_info.product[LEFT_SIDE] !== null && match_info.product[RIGHT_SIDE] !== null) {
         // finished, proceed to build the names and assign shortcodes
-        return BuildName(this);
+        return BuildName(this, service_time);
       }
     }
   };
@@ -476,8 +466,7 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
     this.price = this.ComputePrice(MENU);
     this.RecomputeMetadata(MENU);
     var service_time = moment();
-    this.BuildModifierMetadata(MENU, service_time);
-    this.RecomputeName(MENU);
+    this.RecomputeName(MENU, service_time);
     this.options_sections = this.DisplayOptions(MENU);
   };
 
