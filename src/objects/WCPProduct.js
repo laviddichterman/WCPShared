@@ -1,4 +1,5 @@
-import { TOPPING_NONE, TOPPING_LEFT, TOPPING_RIGHT, TOPPING_WHOLE, NO_MATCH, AT_LEAST, EXACT_MATCH, LEFT_SIDE, RIGHT_SIDE, WFunctional, DisableDataCheck } from "../common";
+import { TOPPING_NONE, TOPPING_LEFT, TOPPING_RIGHT, TOPPING_WHOLE, NO_MATCH, AT_LEAST, EXACT_MATCH, LEFT_SIDE, RIGHT_SIDE, DisableDataCheck } from "../common";
+import { WFunctional } from "./WFunctional";
 const moment = require("moment");
 
 function DeepCopyPlacedOptions(modifiers) {
@@ -325,17 +326,17 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
       }
 
       var additional_options_objects = { };
-      Object.keys(additional_options).forEach(loc => {
-        additional_options_objects[loc] = additional_options[loc].map(x => GetModifierOptionFromMIDOID(MENU, x[0], x[1]));
+      Object.keys(product.additional_options).forEach(loc => {
+        additional_options_objects[loc] = product.additional_options[loc].map(x => GetModifierOptionFromMIDOID(MENU, x[0], x[1]));
       });
 
       var split_options = ["∅", "∅"];
       var short_split_options = ["∅", "∅"];
-      if (additional_options.left.length) {
+      if (product.additional_options.left.length) {
         split_options[LEFT_SIDE] = ComponentsListName(additional_options_objects.left).join(" + ");
         short_split_options[LEFT_SIDE] = ComponentsListShortname(additional_options_objects.left).join(" + ");
       }
-      if (additional_options.right.length) {
+      if (product.additional_options.right.length) {
         split_options[RIGHT_SIDE] = ComponentsListName(additional_options_objects.right).join(" + ");
         short_split_options[RIGHT_SIDE] = ComponentsListShortname(additional_options_objects.right).join(" + ");
       }
