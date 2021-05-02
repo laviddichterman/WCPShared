@@ -28,7 +28,8 @@ export const WCPOption = function (w_modifier, w_option, index, enable_function)
     // TODO: needs to factor in disable data for time based disable
     // TODO: needs to return false if we would exceed the limit for this modifier, IF that limit is > 1, because if it's === 1
     // we would handle the limitation by using smarts at the wcpmodifierdir level
-    const modifier_placement = product.modifier_map[this.modifier._id].options[this.moid].placement;
+    var modifier_placement = product.modifiers[this.modifier._id] ? product.modifiers[this.modifier._id].find(val => val[1] === this.moid) : undefined;
+    modifier_placement = modifier_placement === undefined ? TOPPING_NONE : modifier_placement[0];
     // TODO: bake and flavor stuff should move into the enable_filter itself, the option itself should just hold generalized metadata the enable filter function can use/reference
     var display_flags = product.PRODUCT_CLASS.display_flags;
     var BAKE_MAX = display_flags ? display_flags.bake_max : 100;
