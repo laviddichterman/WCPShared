@@ -1,4 +1,4 @@
-import { TOPPING_NONE, TOPPING_LEFT, TOPPING_RIGHT, TOPPING_WHOLE, LEFT_SIDE, RIGHT_SIDE } from "../common";
+import { TOPPING_NONE, LEFT_SIDE, RIGHT_SIDE } from "../common";
 import { WFunctional } from "./WFunctional";
 
   // matrix of proposed_delta indexed by [current placement][proposed placement]

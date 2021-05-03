@@ -27,7 +27,7 @@ const ComponentsList = (source, getter) => {
   });
 }
 const ComponentsListName = (source) => {
-  return ComponentsList(source.filter(x => !x.display_flags || !x.display_flags.omit_from_shortname), x=>x.name);
+  return ComponentsList(source.filter(x => !x.display_flags || !x.display_flags.omit_from_name), x=>x.name);
 }
 const ComponentsListShortname = (source) => {
   return ComponentsList(source.filter(x => !x.display_flags || !x.display_flags.omit_from_shortname), x => x.shortname);
@@ -123,14 +123,14 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
     // this is a multi-dim array, in order of the MTID as it exists in the product class definition
     // disabled modifier types and modifier options are all present as they shouldn't contribute to comparison mismatch
     // elements of the modifiers_match_matrix are arrays of <LEFT_MATCH, RIGHT_MATCH> tuples
-    first.PRODUCT_CLASS.modifiers2.forEach(function (modifier) {
+    first.PRODUCT_CLASS.modifiers.forEach(function (modifier) {
       modifiers_match_matrix[LEFT_SIDE].push(new Array(MENU.modifiers[modifier.mtid].options_list.length).fill(EXACT_MATCH));
       modifiers_match_matrix[RIGHT_SIDE].push(new Array(MENU.modifiers[modifier.mtid].options_list.length).fill(EXACT_MATCH));
     })
 
     var is_mirror = true;
     // main comparison loop!
-    first.PRODUCT_CLASS.modifiers2.forEach(function (modifier, midx) {
+    first.PRODUCT_CLASS.modifiers.forEach(function (modifier, midx) {
       const mtid = modifier.mtid;
       var first_option_list = first.modifiers.hasOwnProperty(mtid) ? first.modifiers[mtid] : [];
       var other_option_list = other.modifiers.hasOwnProperty(mtid) ? other.modifiers[mtid] : [];
@@ -238,7 +238,7 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
       // each entry in these arrays represents the modifier index on the product class and the option index in that particular modifier
       product.additional_options = { left: [], right: [], whole: [] };
       product.exhaustive_options = { left: [], right: [], whole: [] };
-      PRODUCT_CLASS.modifiers2.forEach(function (pc_modifier, mtidx) {
+      PRODUCT_CLASS.modifiers.forEach(function (pc_modifier, mtidx) {
         const mtid = pc_modifier.mtid;
         const modifier_type_enable_function = pc_modifier.enable;
         const CATALOG_MODIFIER_INFO = MENU.modifiers[mtid];
@@ -442,7 +442,7 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
       }
       else {
         const OPTION = GetModifierOptionFromMIDOID(MENU, x[0], x[1]);
-        return (!OPTION.display_flags || !OPTION.display_flags.omit_from_shortname) ? GetModifierOptionFromMIDOID(MENU, x[0], x[1]).name : "";
+        return (!OPTION.display_flags || !OPTION.display_flags.omit_from_name) ? GetModifierOptionFromMIDOID(MENU, x[0], x[1]).name : "";
       }
     }
     if (this.exhaustive_options.whole.length > 0) {
