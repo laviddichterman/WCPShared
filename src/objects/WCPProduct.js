@@ -353,6 +353,7 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
           }
           name_components_list.push("(" + split_options.join(" | ") + ")");
           shortname_components_list.push("(" + short_split_options.join(" | ") + ")");
+          product.description = match_info.product[LEFT_SIDE].description;
         }
         else {
           // split product, different product instance match on each side
@@ -372,10 +373,15 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
           }
           names[LEFT_SIDE].length ? 0 : names[LEFT_SIDE].push("∅");
           names[RIGHT_SIDE].length ? 0 : names[RIGHT_SIDE].push("∅");
-          name_components_list.push(`( ${names[LEFT_SIDE].join(" + ")} | ${names[RIGHT_SIDE].join(" + ")} )`);
+          const left_name = names[LEFT_SIDE].length > 1 ? `( ${names[LEFT_SIDE].join(" + ")} )` : names[LEFT_SIDE].join(" + ");
+          const right_name = names[RIGHT_SIDE].length > 1 ? `( ${names[RIGHT_SIDE].join(" + ")} )` : names[RIGHT_SIDE].join(" + ");
+          name_components_list.push(`( ${left_name} | ${right_name} )`);
           shortnames[LEFT_SIDE].length ? 0 : shortnames[LEFT_SIDE].push("∅");
           shortnames[RIGHT_SIDE].length ? 0 : shortnames[RIGHT_SIDE].push("∅");
-          shortname_components_list.push(`( ${shortnames[LEFT_SIDE].join(" + ")} | ${shortnames[RIGHT_SIDE].join(" + ")} )`);
+          const left_shortname = shortnames[LEFT_SIDE].length > 1 ? `( ${shortnames[LEFT_SIDE].join(" + ")} )` : shortnames[LEFT_SIDE].join(" + ");
+          const right_shortname = shortnames[RIGHT_SIDE].length > 1 ? `( ${shortnames[RIGHT_SIDE].join(" + ")} )` : shortnames[RIGHT_SIDE].join(" + ");
+          shortname_components_list.push(`( ${left_shortname} | ${right_shortname} )`);
+          product.description = `( ${match_info.product[LEFT_SIDE].description} ) | ( ${match_info.product[RIGHT_SIDE].description} )`;
         }
       } // end is_split case
       else {
@@ -390,18 +396,19 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
         if (match_info.comparison_value[LEFT_SIDE] === EXACT_MATCH) {
           // assign PIID
           product.piid = match_info.product[LEFT_SIDE].piid;
-          product.description = match_info.product[LEFT_SIDE].description;
-          product.ordinal = match_info.product[LEFT_SIDE].ordinal;
-          product.disable_data = match_info.product[LEFT_SIDE].disable_data;
           product.is_base = match_info.product[LEFT_SIDE].is_base;
-          product.display_flags = match_info.product[LEFT_SIDE].display_flags;
         }
+        product.description = match_info.product[LEFT_SIDE].description;
       }
+      product.ordinal = match_info.product[LEFT_SIDE].ordinal;
+      product.disable_data = match_info.product[LEFT_SIDE].disable_data;
+      product.display_flags = match_info.product[LEFT_SIDE].display_flags;
       product.name = name_components_list.join(" + ");
       product.shortname = shortname_components_list.length === 0 ? match_info.product[LEFT_SIDE].shortname : shortname_components_list.join(" + ");
     }
 
     // iterate through menu, until has_left and has_right are true
+    // TODO: product naming with disabled products, see https://app.asana.com/0/1192054646278650/1192627836647899/f
     // a name can be assigned once an exact or at least match is found for a given side
     // NOTE the guarantee of ordering the instances in most modified to base product isn't guaranteed and shouldn't be assumed, but we need it here. how can we order the instances in a helpful way? Need to figure this out
     // answer: pull out the base product from the list and make sure it's last in the ordered list we handle here
