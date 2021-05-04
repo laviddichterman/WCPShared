@@ -37,6 +37,31 @@ const ComponentsListShortname = (source) => {
   return ComponentsList(source, x => x.shortname);
 }
 
+const HandleOptionNameFilterOmitByName = (menu, x) => {
+  const OPTION = GetModifierOptionFromMIDOID(menu, x[0], x[1]);
+  return (!OPTION.display_flags || !OPTION.display_flags.omit_from_name) ? OPTION.name : "";
+}
+
+const HandleOptionNameNoFilter = (menu, x) => ( GetModifierOptionFromMIDOID(menu, x[0], x[1]).name );
+
+const HandleOptionCurry = (MENU, getterfxn) => {
+  return (x) => {
+    if (x[1] === -1) {
+      const CATALOG_MODIFIER_INFO = MENU.modifiers[x[0]];
+      switch (CATALOG_MODIFIER_INFO.modifier_type.display_flags.empty_display_as) {
+        case "YOUR_CHOICE_OF": return CATALOG_MODIFIER_INFO.modifier_type.display_name ? CATALOG_MODIFIER_INFO.modifier_type.display_name : CATALOG_MODIFIER_INFO.modifier_type.name;
+        case "LIST_CHOICES": 
+          // TODO: needs to filter disabled or unavailble options
+          const choices = CATALOG_MODIFIER_INFO.options_list.map(x=>x.name);
+          return choices.length < 3 ? choices.join(" or ") : [choices.slice(0, -1).join(", "), choices[choices.length-1]].join(", or ");
+        default: console.error(`Unknown value for empty_display_as flag: ${CATALOG_MODIFIER_INFO.modifier_type.display_flags.empty_display_as}`); return "";
+      }
+    }
+    else {
+      return getterfxn(MENU, x);
+    }
+  };
+}
 export function CopyWCPProduct(pi) {
   return new WCPProduct(pi.PRODUCT_CLASS, pi.piid, pi.name, pi.description, pi.ordinal, pi.modifiers, pi.shortcode, pi.base_price, pi.disable_data, pi.is_base, pi.display_flags);
 }
@@ -214,6 +239,44 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
       }
     }
 
+    function RunTemplating(product) {
+      const HandleOption = HandleOptionCurry(MENU, HandleOptionNameNoFilter);
+      const name_template_match_array = product.name.match(PRODUCT_NAME_MODIFIER_TEMPLATE_REGEX);
+      const description_template_match_array = product.description.match(PRODUCT_NAME_MODIFIER_TEMPLATE_REGEX);
+      if (name_template_match_array && description_template_match_array) {
+        return;
+      }
+      const name_template_match_obj = name_template_match_array ? name_template_match_array.reduce((acc, item) => Object.assign(acc, {[item]: ""})) : {};
+      const description_template_match_obj = description_template_match_array ? description_template_match_array.reduce((acc, item) => Object.assign(acc, {[item]: ""})) : {};
+      PRODUCT_CLASS.modifiers.forEach(function (pc_modifier, mtidx) {
+        const mtid = pc_modifier.mtid;
+        const modifier_flags = MENU.modifiers[mtid].display_flags;
+        if (modifier_flags.template_string !== "") {
+          const template_in_name = name_template_match_obj.hasOwnProperty(modifier_flags.template_string);
+          const template_in_description = description_template_match_obj.hasOwnProperty(modifier_flags.template_string);
+          if (template_in_name || template_in_description) {
+            const filtered_exhaustive_options = product.exhaustive_options.whole.filter(x=>x[0] === mtid);
+            const modifier_values = filtered_exhaustive_options.map(HandleOption).filter(x => x !== "");
+            if (modifier_values.length > 0) {
+              const modifier_values_joined_string = modifier_flags.non_empty_group_prefix + modifier_values.join(modifier_flags.multiple_item_separator) + modifier_flags.non_empty_group_suffix;
+              if (template_in_name) {
+                name_template_match_obj[modifier_flags.template_string] = modifier_values_joined_string;
+              }
+              if (template_in_description) {
+                description_template_match_obj[modifier_flags.template_string] = modifier_values_joined_string;
+              }  
+            }
+          }
+        }
+      });
+      Object.keys(name_template_match_obj).forEach((key) => {
+        product.name.replace(`\{${key}\}`, name_template_match_obj[key]);
+      });
+      Object.keys(description_template_match_obj).forEach((key) => {
+        product.description.replace(`\{${key}\}`, description_template_match_obj[key]);
+      });
+    }
+
     function BuildName(product, service_time) {
       /* NOTE/TODO: 2021_05_02, current issue with the following code is a questionable dependency on what makes a complete product if 
           modifier options are disabled for non-dependent reasons (like, OOS or some other combination disable that isn't actually intended to make it impossible to complete a product)
@@ -326,6 +389,7 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
         var catalog_pi = PRODUCT_CLASS_MENU_ENTRY.instances[product.piid];
         product.name = catalog_pi.name;
         product.shortname = catalog_pi.shortcode;
+        RunTemplating(product);
         return;
       }
 
@@ -411,6 +475,7 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
       product.display_flags = match_info.product[LEFT_SIDE].display_flags;
       product.name = name_components_list.join(" + ");
       product.shortname = shortname_components_list.length === 0 ? match_info.product[LEFT_SIDE].shortname : shortname_components_list.join(" + ");
+      RunTemplating(product);
     }
 
     // iterate through menu, until has_left and has_right are true
@@ -431,24 +496,8 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
   };
 
   this.DisplayOptions = function (MENU) {
+    const HandleOption = HandleOptionCurry(MENU, HandleOptionNameFilterOmitByName);
     var options_sections = [];
-    const HandleOption = (x) => {
-      if (x[1] === -1) {
-        const CATALOG_MODIFIER_INFO = MENU.modifiers[x[0]];
-        switch (CATALOG_MODIFIER_INFO.modifier_type.display_flags.empty_display_as) {
-          // TODO: needs to filter disabled or unavailble options
-          case "YOUR_CHOICE_OF": return CATALOG_MODIFIER_INFO.modifier_type.display_name ? CATALOG_MODIFIER_INFO.modifier_type.display_name : CATALOG_MODIFIER_INFO.modifier_type.name;
-          case "LIST_CHOICES": 
-            const choices = CATALOG_MODIFIER_INFO.options_list.map(x=>x.name);
-            return choices.length < 3 ? choices.join(" or ") : [choices.slice(0, -1).join(", "), choices[choices.length-1]].join(", or ");
-          default: console.error(`Unknown value for empty_display_as flag: ${CATALOG_MODIFIER_INFO.modifier_type.display_flags.empty_display_as}`); return "";
-        }
-      }
-      else {
-        const OPTION = GetModifierOptionFromMIDOID(MENU, x[0], x[1]);
-        return (!OPTION.display_flags || !OPTION.display_flags.omit_from_name) ? GetModifierOptionFromMIDOID(MENU, x[0], x[1]).name : "";
-      }
-    }
     if (this.exhaustive_options.whole.length > 0) {
       var option_names = this.exhaustive_options.whole.map(HandleOption).filter(x => x !== "");
       options_sections.push(["Whole", option_names.join(" + ")]);
