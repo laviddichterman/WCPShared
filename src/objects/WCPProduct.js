@@ -1,4 +1,4 @@
-import { TOPPING_NONE, TOPPING_LEFT, TOPPING_RIGHT, TOPPING_WHOLE, NO_MATCH, AT_LEAST, EXACT_MATCH, LEFT_SIDE, RIGHT_SIDE, DisableDataCheck } from "../common";
+import { TOPPING_NONE, TOPPING_LEFT, TOPPING_RIGHT, TOPPING_WHOLE, NO_MATCH, AT_LEAST, EXACT_MATCH, LEFT_SIDE, RIGHT_SIDE, DisableDataCheck, PRODUCT_NAME_MODIFIER_TEMPLATE_REGEX } from "../common";
 import { WFunctional } from "./WFunctional";
 const moment = require("moment");
 
@@ -26,11 +26,15 @@ const ComponentsList = (source, getter) => {
     return getter(x);
   });
 }
+
+const FilterByOmitFromName = (source) => (source.filter(source.filter(x => !x.display_flags || !x.display_flags.omit_from_name)));
+const FilterByOmitFromShortname = (source) => (source.filter(source.filter(x => !x.display_flags || !x.display_flags.omit_from_shortname)));
+
 const ComponentsListName = (source) => {
-  return ComponentsList(source.filter(x => !x.display_flags || !x.display_flags.omit_from_name), x=>x.name);
+  return ComponentsList(source, x=>x.name);
 }
 const ComponentsListShortname = (source) => {
-  return ComponentsList(source.filter(x => !x.display_flags || !x.display_flags.omit_from_shortname), x => x.shortname);
+  return ComponentsList(source, x => x.shortname);
 }
 
 export function CopyWCPProduct(pi) {
@@ -333,19 +337,19 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
       var split_options = ["∅", "∅"];
       var short_split_options = ["∅", "∅"];
       if (product.additional_options.left.length) {
-        split_options[LEFT_SIDE] = ComponentsListName(additional_options_objects.left).join(" + ");
-        short_split_options[LEFT_SIDE] = ComponentsListShortname(additional_options_objects.left).join(" + ");
+        split_options[LEFT_SIDE] = ComponentsListName(FilterByOmitFromName(additional_options_objects.left)).join(" + ");
+        short_split_options[LEFT_SIDE] = ComponentsListShortname(FilterByOmitFromShortname(additional_options_objects.left)).join(" + ");
       }
       if (product.additional_options.right.length) {
-        split_options[RIGHT_SIDE] = ComponentsListName(additional_options_objects.right).join(" + ");
-        short_split_options[RIGHT_SIDE] = ComponentsListShortname(additional_options_objects.right).join(" + ");
+        split_options[RIGHT_SIDE] = ComponentsListName(FilterByOmitFromName(additional_options_objects.right)).join(" + ");
+        short_split_options[RIGHT_SIDE] = ComponentsListShortname(FilterByOmitFromShortname(additional_options_objects.right)).join(" + ");
       }
 
       var name_components_list = null;
       var shortname_components_list = null;
       if (product.is_split) {
-        name_components_list = ComponentsListName(additional_options_objects.whole);
-        shortname_components_list = ComponentsListShortname(additional_options_objects.whole);
+        name_components_list = ComponentsListName(FilterByOmitFromName(additional_options_objects.whole));
+        shortname_components_list = ComponentsListShortname(FilterByOmitFromShortname(additional_options_objects.whole));
         if (match_info.product[LEFT_SIDE].piid === match_info.product[RIGHT_SIDE].piid) {
           if (!is_compare_to_base[LEFT_SIDE] || PRODUCT_CLASS.display_flags.show_name_of_base_product) {
             name_components_list.unshift(match_info.product[LEFT_SIDE].name);
@@ -387,8 +391,8 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
         }
       } // end is_split case
       else {
-        name_components_list = ComponentsListName(additional_options_objects.whole);
-        shortname_components_list = ComponentsListShortname(additional_options_objects.whole);
+        name_components_list = ComponentsListName(FilterByOmitFromName(additional_options_objects.whole));
+        shortname_components_list = ComponentsListShortname(FilterByOmitFromShortname(additional_options_objects.whole));
         // we're using the left side because we know left and right are the same
         // if exact match to base product, no need to show the name
         if (!is_compare_to_base[LEFT_SIDE] || PRODUCT_CLASS.display_flags.show_name_of_base_product) {

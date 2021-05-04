@@ -12,6 +12,8 @@ export var EMAIL_REGEX = new RegExp("^[_A-Za-z0-9\-]+(\\.[_A-Za-z0-9\-]+)*@[A-Za
 
 export var CREDIT_REGEX = new RegExp("[A-Za-z0-9]{3}-[A-Za-z0-9]{2}-[A-Za-z0-9]{3}-[A-Z0-9]{8}$");
 
+export var PRODUCT_NAME_MODIFIER_TEMPLATE_REGEX = /(\{[A-Za-z0-9]+\})/g;
+
 export function GetPlacementFromMIDOID(pi, mid, oid) {
   var option_placement = pi.modifiers.hasOwnProperty(mid) ?
     pi.modifiers[mid].find(function (x) { return x[1] === oid }) : null;
