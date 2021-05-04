@@ -27,8 +27,8 @@ const ComponentsList = (source, getter) => {
   });
 }
 
-const FilterByOmitFromName = (source) => (source.filter(source.filter(x => !x.display_flags || !x.display_flags.omit_from_name)));
-const FilterByOmitFromShortname = (source) => (source.filter(source.filter(x => !x.display_flags || !x.display_flags.omit_from_shortname)));
+const FilterByOmitFromName = (source) => (source.filter(x => !x.display_flags || !x.display_flags.omit_from_name));
+const FilterByOmitFromShortname = (source) => (source.filter(x => !x.display_flags || !x.display_flags.omit_from_shortname));
 
 const ComponentsListName = (source) => {
   return ComponentsList(source, x=>x.name);
@@ -243,15 +243,15 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
       const HandleOption = HandleOptionCurry(MENU, HandleOptionNameNoFilter);
       const name_template_match_array = product.name.match(PRODUCT_NAME_MODIFIER_TEMPLATE_REGEX);
       const description_template_match_array = product.description.match(PRODUCT_NAME_MODIFIER_TEMPLATE_REGEX);
-      if (name_template_match_array && description_template_match_array) {
+      if (name_template_match_array === null && description_template_match_array === null) {
         return;
       }
-      const name_template_match_obj = name_template_match_array ? name_template_match_array.reduce((acc, item) => Object.assign(acc, {[item]: ""})) : {};
-      const description_template_match_obj = description_template_match_array ? description_template_match_array.reduce((acc, item) => Object.assign(acc, {[item]: ""})) : {};
+      const name_template_match_obj = name_template_match_array ? name_template_match_array.reduce((acc, x) => Object.assign(acc, {[x.substring(1, x.length-1)]: ""}), {}) : {};
+      const description_template_match_obj = description_template_match_array ? description_template_match_array.reduce((acc, x) => Object.assign(acc, {[x.substring(1, x.length-1)]: ""}), {}) : {};
       PRODUCT_CLASS.modifiers.forEach(function (pc_modifier, mtidx) {
         const mtid = pc_modifier.mtid;
-        const modifier_flags = MENU.modifiers[mtid].display_flags;
-        if (modifier_flags.template_string !== "") {
+        const modifier_flags = MENU.modifiers[mtid].modifier_type.display_flags;
+        if (modifier_flags && modifier_flags.template_string !== "") {
           const template_in_name = name_template_match_obj.hasOwnProperty(modifier_flags.template_string);
           const template_in_description = description_template_match_obj.hasOwnProperty(modifier_flags.template_string);
           if (template_in_name || template_in_description) {
@@ -269,11 +269,13 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
           }
         }
       });
+      console.log(name_template_match_obj);
+      console.log(description_template_match_obj);
       Object.keys(name_template_match_obj).forEach((key) => {
-        product.name.replace(`\{${key}\}`, name_template_match_obj[key]);
+        product.name = product.name.replace(`\{${key}\}`, name_template_match_obj[key]);
       });
       Object.keys(description_template_match_obj).forEach((key) => {
-        product.description.replace(`\{${key}\}`, description_template_match_obj[key]);
+        product.description = product.description.replace(`\{${key}\}`, description_template_match_obj[key]);
       });
     }
 
@@ -389,7 +391,6 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
         var catalog_pi = PRODUCT_CLASS_MENU_ENTRY.instances[product.piid];
         product.name = catalog_pi.name;
         product.shortname = catalog_pi.shortcode;
-        RunTemplating(product);
         return;
       }
 
