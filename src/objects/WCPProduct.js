@@ -244,10 +244,12 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
       const name_template_match_array = product.name.match(PRODUCT_NAME_MODIFIER_TEMPLATE_REGEX);
       const description_template_match_array = product.description.match(PRODUCT_NAME_MODIFIER_TEMPLATE_REGEX);
       if (name_template_match_array === null && description_template_match_array === null) {
+        product.processed_name = product.name;
+        product.processed_description = product.description;
         return;
       }
-      const name_template_match_obj = name_template_match_array ? name_template_match_array.reduce((acc, x) => Object.assign(acc, {[x.substring(1, x.length-1)]: ""}), {}) : {};
-      const description_template_match_obj = description_template_match_array ? description_template_match_array.reduce((acc, x) => Object.assign(acc, {[x.substring(1, x.length-1)]: ""}), {}) : {};
+      const name_template_match_obj = name_template_match_array ? name_template_match_array.reduce((acc, x) => Object.assign(acc, {[x]: ""}), {}) : {};
+      const description_template_match_obj = description_template_match_array ? description_template_match_array.reduce((acc, x) => Object.assign(acc, {[x]: ""}), {}) : {};
       PRODUCT_CLASS.modifiers.forEach(function (pc_modifier, mtidx) {
         const mtid = pc_modifier.mtid;
         const modifier_flags = MENU.modifiers[mtid].modifier_type.display_flags;
@@ -269,14 +271,10 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
           }
         }
       });
-      console.log(name_template_match_obj);
-      console.log(description_template_match_obj);
-      Object.keys(name_template_match_obj).forEach((key) => {
-        product.name = product.name.replace(`\{${key}\}`, name_template_match_obj[key]);
-      });
-      Object.keys(description_template_match_obj).forEach((key) => {
-        product.description = product.description.replace(`\{${key}\}`, description_template_match_obj[key]);
-      });
+      product.processed_name = product.name.replace(PRODUCT_NAME_MODIFIER_TEMPLATE_REGEX, (m) => name_template_match_obj.hasOwnProperty(m) ? name_template_match_obj[m] : "");
+      product.processed_description = product.description.replace(PRODUCT_NAME_MODIFIER_TEMPLATE_REGEX, (m) => description_template_match_obj.hasOwnProperty(m) ? description_template_match_obj[m] : "");
+      console.log(product.processed_name);
+      console.log(product.processed_description);
     }
 
     function BuildName(product, service_time) {
