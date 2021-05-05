@@ -254,18 +254,19 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
         const mtid = pc_modifier.mtid;
         const modifier_flags = MENU.modifiers[mtid].modifier_type.display_flags;
         if (modifier_flags && modifier_flags.template_string !== "") {
-          const template_in_name = name_template_match_obj.hasOwnProperty(modifier_flags.template_string);
-          const template_in_description = description_template_match_obj.hasOwnProperty(modifier_flags.template_string);
+          const template_string_with_braces = `\{${modifier_flags.template_string}\}`;
+          const template_in_name = name_template_match_obj.hasOwnProperty(template_string_with_braces);
+          const template_in_description = description_template_match_obj.hasOwnProperty(template_string_with_braces);
           if (template_in_name || template_in_description) {
             const filtered_exhaustive_options = product.exhaustive_options.whole.filter(x=>x[0] === mtid);
             const modifier_values = filtered_exhaustive_options.map(HandleOption).filter(x => x !== "");
             if (modifier_values.length > 0) {
               const modifier_values_joined_string = modifier_flags.non_empty_group_prefix + modifier_values.join(modifier_flags.multiple_item_separator) + modifier_flags.non_empty_group_suffix;
               if (template_in_name) {
-                name_template_match_obj[modifier_flags.template_string] = modifier_values_joined_string;
+                name_template_match_obj[template_string_with_braces] = modifier_values_joined_string;
               }
               if (template_in_description) {
-                description_template_match_obj[modifier_flags.template_string] = modifier_values_joined_string;
+                description_template_match_obj[template_string_with_braces] = modifier_values_joined_string;
               }  
             }
           }
@@ -273,8 +274,6 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
       });
       product.processed_name = product.name.replace(PRODUCT_NAME_MODIFIER_TEMPLATE_REGEX, (m) => name_template_match_obj.hasOwnProperty(m) ? name_template_match_obj[m] : "");
       product.processed_description = product.description.replace(PRODUCT_NAME_MODIFIER_TEMPLATE_REGEX, (m) => description_template_match_obj.hasOwnProperty(m) ? description_template_match_obj[m] : "");
-      console.log(product.processed_name);
-      console.log(product.processed_description);
     }
 
     function BuildName(product, service_time) {
@@ -389,6 +388,7 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
         var catalog_pi = PRODUCT_CLASS_MENU_ENTRY.instances[product.piid];
         product.name = catalog_pi.name;
         product.shortname = catalog_pi.shortcode;
+        RunTemplating(product);
         return;
       }
 
