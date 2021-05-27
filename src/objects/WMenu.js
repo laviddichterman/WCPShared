@@ -1,4 +1,4 @@
-import { TOPPING_NONE, TOPPING_LEFT, TOPPING_RIGHT, TOPPING_WHOLE } from "../common";
+import { TOPPING_NONE, TOPPING_LEFT, TOPPING_RIGHT, TOPPING_WHOLE, DisableDataCheck } from "../common";
 import WCPProduct from "./WCPProduct";
 import WCPOption from "./WCPOption";
 
@@ -12,15 +12,115 @@ function WARIOPlacementToLocalPlacementEnum(w_placement) {
   return TOPPING_NONE;
 }
 
+/**
+ * Returns a function used to filter out disabled or hidden products
+ * @param {WMenu} menu - the menu from which to pull catalog data
+ * @param {function(Object): boolean} disable_from_menu_flag_getter - getter function to pull the proper display flag from the products
+ * @param {moment} order_time - the time to use to check for disable/enable status
+ * @returns {function(WCPProduct): boolean} function that takes a WCPProduct and returns true if it's enabled 
+ */
+export function FilterProducts(menu, disable_from_menu_flag_getter, order_time) {
+  return function ( item ) {
+    var passes = !disable_from_menu_flag_getter(item.display_flags) && DisableDataCheck(item.disable_data, order_time);
+    for (var mtid in item.modifiers) {
+      // TODO: for incomplete product instances, this should check for a viable way to order the product
+      passes = passes && Math.min(1, Math.min.apply(null, item.modifiers[mtid].map(function(x) {
+        return DisableDataCheck(menu.modifiers[mtid].options[x[1]].disable_data, order_time);
+      })));
+    }
+    return passes;
+  }
+}
+
+/**
+ * Returns a function used to filter out categories without products after having filtered out
+ * empty or disabled products
+ * @param {WMenu} menu - the menu from which to pull catalog data
+ * @param {function(Object): boolean} disable_from_menu_flag_getter - getter function to pull the proper display flag from the products
+ * @param {moment} order_time - the time to use to check for disable/enable status
+ * @returns {function(String): boolean} function that takes a category ID and returns true if the category is not empty
+ */
+export function FilterEmptyCategories(menu, disable_from_menu_flag_getter, order_time) {
+  const filter_fxn = FilterProducts(menu, disable_from_menu_flag_getter, order_time);
+  return function ( CAT_ID ) {
+    const cat_menu = menu.categories[CAT_ID].menu;
+    for (var i = 0; i < cat_menu.length; ++i) {
+      if (filter_fxn(cat_menu[i])) {
+        return true;
+      }
+    }
+    return false;
+  }
+}
+
+/**
+ * Mutates the passed menu instance to remove disabled categories, products, modifer types, and modifer options
+ * unfortunately since we're modifying the data structure we're using to determine what should be disabled
+ * we need to do this inefficiently, 
+ * @param {WMenu} menu 
+ * @param {function} filter_products 
+ * @param {moment} order_time 
+ */
+export function FilterWMenu(menu, filter_products, order_time) {
+  // prune categories via DFS
+  {
+    var catids_to_remove = {};
+    var catids_visited = {};
+    function VisitCategory(cat_id) {
+      if (!catids_visited.hasOwnProperty(cat_id)) {
+        catids_visited[cat_id] = true;
+        menu.categories[cat_id].children.forEach(x=>VisitCategory(x));
+        menu.categories[cat_id].menu = menu.categories[cat_id].menu.filter(filter_products);
+        if (menu.categories[catid].children.filter(x => !catids_to_remove.hasOwnProperty(x)).length === 0 && 
+            menu.categories[catid].menu.length === 0) {
+          catids_to_remove[cat_id] = true;
+          delete menu.categories[cat_id];
+        }
+      }
+    }
+    for (const catid in menu.categories) {
+      if (!catids_visited.hasOwnProperty(catid)) {
+        VisitCategory(catid);
+      }
+    }
+  }
+
+  // prune product instances and product classes as appropriate
+  {
+    for (const pid in menu.product_classes) {
+      menu.product_classes[pid].instances_list = menu.product_classes[pid].instances_list.filter(filter_products);
+      if (menu.product_classes[pid].instances_list.length > 0) {
+        menu.product_classes[pid].instances = menu.product_classes[pid].instances_list.reduce((acc, x) => Object.assign(acc, {[x.piid]: x}), {})
+      }
+      else {
+        delete menu.product_classes[pid];
+      }
+    }
+  }
+
+  // prune modifier options and types as appropriate
+  {
+    for (const mtid in menu.modifiers) { // this should be safe per https://262.ecma-international.org/5.1/#sec-12.6.4
+      menu.modifiers[mtid].options_list = menu.modifiers[mtid].options_list.filter((opt) => DisableDataCheck(opt.disable_data, order_time));
+      if (menu.modifiers[mtid].options_list.length > 0) {
+        menu.modifiers[mtid].options = menu.modifiers[mtid].options_list.reduce((acc, x) => Object.assign(acc, {[x.moid]: x}), {})
+      }
+      else {
+        delete menu.modifiers[mtid];
+      }
+    }
+  }
+}
+
 export const WMenu = function (catalog) {
   function ComputeModifiers(cat) {
     var mods = {};
     for (var mtid in cat.modifiers) {
-      var mod = cat.modifiers[mtid].modifier_type;
+      const mod = cat.modifiers[mtid].modifier_type;
       var opt_index = 0;
       var modifier_entry = { modifier_type: mod, options_list: [], options: {} };
       cat.modifiers[mtid].options.sort((a, b) => a.ordinal - b.ordinal).forEach((opt) => {
-        var option = new WCPOption(mod, opt, opt_index, opt.enable_function);
+        const option = new WCPOption(mod, opt, opt_index, opt.enable_function);
         modifier_entry.options_list.push(option);
         modifier_entry.options[option.moid] = option;
         ++opt_index;

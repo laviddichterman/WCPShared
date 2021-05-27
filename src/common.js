@@ -20,6 +20,12 @@ export function GetPlacementFromMIDOID(pi, mid, oid) {
   return option_placement ? option_placement[0] : TOPPING_NONE;
 }
 
+/**
+ * Function to check if something is disabled
+ * @param {Object} disable_data - catalog sourced info as to if/when the product is enabled or disabled
+ * @param {moment} order_time - the time to use to check for disabling
+ * @returns {boolean} true if the product is enabled, false otherwise
+ */
 export function DisableDataCheck(disable_data, order_time) {
   return !disable_data || (!(disable_data.start > disable_data.end) && (disable_data.start > order_time.valueOf() || disable_data.end < order_time.valueOf()));
 }

@@ -1,6 +1,6 @@
 import { TOPPING_NONE, TOPPING_LEFT, TOPPING_RIGHT, TOPPING_WHOLE, NO_MATCH, AT_LEAST, EXACT_MATCH, LEFT_SIDE, RIGHT_SIDE, DisableDataCheck, PRODUCT_NAME_MODIFIER_TEMPLATE_REGEX } from "../common";
 import { WFunctional } from "./WFunctional";
-const moment = require("moment");
+import moment from 'moment';
 
 function DeepCopyPlacedOptions(modifiers) {
   var ret = {};
