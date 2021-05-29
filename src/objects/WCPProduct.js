@@ -49,7 +49,7 @@ const HandleOptionCurry = (MENU, getterfxn) => {
     if (x[1] === -1) {
       const CATALOG_MODIFIER_INFO = MENU.modifiers[x[0]];
       switch (CATALOG_MODIFIER_INFO.modifier_type.display_flags.empty_display_as) {
-        case "YOUR_CHOICE_OF": return CATALOG_MODIFIER_INFO.modifier_type.display_name ? CATALOG_MODIFIER_INFO.modifier_type.display_name : CATALOG_MODIFIER_INFO.modifier_type.name;
+        case "YOUR_CHOICE_OF": return `Your choice of ${CATALOG_MODIFIER_INFO.modifier_type.display_name ? CATALOG_MODIFIER_INFO.modifier_type.display_name : CATALOG_MODIFIER_INFO.modifier_type.name}`;
         case "LIST_CHOICES": 
           // TODO: needs to filter disabled or unavailble options
           const choices = CATALOG_MODIFIER_INFO.options_list.map(x=>x.name);
@@ -67,6 +67,36 @@ export function CopyWCPProduct(pi) {
 }
 export function WCPProductFromDTO(dto, MENU) {
   return new WCPProduct(MENU.product_classes[dto.pid].product, "", "", "", 0, dto.modifiers, "", 0, null, false, {});
+}
+
+/**
+ * returns an ordered list of potential prices for a product.
+ * Product must be missing some number of INDEPENDENT, SINGLE SELECT modifier types.
+ * Independent meaning there isn't a enable function dependence between any of the incomplete
+ * modifier types or their options, single select meaning (MIN===MAX===1)
+ * @param {WCPProduct} pi - the product instance to use
+ * @param {WMenu} menu
+ * @return {[Number]} array of prices in ascending order
+ */
+export function ComputePotentialPrices(pi, menu) {
+  for (var mtid in pi.modifier_map) {
+    if (!pi.modifier_map[mtid].meets_minimum) {
+      var enabled_prices = menu.modifiers[mtid].options_list.filter(x=>pi.modifier_map[mtid].options[x.moid].enable_whole).map(x=>x.price);
+      var deduped_prices = [...new Set(enabled_prices)];
+      mod_prices.push(deduped_prices);
+    }
+  }
+  
+  while (prices.length >= 2) {
+    var combined_prices = {};
+    for (var price0 of mod_prices[0]) {
+      for (var price1 of mod_prices[1]) {
+        combined_prices[price0+price1] = true;
+      }
+    }
+    prices.splice(0, 2, combined_prices.keys());
+  }
+  return prices[0].sort((a,b) => a-b);
 }
 
 // matrix of how products match indexed by [first placement][second placement] containing [left match, right match, break_mirror]
