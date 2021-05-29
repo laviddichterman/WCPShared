@@ -13,23 +13,22 @@ function WARIOPlacementToLocalPlacementEnum(w_placement) {
 }
 
 /**
- * Returns a function used to filter out disabled or hidden products
+ * Checks if a product is enabled and visible
+ * @param {WCPProduct} item - the product to check 
  * @param {WMenu} menu - the menu from which to pull catalog data
  * @param {function(Object): boolean} disable_from_menu_flag_getter - getter function to pull the proper display flag from the products
  * @param {moment} order_time - the time to use to check for disable/enable status
- * @returns {function(WCPProduct): boolean} function that takes a WCPProduct and returns true if it's enabled 
+ * @returns {boolean} returns true if item is enabled and visible
  */
-export function FilterProducts(menu, disable_from_menu_flag_getter, order_time) {
-  return function ( item ) {
-    var passes = !disable_from_menu_flag_getter(item.display_flags) && DisableDataCheck(item.disable_data, order_time);
-    for (var mtid in item.modifiers) {
-      // TODO: for incomplete product instances, this should check for a viable way to order the product
-      passes = passes && Math.min(1, Math.min.apply(null, item.modifiers[mtid].map(function(x) {
-        return DisableDataCheck(menu.modifiers[mtid].options[x[1]].disable_data, order_time);
-      })));
-    }
-    return passes;
+export function FilterProduct(item, menu, disable_from_menu_flag_getter, order_time) {
+  var passes = !disable_from_menu_flag_getter(item.display_flags) && DisableDataCheck(item.disable_data, order_time);
+  for (var mtid in item.modifiers) {
+    // TODO: for incomplete product instances, this should check for a viable way to order the product
+    passes = passes && Math.min(1, Math.min.apply(null, item.modifiers[mtid].map(function(x) {
+      return DisableDataCheck(menu.modifiers[mtid].options[x[1]].disable_data, order_time);
+    })));
   }
+  return passes;
 }
 
 /**
@@ -58,7 +57,7 @@ export function FilterEmptyCategories(menu, disable_from_menu_flag_getter, order
  * unfortunately since we're modifying the data structure we're using to determine what should be disabled
  * we need to do this inefficiently, 
  * @param {WMenu} menu 
- * @param {function} filter_products 
+ * @param {function(WCPProduct): boolean} filter_products 
  * @param {moment} order_time 
  */
 export function FilterWMenu(menu, filter_products, order_time) {
