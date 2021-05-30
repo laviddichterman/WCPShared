@@ -79,24 +79,25 @@ export function WCPProductFromDTO(dto, MENU) {
  * @return {[Number]} array of prices in ascending order
  */
 export function ComputePotentialPrices(pi, menu) {
+  var prices = [];
   for (var mtid in pi.modifier_map) {
     if (!pi.modifier_map[mtid].meets_minimum) {
       var enabled_prices = menu.modifiers[mtid].options_list.filter(x=>pi.modifier_map[mtid].options[x.moid].enable_whole).map(x=>x.price);
       var deduped_prices = [...new Set(enabled_prices)];
-      mod_prices.push(deduped_prices);
+      prices.push(deduped_prices);
     }
   }
   
   while (prices.length >= 2) {
     var combined_prices = {};
-    for (var price0 of mod_prices[0]) {
-      for (var price1 of mod_prices[1]) {
+    for (var price0 of prices[0]) {
+      for (var price1 of prices[1]) {
         combined_prices[price0+price1] = true;
       }
     }
     prices.splice(0, 2, combined_prices.keys());
   }
-  return prices[0].sort((a,b) => a-b);
+  return prices[0].sort((a,b) => a-b).map(x=>x+pi.price);
 }
 
 // matrix of how products match indexed by [first placement][second placement] containing [left match, right match, break_mirror]
