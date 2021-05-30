@@ -70,7 +70,8 @@ export function FilterWMenu(menu, filter_products, order_time) {
         catids_visited[cat_id] = true;
         menu.categories[cat_id].children.forEach(x=>VisitCategory(x));
         menu.categories[cat_id].menu = menu.categories[cat_id].menu.filter(filter_products);
-        if (menu.categories[cat_id].children.filter(x => !catids_to_remove.hasOwnProperty(x)).length === 0 && 
+        menu.categories[cat_id].children = menu.categories[cat_id].children.filter(x => !catids_to_remove.hasOwnProperty(x));
+        if (menu.categories[cat_id].children.length === 0 && 
             menu.categories[cat_id].menu.length === 0) {
           catids_to_remove[cat_id] = true;
           delete menu.categories[cat_id];
