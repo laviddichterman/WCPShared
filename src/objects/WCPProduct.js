@@ -511,8 +511,9 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
     // iterate through menu, until has_left and has_right are true
     // TODO: product naming with disabled products, see https://app.asana.com/0/1192054646278650/1192627836647899/f
     // a name can be assigned once an exact or at least match is found for a given side
-    // NOTE the guarantee of ordering the instances in most modified to base product isn't guaranteed and shouldn't be assumed, but we need it here. how can we order the instances in a helpful way? Need to figure this out
-    // answer: pull out the base product from the list and make sure it's last in the ordered list we handle here
+    // instances_list is ordered by WProductSchema.ordinal and that should arrange products according to how we
+    // want this function to find the appropriate name. Meaning the ordinal for base product has the highest number 
+    // and the most modified products have the lowest numbers
     for (var pi_index = 0; pi_index < PRODUCT_CLASS_MENU_ENTRY.instances_list.length; ++pi_index) {
       var comparison_product = PRODUCT_CLASS_MENU_ENTRY.instances_list[pi_index];
       var comparison_info = Compare(this, PRODUCT_CLASS_MENU_ENTRY.instances_list[pi_index], MENU);
