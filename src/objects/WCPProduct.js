@@ -95,7 +95,7 @@ export function ComputePotentialPrices(pi, menu) {
         combined_prices[price0+price1] = true;
       }
     }
-    prices.splice(0, 2, combined_prices.keys());
+    prices.splice(0, 2, Object.keys(combined_prices));
   }
   return prices[0].sort((a,b) => a-b).map(x=>x+pi.price);
 }
