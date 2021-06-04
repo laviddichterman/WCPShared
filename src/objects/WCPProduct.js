@@ -430,13 +430,23 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
 
       var split_options = ["∅", "∅"];
       var short_split_options = ["∅", "∅"];
+      var num_split_options_name = [0, 0];
+      var num_split_options_shortname = [0, 0];
       if (product.additional_options.left.length) {
-        split_options[LEFT_SIDE] = ComponentsListName(FilterByOmitFromName(additional_options_objects.left)).join(" + ");
-        short_split_options[LEFT_SIDE] = ComponentsListShortname(FilterByOmitFromShortname(additional_options_objects.left)).join(" + ");
+        const left_name_filtered_opts = FilterByOmitFromName(additional_options_objects.left);
+        const left_shortname_filtered_opts = FilterByOmitFromShortname(additional_options_objects.left);
+        num_split_options_name[LEFT_SIDE] = left_name_filtered_opts.length;
+        num_split_options_shortname[LEFT_SIDE] = left_shortname_filtered_opts.length;
+        split_options[LEFT_SIDE] = ComponentsListName(left_name_filtered_opts).join(" + ");
+        short_split_options[LEFT_SIDE] = ComponentsListShortname(left_shortname_filtered_opts).join(" + ");
       }
       if (product.additional_options.right.length) {
-        split_options[RIGHT_SIDE] = ComponentsListName(FilterByOmitFromName(additional_options_objects.right)).join(" + ");
-        short_split_options[RIGHT_SIDE] = ComponentsListShortname(FilterByOmitFromShortname(additional_options_objects.right)).join(" + ");
+        const right_name_filtered_opts = FilterByOmitFromName(additional_options_objects.left);
+        const right_shortname_filtered_opts = FilterByOmitFromShortname(additional_options_objects.left);
+        num_split_options_name[RIGHT_SIDE] = right_name_filtered_opts.length;
+        num_split_options_shortname[RIGHT_SIDE] = right_shortname_filtered_opts.length;
+        split_options[RIGHT_SIDE] = ComponentsListName(right_name_filtered_opts).join(" + ");
+        short_split_options[RIGHT_SIDE] = ComponentsListShortname(right_shortname_filtered_opts).join(" + ");
       }
 
       var name_components_list = null;
@@ -471,17 +481,17 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
           }
           names[LEFT_SIDE].length ? 0 : names[LEFT_SIDE].push("∅");
           names[RIGHT_SIDE].length ? 0 : names[RIGHT_SIDE].push("∅");
-          const left_name = names[LEFT_SIDE].length > 1 ? `( ${names[LEFT_SIDE].join(" + ")} )` : names[LEFT_SIDE].join(" + ");
-          const right_name = names[RIGHT_SIDE].length > 1 ? `( ${names[RIGHT_SIDE].join(" + ")} )` : names[RIGHT_SIDE].join(" + ");
+          const left_name = names[LEFT_SIDE].length > 1 || num_split_options_name[LEFT_SIDE] > 1 ? `( ${names[LEFT_SIDE].join(" + ")} )` : names[LEFT_SIDE].join(" + ");
+          const right_name = names[RIGHT_SIDE].length > 1 || num_split_options_name[RIGHT_SIDE] > 1 ? `( ${names[RIGHT_SIDE].join(" + ")} )` : names[RIGHT_SIDE].join(" + ");
           const split_name = `${left_name} | ${right_name}`;
           name_components_list.push(name_components_list.length > 0 ? `( ${split_name} )` : split_name);
           shortnames[LEFT_SIDE].length ? 0 : shortnames[LEFT_SIDE].push("∅");
           shortnames[RIGHT_SIDE].length ? 0 : shortnames[RIGHT_SIDE].push("∅");
-          const left_shortname = shortnames[LEFT_SIDE].length > 1 ? `( ${shortnames[LEFT_SIDE].join(" + ")} )` : shortnames[LEFT_SIDE].join(" + ");
-          const right_shortname = shortnames[RIGHT_SIDE].length > 1 ? `( ${shortnames[RIGHT_SIDE].join(" + ")} )` : shortnames[RIGHT_SIDE].join(" + ");
+          const left_shortname = shortnames[LEFT_SIDE].length > 1 || num_split_options_shortname[LEFT_SIDE] > 1 ? `( ${shortnames[LEFT_SIDE].join(" + ")} )` : shortnames[LEFT_SIDE].join(" + ");
+          const right_shortname = shortnames[RIGHT_SIDE].length > 1 || num_split_options_shortname[RIGHT_SIDE] > 1 ? `( ${shortnames[RIGHT_SIDE].join(" + ")} )` : shortnames[RIGHT_SIDE].join(" + ");
           const split_shortname = `${left_shortname} | ${right_shortname}`;
           shortname_components_list.push(shortname_components_list.length > 0 ? `( ${split_shortname} )` : split_shortname);
-          product.description = `( ${match_info.product[LEFT_SIDE].description} ) | ( ${match_info.product[RIGHT_SIDE].description} )`;
+          product.description = match_info.product[LEFT_SIDE].description && match_info.product[RIGHT_SIDE].description ? `( ${match_info.product[LEFT_SIDE].description} ) | ( ${match_info.product[RIGHT_SIDE].description} )` : "";
         }
       } // end is_split case
       else {
