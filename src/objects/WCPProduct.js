@@ -441,8 +441,8 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
         short_split_options[LEFT_SIDE] = ComponentsListShortname(left_shortname_filtered_opts).join(" + ");
       }
       if (product.additional_options.right.length) {
-        const right_name_filtered_opts = FilterByOmitFromName(additional_options_objects.left);
-        const right_shortname_filtered_opts = FilterByOmitFromShortname(additional_options_objects.left);
+        const right_name_filtered_opts = FilterByOmitFromName(additional_options_objects.right);
+        const right_shortname_filtered_opts = FilterByOmitFromShortname(additional_options_objects.right);
         num_split_options_name[RIGHT_SIDE] = right_name_filtered_opts.length;
         num_split_options_shortname[RIGHT_SIDE] = right_shortname_filtered_opts.length;
         split_options[RIGHT_SIDE] = ComponentsListName(right_name_filtered_opts).join(" + ");
