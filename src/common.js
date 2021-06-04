@@ -1,18 +1,18 @@
-export var TOPPING_NONE = 0;
-export var TOPPING_LEFT = 1;
-export var TOPPING_RIGHT = 2;
-export var TOPPING_WHOLE = 3;
-export var NO_MATCH = 0;
-export var AT_LEAST = 1;
-export var EXACT_MATCH = 2;
-export var LEFT_SIDE = 0;
-export var RIGHT_SIDE = 1;
+export const TOPPING_NONE = 0;
+export const TOPPING_LEFT = 1;
+export const TOPPING_RIGHT = 2;
+export const TOPPING_WHOLE = 3;
+export const NO_MATCH = 0;
+export const AT_LEAST = 1;
+export const EXACT_MATCH = 2;
+export const LEFT_SIDE = 0;
+export const RIGHT_SIDE = 1;
 
-export var EMAIL_REGEX = new RegExp("^[_A-Za-z0-9\-]+(\\.[_A-Za-z0-9\-]+)*@[A-Za-z0-9\-]+(\\.[A-Za-z0-9\-]+)*(\\.[A-Za-z]{2,})$");
+export const EMAIL_REGEX = new RegExp("^[_A-Za-z0-9\-]+(\\.[_A-Za-z0-9\-]+)*@[A-Za-z0-9\-]+(\\.[A-Za-z0-9\-]+)*(\\.[A-Za-z]{2,})$");
 
-export var CREDIT_REGEX = new RegExp("[A-Za-z0-9]{3}-[A-Za-z0-9]{2}-[A-Za-z0-9]{3}-[A-Z0-9]{8}$");
+export const CREDIT_REGEX = new RegExp("[A-Za-z0-9]{3}-[A-Za-z0-9]{2}-[A-Za-z0-9]{3}-[A-Z0-9]{8}$");
 
-export var PRODUCT_NAME_MODIFIER_TEMPLATE_REGEX = /(\{[A-Za-z0-9]+\})/g;
+export const PRODUCT_NAME_MODIFIER_TEMPLATE_REGEX = /(\{[A-Za-z0-9]+\})/g;
 
 export function GetPlacementFromMIDOID(pi, mid, oid) {
   var option_placement = pi.modifiers.hasOwnProperty(mid) ?
