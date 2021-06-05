@@ -19,6 +19,15 @@ export class WDateUtils {
     return "YYYYMMDD";
   }
 
+  /**
+   * @param {moment} first the first day
+   * @param {moment} second the second day
+   * @returns {boolean} true if first is a different day that is before second, else false
+   */
+  static IsFirstDatePreviousToSecondDate(first, second) {
+    return first.isBefore(second, 'day');
+  }
+
   static MinutesToDate(minutes) {
     if(isNaN(minutes) || minutes < 0) {
       return minutes;
