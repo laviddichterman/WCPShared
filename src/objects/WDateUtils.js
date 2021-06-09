@@ -262,47 +262,35 @@ export class WDateUtils {
   /**
    * Gets an array of Objects containing information for WCPReactConfig's blocked off
    * select widget
-   * @param {BLOCKED_OFF_WIRE_FORMAT} BLOCKED_OFF 
-   * @param {{operating_hours: [[[[[Number]]]]], additional_pizza_lead_time: Number, time_step2: [Number]}} SETTINGS 
+   * @param {AVAILABILITY_INFO_MAP} INFO - as computed by GetInfoMapForAvailabilityComputation
    * @param {moment} date - date to find the first available time for
-   * @param {{Number: boolean}} services - map from service index to enabled state
-   * @param {{cart_based_lead_time: Number, size: Number}} stuff_to_depreciate_map 
    * @param {moment} current_moment - the current date and time according to dog (the server, whatever)
    * @returns {[{value: Number, disabled: Boolean}]}
    */
-  static GetOptionsForDate(BLOCKED_OFF, SETTINGS, LEAD_TIMES, date, services, stuff_to_depreciate_map, current_moment) {
-    const INFO = WDateUtils.GetInfoMapForAvailabilityComputation(BLOCKED_OFF, SETTINGS, LEAD_TIMES, date, services, stuff_to_depreciate_map);
-    const current_time_plus_leadtime = moment(current_moment);
-    current_time_plus_leadtime.add(INFO.leadtime, 'm');
-    if (INFO.operating_intervals.length === 0 || 
-        date.isBefore(current_time_plus_leadtime, 'day')) {
-      // if we don't have any operating hours for the day or
-      // if by adding the lead time we've passed the date we're looking for
+  static GetOptionsForDate(INFO, date, current_moment) {
+    var earliest_time = WDateUtils.ComputeFirstAvailableTimeForDate(INFO, date, current_moment);
+    if (earliest_time === -1) {
       return [];
     }
-    const available_intervals = WDateUtils.ComputeSubtractionOfIntervalSets(INFO.operating_intervals, INFO.blocked_off_union, INFO.min_time_step);
-    var earliest_time = 0;
-    if (date.isSame(current_time_plus_leadtime, "day")) {
-      // NOTE: this doesn't work if we have active hours during a DST change
-      const current_time_plus_leadtime_mins_from_start = current_time_plus_leadtime.hours() * 60 + current_time_plus_leadtime.minutes();
-      earliest_time = Math.ceil((current_time_plus_leadtime_mins_from_start) / INFO.min_time_step) * INFO.min_time_step;
+    
+    var retval = [];
+    for (var i = 0; i < INFO.operating_intervals.length; ++i) {
+      earliest_time = Math.max(INFO.operating_intervals[i][0], earliest_time);
+      while (earliest_time <= INFO.operating_intervals[i][1] && earliest_time !== -1) {
+        retval.push({ value: earliest_time, disabled: false });
+        earliest_time = WDateUtils.HandleBlockedOffTime(INFO.blocked_off_union, INFO.operating_intervals, earliest_time + INFO.min_time_step, INFO.min_time_step);
+      }
     }
-    return WDateUtils.GetOperatingTimesForDate(available_intervals, INFO.min_time_step, earliest_time).map((time) => ({value: time, disabled: false}));
+    return retval;
   }
 
   /**
-   * 
-   * @param {BLOCKED_OFF_WIRE_FORMAT} BLOCKED_OFF
-   * @param {{operating_hours: [[[[[Number]]]]], additional_pizza_lead_time: Number, time_step2: [Number]}} SETTINGS 
-   * @param {[Number]} LEAD_TIMES 
+   * @param {AVAILABILITY_INFO_MAP} INFO - as computed by GetInfoMapForAvailabilityComputation  
    * @param {moment} date - date to find the first available time for
-   * @param {{Number: boolean}} services - map from service index to enabled state
-   * @param {{cart_based_lead_time: Number, size: Number}} stuff_to_depreciate_map 
    * @param {moment} current_moment - the current date and time according to dog (the server, whatever)
    * @returns the first available time in minutes from the start of the day (not taking into account DST), or -1 if no time is available
    */
-  static ComputeFirstAvailableTimeForDate(BLOCKED_OFF, SETTINGS, LEAD_TIMES, date, services, stuff_to_depreciate_map, current_moment) {
-    const INFO = WDateUtils.GetInfoMapForAvailabilityComputation(BLOCKED_OFF, SETTINGS, LEAD_TIMES, date, services, stuff_to_depreciate_map);
+  static ComputeFirstAvailableTimeForDate(INFO, date, current_moment) {
     const current_time_plus_leadtime = moment(current_moment);
     current_time_plus_leadtime.add(INFO.leadtime, 'm');
     if (INFO.operating_intervals.length === 0 || 
