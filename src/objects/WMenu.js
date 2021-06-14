@@ -40,11 +40,10 @@ export function FilterProduct(item, menu, disable_from_menu_flag_getter, order_t
  * @returns {function(String): boolean} function that takes a category ID and returns true if the category is not empty
  */
 export function FilterEmptyCategories(menu, disable_from_menu_flag_getter, order_time) {
-  const filter_fxn = FilterProducts(menu, disable_from_menu_flag_getter, order_time);
   return function ( CAT_ID ) {
     const cat_menu = menu.categories[CAT_ID].menu;
     for (var i = 0; i < cat_menu.length; ++i) {
-      if (filter_fxn(cat_menu[i])) {
+      if (FilterProduct(cat_menu[i], menu, disable_from_menu_flag_getter, order_time)) {
         return true;
       }
     }
