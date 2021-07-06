@@ -220,7 +220,7 @@ export class WDateUtils {
         pushed_time = operating_intervals[op_idx][0];
       }
       // if the time we're looking at is in the current operating time interval...
-      if (operating_intervals[op_idx][1] > pushed_time && operating_intervals[op_idx][0] <= pushed_time) {
+      if (operating_intervals[op_idx][1] >= pushed_time && operating_intervals[op_idx][0] <= pushed_time) {
         for (var bo_idx = 0; bo_idx < blocked_off_intervals.length; ++bo_idx) {
           if (blocked_off_intervals[bo_idx][1] >= pushed_time && blocked_off_intervals[bo_idx][0] <= pushed_time) {
             pushed_time = blocked_off_intervals[bo_idx][1] + step;
