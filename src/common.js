@@ -8,7 +8,7 @@ export const EXACT_MATCH = 2;
 export const LEFT_SIDE = 0;
 export const RIGHT_SIDE = 1;
 
-export const EMAIL_REGEX = new RegExp("^[_A-Za-z0-9\-]+(\\.[_A-Za-z0-9\-]+)*@[A-Za-z0-9\-]+(\\.[A-Za-z0-9\-]+)*(\\.[A-Za-z]{2,})$");
+export const EMAIL_REGEX = new RegExp(/^[_A-Za-z0-9\-\+]+(\.[_A-Za-z0-9\-\+]+)*@[A-Za-z0-9\-]+(\.[A-Za-z0-9\-]+)*(\.[A-Za-z]{2,})$/);
 
 export const CREDIT_REGEX = new RegExp("[A-Za-z0-9]{3}-[A-Za-z0-9]{2}-[A-Za-z0-9]{3}-[A-Z0-9]{8}$");
 
