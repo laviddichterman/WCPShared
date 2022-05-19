@@ -110,6 +110,7 @@ const MATCH_MATRIX = [
 ];
 
 // we need to take a map of these fields and allow name to be null if piid is _NOT_ set, piid should only be set if it's an exact match of a product instance in the catalog
+//TODO remove disable_data
 export const WCPProduct = function (product_class, piid, name, description, ordinal, modifiers, shortcode, base_price, disable_data, is_base, display_flags) {
   this.PRODUCT_CLASS = product_class;
   this.piid = piid;
@@ -511,6 +512,7 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
         product.description = match_info.product[LEFT_SIDE].description;
       }
       product.ordinal = match_info.product[LEFT_SIDE].ordinal;
+      // TODO: remove this assignment
       product.disable_data = match_info.product[LEFT_SIDE].disable_data;
       product.display_flags = match_info.product[LEFT_SIDE].display_flags;
       product.name = name_components_list.join(" + ");

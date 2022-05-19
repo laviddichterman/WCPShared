@@ -87,4 +87,7 @@ export class WFunctional {
         return `ANY ${mods[stmt.has_any_of_modifier.mtid].modifier_type.name}`;
     }
   }
+
+  //TODO: add function to test an AbstractExpression for completeness see https://app.asana.com/0/1184794277483753/1200242818246330
+  // maybe this is recursive or just looks at the current level for the UI and requires the caller to recurse the tree, or maybe we provide both
 }

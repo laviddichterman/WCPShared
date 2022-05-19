@@ -21,6 +21,7 @@ function WARIOPlacementToLocalPlacementEnum(w_placement) {
  * @returns {boolean} returns true if item is enabled and visible
  */
 export function FilterProduct(item, menu, disable_from_menu_flag_getter, order_time) {
+  // TODO: switch item.disable_data to item.PRODUCT_CLASS.disabled
   var passes = !disable_from_menu_flag_getter(item.display_flags) && DisableDataCheck(item.disable_data, order_time);
   for (var mtid in item.modifiers) {
     // TODO: for incomplete product instances, this should check for a viable way to order the product
@@ -153,7 +154,8 @@ export const WMenu = function (catalog) {
           modifiers,
           prod.item.shortcode,
           prod.item.price.amount / 100,
-          prod.item.disabled,
+          // TODO: remove item disabled
+          product_class.disabled ? product_class.disabled : prod.item.disabled,
           prod.is_base,
           prod.display_flags);
         product_entry.instances_list.push(product_instance);
