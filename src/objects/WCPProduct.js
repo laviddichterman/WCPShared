@@ -63,10 +63,10 @@ const HandleOptionCurry = (MENU, getterfxn) => {
   };
 }
 export function CopyWCPProduct(pi) {
-  return new WCPProduct(pi.PRODUCT_CLASS, pi.piid, pi.name, pi.description, pi.ordinal, pi.modifiers, pi.shortcode, pi.base_price, pi.disable_data, pi.is_base, pi.display_flags);
+  return new WCPProduct(pi.PRODUCT_CLASS, pi.piid, pi.name, pi.description, pi.ordinal, pi.modifiers, pi.shortcode, pi.is_base, pi.display_flags);
 }
 export function WCPProductFromDTO(dto, MENU) {
-  return new WCPProduct(MENU.product_classes[dto.pid].product, "", "", "", 0, dto.modifiers, "", 0, null, false, {});
+  return new WCPProduct(MENU.product_classes[dto.pid].product, "", "", "", 0, dto.modifiers, "", 0, false, {});
 }
 
 /**
@@ -110,22 +110,15 @@ const MATCH_MATRIX = [
 ];
 
 // we need to take a map of these fields and allow name to be null if piid is _NOT_ set, piid should only be set if it's an exact match of a product instance in the catalog
-//TODO remove disable_data
-export const WCPProduct = function (product_class, piid, name, description, ordinal, modifiers, shortcode, base_price, disable_data, is_base, display_flags) {
+export const WCPProduct = function (product_class, piid, name, description, ordinal, modifiers, shortcode, is_base, display_flags) {
   this.PRODUCT_CLASS = product_class;
   this.piid = piid;
   this.name = name;
   this.description = description;
   this.ordinal = ordinal;
-  this.disable_data = disable_data;
   this.is_base = is_base;
   this.shortcode = shortcode;
   this.display_flags = display_flags;
-  // base price is passed in, current thinking is that it should be the base price of the base product instance.
-  // cases where the base price of a certain configuration is different should be handled by different means
-  // passed in price can either be the configured price for this instance or the base product price. only the base_price of the
-  // base product instance is used
-  this.base_price = base_price;
   this.base_product_piid = null;
   // product.modifiers[mtid] = [[placement, option_id]]
   // enum is 0: none, 1: left, 2: right, 3: both
@@ -137,7 +130,7 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
   this.flavor_count = [0, 0];
 
   this.ComputePrice = function(MENU) {
-    var price = MENU.product_classes[this.PRODUCT_CLASS._id].instances[this.base_product_piid].base_price;
+    var price = this.PRODUCT_CLASS.price.amount / 100;
     for (var mt in this.modifiers) {
       this.modifiers[mt].forEach(function(opt) {
         if (opt[0] != TOPPING_NONE) {
@@ -512,8 +505,6 @@ export const WCPProduct = function (product_class, piid, name, description, ordi
         product.description = match_info.product[LEFT_SIDE].description;
       }
       product.ordinal = match_info.product[LEFT_SIDE].ordinal;
-      // TODO: remove this assignment
-      product.disable_data = match_info.product[LEFT_SIDE].disable_data;
       product.display_flags = match_info.product[LEFT_SIDE].display_flags;
       product.name = name_components_list.join(" + ");
       product.shortname = shortname_components_list.length === 0 ? match_info.product[LEFT_SIDE].shortname : shortname_components_list.join(" + ");
