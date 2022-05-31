@@ -1,3 +1,5 @@
+/* eslint-disable guard-for-in */
+/* eslint-disable no-plusplus */
 import moment from 'moment';
 
 /**
@@ -29,7 +31,7 @@ export class WDateUtils {
   }
 
   static MinutesToPrintTime(minutes) {
-    if(isNaN(minutes) || minutes < 0) {
+    if(Number.isNaN(minutes) || minutes < 0) {
       return minutes;
     }
     const hour = Math.floor(minutes / 60);
@@ -53,17 +55,18 @@ export class WDateUtils {
    * @returns the union of blocked off times for all specified services
    */  
   static BlockedOffIntervalsForServicesAndDay(BLOCKED_OFF, services, day) {
-    var intervals = [];
-    for (var i in services) {
+    let intervals = [];
+    Object.keys(services).forEach(i => {
       if (services[i]) {
-        for (var j in BLOCKED_OFF[i]) {
+        // eslint-disable-next-line no-restricted-syntax
+        for (const j in BLOCKED_OFF[i]) {
           if (BLOCKED_OFF[i][j][0] === day) {
             intervals = intervals.concat(BLOCKED_OFF[i][j][1]);
             break;
           }
         }
       }
-    }
+    });
     return intervals.length ? WDateUtils.ComputeUnionsForIntervals(intervals) : intervals;
   };
 
@@ -75,21 +78,21 @@ export class WDateUtils {
   static ComputeUnionsForIntervals(intervals) {
     // todo: maybe shallow copy this array?
     intervals.sort(WDateUtils.CompareIntervals);
-    var interval_unions = [intervals[0]];
-    var j = 1;
-    var k = 0;
+    const interval_unions = [intervals[0]];
+    let j = 1;
+    let k = 0;
     while (j < intervals.length) {
       if (interval_unions[k][1] >= intervals[j][0]) {
         // union the two intervals into the kth element of interval unions
         interval_unions[k] = [interval_unions[k][0], Math.max(interval_unions[k][1], intervals[j][1])];
-        ++j;
+        j += 1;
       }
       else if (interval_unions[k][1] < intervals[j][0]) {
         // intervals do not intersect, add the jth interval to the end of the
         // interval_unions and increment both iterators
         interval_unions.push(intervals[j]);
-        ++j;
-        ++k;
+        j += 1;
+        k += 1;
       }
       else {
         break;
@@ -112,25 +115,29 @@ export class WDateUtils {
     }
     a = a.slice();
     b = b.slice();
-    var retval = [];
-    var i = 0;
-    var j = 0;
-    for (var a_idx = i; a_idx < a.length; ++a_idx) {
-      var should_add = true;
-      for (var b_idx = j; b_idx < b.length; ++b_idx) {
+    const retval = [];
+    let i = 0;
+    let j = 0;
+    // eslint-disable-next-line no-plusplus
+    for (let a_idx = i; a_idx < a.length; ++a_idx) {
+      let should_add = true;
+      // eslint-disable-next-line no-plusplus
+      for (let b_idx = j; b_idx < b.length; ++b_idx) {
         if (a[a_idx][0] > b[b_idx][1]) { // a is entirely after b 
           // then we don't need to look at b[j] anymore
           // assert: j === b_idx
-          ++j; 
+          j += 1; 
+          // eslint-disable-next-line no-continue
           continue;
         }
         else { // (a[a_idx][0] <= b[b_idx][1])
           // if b's end time is greater than or equal to a's start time and b's start time is less than or eq to a's end time
           // ... a0 <= b1, b0 <= b1, b0 <= a1, a0 <= a1
+          // eslint-disable-next-line no-lonely-if
           if (a[a_idx][1] >= b[b_idx][0]) {
             // b0 <= a0 <= b1 <= a1
             if (a[a_idx][0] >= b[b_idx][0]) {
-              //case: from the begining of a's interval, some or all of a is clipped by some or all of b
+              // case: from the begining of a's interval, some or all of a is clipped by some or all of b
               // "partial to full eclipse from the beginning"
               if (b[b_idx][1] < a[a_idx][1]) {
                 // case partial eclipse
@@ -155,14 +162,14 @@ export class WDateUtils {
                 // otherwise partial eclipse from the end
                 // and we've already added the open section
                 should_add = false;
-                ++i;
+                i += 1;
                 break;
               }
             }
           }
           else { // a[a_idx][1] < b[b_idx][0]
             // a is entirely before b, we don't need to look at a anymore
-            ++i;
+            i += 1;
             break;
           }
         }
@@ -182,12 +189,12 @@ export class WDateUtils {
    * @returns 
    */
   static GetOperatingHoursForServicesAndDay(operating_hours, services, day_index) {
-    var intervals = [];
-    for (var i in services) {
+    let intervals = [];
+    Object.keys(services).forEach(i => {
       if (services[i]) {
         intervals = intervals.concat(operating_hours[i][day_index]);
       }
-    }
+    });
     if (!intervals.length) {
       return [];
     }
@@ -202,9 +209,10 @@ export class WDateUtils {
    * @returns 
    */
   static GetOperatingTimesForDate(operating_ranges, step, lead_time_min) {
-    var retval = [];
-    for (var i in operating_ranges) {
-      var earliest = Math.max(lead_time_min, operating_ranges[i][0]);
+    const retval = [];
+    // eslint-disable-next-line no-restricted-syntax
+    for (const i in operating_ranges) {
+      let earliest = Math.max(lead_time_min, operating_ranges[i][0]);
       while (earliest <= operating_ranges[i][1]) {
         retval.push(earliest);
         earliest += step;
@@ -214,14 +222,14 @@ export class WDateUtils {
   }
 
   static HandleBlockedOffTime(blocked_off_intervals, operating_intervals, start, step) { 
-    var pushed_time = start;
-    for (var op_idx = 0; op_idx < operating_intervals.length; ++op_idx) { 
+    let pushed_time = start;
+    for (let op_idx = 0; op_idx < operating_intervals.length; ++op_idx) { 
       if (pushed_time < operating_intervals[op_idx][0]) {
         pushed_time = operating_intervals[op_idx][0];
       }
       // if the time we're looking at is in the current operating time interval...
       if (operating_intervals[op_idx][1] >= pushed_time && operating_intervals[op_idx][0] <= pushed_time) {
-        for (var bo_idx = 0; bo_idx < blocked_off_intervals.length; ++bo_idx) {
+        for (let bo_idx = 0; bo_idx < blocked_off_intervals.length; ++bo_idx) {
           if (blocked_off_intervals[bo_idx][1] >= pushed_time && blocked_off_intervals[bo_idx][0] <= pushed_time) {
             pushed_time = blocked_off_intervals[bo_idx][1] + step;
           }
@@ -250,10 +258,10 @@ export class WDateUtils {
     const internal_formatted_date = date.format(WDateUtils.DATE_STRING_INTERNAL_FORMAT);
     const blocked_off_union = WDateUtils.BlockedOffIntervalsForServicesAndDay(BLOCKED_OFF, services, internal_formatted_date);
     const operating_intervals = WDateUtils.GetOperatingHoursForServicesAndDay(SETTINGS.operating_hours, services, date.day());
-    const min_time_step = Math.min(...SETTINGS.time_step2.filter((_, i) => services.hasOwnProperty(i) && services[i]));
-    const min_lead_time = Math.min(...LEAD_TIMES.filter((_, i) => services.hasOwnProperty(i) && services[i]));
-    const order_size = stuff_to_depreciate_map.hasOwnProperty("size") ? stuff_to_depreciate_map.size : 1;
-    const cart_based_lead_time = stuff_to_depreciate_map.hasOwnProperty("cart_based_lead_time") ? stuff_to_depreciate_map.cart_based_lead_time : 0;
+    const min_time_step = Math.min(...SETTINGS.time_step2.filter((_, i) => Object.hasOwn(services,i) && services[i]));
+    const min_lead_time = Math.min(...LEAD_TIMES.filter((_, i) => Object.hasOwn(services,i) && services[i]));
+    const order_size = Object.hasOwn(stuff_to_depreciate_map, "size") ? stuff_to_depreciate_map.size : 1;
+    const cart_based_lead_time = Object.hasOwn(stuff_to_depreciate_map, "cart_based_lead_time") ? stuff_to_depreciate_map.cart_based_lead_time : 0;
     // cart_based_lead_time and service/size lead time don't stack
     const leadtime = Math.max(min_lead_time + ((order_size - 1) * SETTINGS.additional_pizza_lead_time), cart_based_lead_time);
     return { blocked_off_union, operating_intervals, min_time_step, leadtime };
@@ -268,13 +276,13 @@ export class WDateUtils {
    * @returns {[{value: Number, disabled: Boolean}]}
    */
   static GetOptionsForDate(INFO, date, current_moment) {
-    var earliest_time = WDateUtils.ComputeFirstAvailableTimeForDate(INFO, date, current_moment);
+    let earliest_time = WDateUtils.ComputeFirstAvailableTimeForDate(INFO, date, current_moment);
     if (earliest_time === -1) {
       return [];
     }
     
-    var retval = [];
-    for (var i = 0; i < INFO.operating_intervals.length; ++i) {
+    const retval = [];
+    for (let i = 0; i < INFO.operating_intervals.length; ++i) {
       earliest_time = Math.max(INFO.operating_intervals[i][0], earliest_time);
       while (earliest_time <= INFO.operating_intervals[i][1] && earliest_time !== -1) {
         retval.push({ value: earliest_time, disabled: false });
@@ -335,7 +343,8 @@ export class WDateUtils {
   }
 
   static AddIntervalToService(service_index, parsed_date, interval, new_interval_map) {
-    for (var date_index in new_interval_map[service_index]) {
+    // eslint-disable-next-line no-restricted-syntax
+    for (const date_index in new_interval_map[service_index]) {
       if (parsed_date === new_interval_map[service_index][date_index][0]) {
         const new_interval_map_for_service_and_day = new_interval_map[service_index][date_index].slice();
         new_interval_map_for_service_and_day[1] = new_interval_map_for_service_and_day[1].slice();

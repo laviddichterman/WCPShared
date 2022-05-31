@@ -8,17 +8,18 @@ export const EXACT_MATCH = 2;
 export const LEFT_SIDE = 0;
 export const RIGHT_SIDE = 1;
 
-export const EMAIL_REGEX = new RegExp(/^[_A-Za-z0-9\-\+]+(\.[_A-Za-z0-9\-\+]+)*@[A-Za-z0-9\-]+(\.[A-Za-z0-9\-]+)*(\.[A-Za-z]{2,})$/);
+// eslint-disable-next-line prefer-regex-literals
+export const EMAIL_REGEX = new RegExp(/^[_A-Za-z0-9\-+]+(\.[_A-Za-z0-9\-+]+)*@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*(\.[A-Za-z]{2,})$/);
 
-export const CREDIT_REGEX = new RegExp("[A-Za-z0-9]{3}-[A-Za-z0-9]{2}-[A-Za-z0-9]{3}-[A-Z0-9]{8}$");
+export const CREDIT_REGEX = /[A-Za-z0-9]{3}-[A-Za-z0-9]{2}-[A-Za-z0-9]{3}-[A-Z0-9]{8}$/;
 
 export const PRODUCT_NAME_MODIFIER_TEMPLATE_REGEX = /(\{[A-Za-z0-9]+\})/g;
 
-export function GetPlacementFromMIDOID(pi, mid, oid) {
-  var option_placement = pi.modifiers.hasOwnProperty(mid) ?
-    pi.modifiers[mid].find(function (x) { return x[1] === oid }) : null;
+export const GetPlacementFromMIDOID = (pi, mid, oid) => {
+  const option_placement = Object.hasOwn(pi.modifiers,mid) ?
+    pi.modifiers[mid].find((x) => x[1] === oid ) : null;
   return option_placement ? option_placement[0] : TOPPING_NONE;
-}
+};
 
 /**
  * Function to check if something is disabled
