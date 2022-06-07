@@ -207,9 +207,9 @@ export interface IConstLiteralExpression {
   value: any;
 };
 export interface IIfElseExpression {
-  true_branch?: IAbstractExpression;
-  false_branch?: IAbstractExpression;
-  test?: IAbstractExpression;
+  true_branch: IAbstractExpression;
+  false_branch: IAbstractExpression;
+  test: IAbstractExpression;
 };
 
 export enum ProductInstanceFunctionOperator { 'AND', 'OR', 'NOT', 'EQ', 'NE', 'GT', 'GE', 'LT', 'LE' };
@@ -241,10 +241,13 @@ export interface IProductInstanceFunction {
   name: string;
 };
 
+export interface ICatalogModifiers { [index:string]: { options: IOption[]; modifier_type: IOptionType; }; };
+export interface ICatalogCategories { [index:string]: { category: ICategory; children: string[]; products: string[]; }; };
+export interface ICatalogProducts { [index:string]: { product: IProduct, instances: IProductInstance[] }};
 export interface ICatalog {
-  modifiers: { [index:string]: { options: IOption[]; modifier_type: IOptionType; }; };
-  categories: { [index:string]: { category: ICategory; children: string[]; products: string[]; }; };
-  products: { [index:string]: { product: IProduct, instances: IProductInstance[] }};
+  modifiers: ICatalogModifiers;
+  categories: ICatalogCategories;
+  products: ICatalogProducts;
   product_instance_functions: IProductInstanceFunction[]
   version: string;
   apiver: {major: number; minor: number; patch: number;};
