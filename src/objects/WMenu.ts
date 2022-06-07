@@ -1,17 +1,18 @@
 import { DisableDataCheck } from "../common";
 import { CreateWCPProductFromPI } from "./WCPProduct";
-import { IMenu, ICatalog, MenuCategories, MenuModifiers, MenuProducts, CategoryEntry, ModifierEntry, ProductEntry} from "../types";
+import { IMenu, ICatalog, MenuCategories, MenuModifiers, MenuProducts, CategoryEntry, ModifierEntry, ProductEntry, WCPOption, WCPProduct} from "../types";
+import moment from "moment";
 
 
 /**
  * Checks if a product is enabled and visible
  * @param {WCPProduct} item - the product to check 
- * @param {WMenu} menu - the menu from which to pull catalog data
+ * @param {IMenu} menu - the menu from which to pull catalog data
  * @param {function(Object): boolean} disable_from_menu_flag_getter - getter function to pull the proper display flag from the products
  * @param {moment} order_time - the time to use to check for disable/enable status
  * @returns {boolean} returns true if item is enabled and visible
  */
-export function FilterProduct(item, menu, disable_from_menu_flag_getter, order_time) {
+export function FilterProduct(item : WCPProduct, menu : IMenu, disable_from_menu_flag_getter, order_time : moment.Moment) {
   let passes = !disable_from_menu_flag_getter(item.display_flags) && DisableDataCheck(item.PRODUCT_CLASS.disabled, order_time);
   Object.keys(item.modifiers).forEach(mtid => {
     // TODO: for incomplete product instances, this should check for a viable way to order the product
@@ -23,13 +24,13 @@ export function FilterProduct(item, menu, disable_from_menu_flag_getter, order_t
 /**
  * Returns a function used to filter out categories without products after having filtered out
  * empty or disabled products
- * @param {WMenu} menu - the menu from which to pull catalog data
+ * @param {IMenu} menu - the menu from which to pull catalog data
  * @param {function(Object): boolean} disable_from_menu_flag_getter - getter function to pull the proper display flag from the products
  * @param {moment} order_time - the time to use to check for disable/enable status
  * @returns {function(String): boolean} function that takes a category ID and returns true if the category is not empty
  */
-export function FilterEmptyCategories(menu, disable_from_menu_flag_getter, order_time) {
-  return ( CAT_ID ) => {
+export function FilterEmptyCategories(menu : IMenu, disable_from_menu_flag_getter, order_time : moment.Moment) {
+  return ( CAT_ID : string ) => {
     const cat_menu = menu.categories[CAT_ID].menu;
     // eslint-disable-next-line no-plusplus
     for (let i = 0; i < cat_menu.length; ++i) {
@@ -49,7 +50,7 @@ export function FilterEmptyCategories(menu, disable_from_menu_flag_getter, order
  * @param {function(WCPProduct): boolean} filter_products 
  * @param {moment} order_time 
  */
-export function FilterWMenu(menu, filter_products, order_time) {
+export function FilterWMenu(menu : IMenu, filter_products, order_time : moment.Moment) {
   // prune categories via DFS
   {
     const catids_to_remove = {};
@@ -88,9 +89,9 @@ export function FilterWMenu(menu, filter_products, order_time) {
 
   // prune modifier options and types as appropriate
   Object.keys(menu.modifiers).forEach(mtid => { 
-    menu.modifiers[mtid].options_list = menu.modifiers[mtid].options_list.filter((opt) => DisableDataCheck(opt.disable_data, order_time));
+    menu.modifiers[mtid].options_list = menu.modifiers[mtid].options_list.filter((opt) => DisableDataCheck(opt.mo.item.disabled, order_time));
     if (menu.modifiers[mtid].options_list.length > 0) {
-      menu.modifiers[mtid].options = menu.modifiers[mtid].options_list.reduce((acc, x) => Object.assign(acc, {[x.moid]: x}), {})
+      menu.modifiers[mtid].options = menu.modifiers[mtid].options_list.reduce((acc, x) => Object.assign(acc, {[x.mo._id]: x}), {})
     }
     else {
       delete menu.modifiers[mtid];
@@ -107,7 +108,7 @@ function ComputeModifiers(cat : ICatalog) {
     cat.modifiers[mtid].options.sort((a, b) => a.ordinal - b.ordinal).forEach((opt) => {
       const option : WCPOption = {index: opt_index, mo: opt, mt: mod};
       modifier_entry.options_list.push(option);
-      modifier_entry.options[option.moid] = option;
+      modifier_entry.options[option.mo._id] = option;
       opt_index += 1;
     });
     mods[mtid] = modifier_entry;

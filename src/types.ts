@@ -76,7 +76,7 @@ export interface ICatalogItem {
     shortcode?: string;
     price: IMoney;
     externalIDs?: IExternalIDs;
-    disabled?: IDisabled;
+    disabled: IDisabled | null;
     permanent_disable?: boolean;
 };
 
@@ -253,12 +253,23 @@ export interface ICatalog {
   apiver: {major: number; minor: number; patch: number;};
 };
 
+export interface MetadataModifierOptionMapEntry {placement : OptionPlacement; enable_left : boolean; enable_right : boolean; enable_whole : boolean };
+export interface MetadataModifierMapEntry { has_selectable: boolean, meets_minimum: boolean, options: { [MOID:string]: MetadataModifierOptionMapEntry } };
+export interface MetadataModifierMap { [mtid:string]: MetadataModifierMapEntry };
+export type MTID_MOID = [string, string];
+export interface ModifierDisplayListByLocation {left : MTID_MOID[]; right: MTID_MOID[]; whole: MTID_MOID[];};
 export interface WProductMetadata { 
   processed_name: string;
   processed_description: string;
   base_product_instance_id: string;
   exhaustive_options : any;
   is_split: boolean;
+  incomplete: boolean;
+  modifier_map: MetadataModifierMap;
+  advanced_option_eligible: boolean;
+  advanced_option_selected: boolean;
+  additional_modifiers: ModifierDisplayListByLocation;
+  exhaustive_modifiers: ModifierDisplayListByLocation;
 }
 
 export interface WCPProduct { 
