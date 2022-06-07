@@ -1,7 +1,7 @@
 {
   "name": "@wcp/wcpshared",
-  "version": "2.2.10",
-  "description": "Shared Javascript modules for WARIO",
+  "version": "3.0.0",
+  "description": "Shared JS/TS modules for WARIO",
   "main": "dist/wcpshared.js",
   "scripts": {
     "build": "npx webpack --mode development ./src",
@@ -39,12 +39,12 @@
     "eslint-plugin-import": "^2.26.0",
     "eslint-plugin-jsx-a11y": "^6.5.1",
     "eslint-plugin-prettier": "^4.0.0",
-    "webpack": "^5.72.1",
+    "webpack": "^5.73.0",
     "webpack-cli": "^4.9.2",
-    "webpack-dev-server": "^4.9.0",
+    "webpack-dev-server": "^4.9.2",
     "@babel/eslint-parser": "^7.18.2",
-    "@typescript-eslint/eslint-plugin": "^5.26.0",
-    "@typescript-eslint/parser": "^5.26.0",
-    "eslint": "^8.16.0"
+    "@typescript-eslint/eslint-plugin": "^5.27.1",
+    "@typescript-eslint/parser": "^5.27.1",
+    "eslint": "^8.17.0"
   }
 }

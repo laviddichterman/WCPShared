@@ -1,10 +1,13 @@
+import { IDisabled } from "./types";
+
 export const TOPPING_NONE = 0;
 export const TOPPING_LEFT = 1;
 export const TOPPING_RIGHT = 2;
 export const TOPPING_WHOLE = 3;
-export const NO_MATCH = 0;
-export const AT_LEAST = 1;
-export const EXACT_MATCH = 2;
+// export enum MODIFIER_MATCH { NO_MATCH, AT_LEAST, EXACT_MATCH };
+// export const NO_MATCH = 0;
+// export const AT_LEAST = 1;
+// export const EXACT_MATCH = 2;
 export const LEFT_SIDE = 0;
 export const RIGHT_SIDE = 1;
 
@@ -23,10 +26,10 @@ export const GetPlacementFromMIDOID = (pi, mid, oid) => {
 
 /**
  * Function to check if something is disabled
- * @param {Object} disable_data - catalog sourced info as to if/when the product is enabled or disabled
- * @param {moment} order_time - the time to use to check for disabling
+ * @param {IDisabled} disable_data - catalog sourced info as to if/when the product is enabled or disabled
+ * @param {Date} order_time - the time to use to check for disabling
  * @returns {boolean} true if the product is enabled, false otherwise
  */
-export function DisableDataCheck(disable_data, order_time) {
+export function DisableDataCheck(disable_data : IDisabled | null, order_time : Date) {
   return !disable_data || (!(disable_data.start > disable_data.end) && (disable_data.start > order_time.valueOf() || disable_data.end < order_time.valueOf()));
 }
