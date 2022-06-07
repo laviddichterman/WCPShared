@@ -59,7 +59,7 @@ export interface IDisabled {
 export interface ICategory {
   _id: string;
   name: string;
-  description?: string,
+  description: string | null;
   ordinal: number;
   parent_id?: string;
   subheading?: string,
@@ -162,7 +162,7 @@ export interface IProduct {
   _id: string;
   item?: ICatalogItem;
   price: IMoney;
-  disabled?: IDisabled;
+  disabled: IDisabled | null;
   service_disable: number[];
   
   display_flags: {

@@ -2,7 +2,7 @@
 import moment from 'moment';
 import { DisableDataCheck, PRODUCT_NAME_MODIFIER_TEMPLATE_REGEX } from "../common";
 import { WFunctional } from "./WFunctional";
-import { IProduct, IProductDisplayFlags, IProductInstance, OptionPlacement, ModifiersMap, MODIFIER_MATCH, MODIFIER_LOCATION, WCPProduct, IMenu, WProductMetadata, MetadataModifierMap, IModifierPlacementExpression } from '../types';
+import { IProduct, IProductDisplayFlags, IProductInstance, OptionPlacement, ModifiersMap, MODIFIER_MATCH, MODIFIER_LOCATION, WCPProduct, IMenu, WProductMetadata, MetadataModifierMap, IModifierPlacementExpression, MTID_MOID, ModifierEntry, WCPOption } from '../types';
 import { IsOptionEnabled } from './WCPOption';
 
 const NO_MATCH = MODIFIER_MATCH.NO_MATCH;
@@ -14,36 +14,36 @@ const RIGHT_SIDE = MODIFIER_LOCATION.RIGHT;
 type SIDE_MODIFIER_MATCH_MATRIX = MODIFIER_MATCH[][];
 type LR_MODIFIER_MATCH_MATRIX = [SIDE_MODIFIER_MATCH_MATRIX, SIDE_MODIFIER_MATCH_MATRIX];
 interface WProductCompareResult { mirror: boolean; match_matrix: LR_MODIFIER_MATCH_MATRIX; match: [MODIFIER_MATCH, MODIFIER_MATCH]; };
-const GetModifierOptionFromMIDOID = (menu, mid, oid) => menu.modifiers[mid].options[oid];
+const GetModifierOptionFromMIDOID = (menu : IMenu, mid : string, oid : string) => menu.modifiers[mid].options[oid];
 
-const ExtractMatch = (matrix) => (
+const ExtractMatch = (matrix : SIDE_MODIFIER_MATCH_MATRIX) : MODIFIER_MATCH => (
   // we take the min of EXACT_MATCH and the thing we just computed because if there are no modifiers, then we'll get Infinity
-  Math.min(EXACT_MATCH, Math.min.apply(0, matrix.map((modcompare_arr) => Math.min.apply(0, modcompare_arr))))
+  Math.min(EXACT_MATCH, Math.min.apply(null, matrix.map((modcompare_arr) => Math.min.apply(null, modcompare_arr))))
 );
 
-const ComponentsList = (source, getter) => source.map((x) => getter(x));
+const ComponentsList = (source : WCPOption[], getter : (x: WCPOption) => any) => source.map((x) => getter(x));
 
-const FilterByOmitFromName = (source) => (source.filter(x => !x.display_flags || !x.display_flags.omit_from_name));
-const FilterByOmitFromShortname = (source) => (source.filter(x => !x.display_flags || !x.display_flags.omit_from_shortname));
+const FilterByOmitFromName = (source : WCPOption[]) => (source.filter(x => !x.mo.display_flags || !x.mo.display_flags.omit_from_name));
+const FilterByOmitFromShortname = (source : WCPOption[]) => (source.filter(x => !x.mo.display_flags || !x.mo.display_flags.omit_from_shortname));
 
-const ComponentsListName = (source) => ComponentsList(source, x => x.name);
+const ComponentsListName = (source : WCPOption[]) => ComponentsList(source, (x : WCPOption) => x.mo.item.display_name);
 
-const ComponentsListShortname = (source) => ComponentsList(source, x => x.shortname);
+const ComponentsListShortname = (source : WCPOption[]) => ComponentsList(source, (x : WCPOption) => x.mo.item.shortcode);
 
-const HandleOptionNameFilterOmitByName = (menu, x) => {
+const HandleOptionNameFilterOmitByName = (menu : IMenu, x) => {
   const OPTION = GetModifierOptionFromMIDOID(menu, x[0], x[1]);
-  return (!OPTION.display_flags || !OPTION.display_flags.omit_from_name) ? OPTION.name : "";
+  return (!OPTION.mo.display_flags || !OPTION.mo.display_flags.omit_from_name) ? OPTION.mo.item.display_name : "";
 }
 
-const HandleOptionNameNoFilter = (menu, x) => (GetModifierOptionFromMIDOID(menu, x[0], x[1]).name);
+const HandleOptionNameNoFilter = (menu : IMenu, x : MTID_MOID) => (GetModifierOptionFromMIDOID(menu, x[0], x[1]).mo.item.display_name);
 
-const HandleOptionCurry = (MENU, getterfxn) => (x) => {
+const HandleOptionCurry = (MENU : IMenu, getterfxn) => (x : MTID_MOID) => {
   // TODO: needs to filter disabled or unavailble options
-  const LIST_CHOICES = (CATALOG_MODIFIER_INFO) => {
-    const choices = CATALOG_MODIFIER_INFO.options_list.map(x => x.name);
+  const LIST_CHOICES = (CATALOG_MODIFIER_INFO : ModifierEntry) => {
+    const choices = CATALOG_MODIFIER_INFO.options_list.map(x => x.mo.item.display_name);
     return choices.length < 3 ? choices.join(" or ") : [choices.slice(0, -1).join(", "), choices[choices.length - 1]].join(", or ");
   };
-  if (x[1] === -1) {
+  if (x[1] === "") {
     const CATALOG_MODIFIER_INFO = MENU.modifiers[x[0]];
     switch (CATALOG_MODIFIER_INFO.modifier_type.display_flags.empty_display_as) {
       case "YOUR_CHOICE_OF": return `Your choice of ${CATALOG_MODIFIER_INFO.modifier_type.display_name ? CATALOG_MODIFIER_INFO.modifier_type.display_name : CATALOG_MODIFIER_INFO.modifier_type.name}`;
@@ -373,17 +373,17 @@ export function WCPProductGenerateMetadata(a: WCPProduct, MENU: IMenu, service_t
     // we check for an incomplete modifier and add an entry if the empty_display_as flag is anything other than OMIT
     if (num_selected[LEFT_SIDE] < MIN_SELECTED &&
       num_selected[RIGHT_SIDE] < MIN_SELECTED) {
-      if (EMPTY_DISPLAY_AS !== "OMIT" && metadata.modifier_map[mtid].has_selectable) { metadata.exhaustive_modifiers.whole.push([mtid, -1]); }
+      if (EMPTY_DISPLAY_AS !== "OMIT" && metadata.modifier_map[mtid].has_selectable) { metadata.exhaustive_modifiers.whole.push([mtid, ""]); }
       metadata.modifier_map[mtid].meets_minimum = !metadata.modifier_map[mtid].has_selectable;
       metadata.incomplete = metadata.incomplete || metadata.modifier_map[mtid].has_selectable;
     }
     else if (num_selected[LEFT_SIDE] < MIN_SELECTED) {
-      if (EMPTY_DISPLAY_AS !== "OMIT" && metadata.modifier_map[mtid].has_selectable) { metadata.exhaustive_modifiers.left.push([mtid, -1]); }
+      if (EMPTY_DISPLAY_AS !== "OMIT" && metadata.modifier_map[mtid].has_selectable) { metadata.exhaustive_modifiers.left.push([mtid, ""]); }
       metadata.modifier_map[mtid].meets_minimum = !metadata.modifier_map[mtid].has_selectable;
       metadata.incomplete = metadata.incomplete || metadata.modifier_map[mtid].has_selectable;
     }
     else if (num_selected[RIGHT_SIDE] < MIN_SELECTED) {
-      if (EMPTY_DISPLAY_AS !== "OMIT" && metadata.modifier_map[mtid].has_selectable) { metadata.exhaustive_modifiers.right.push([mtid, -1]); }
+      if (EMPTY_DISPLAY_AS !== "OMIT" && metadata.modifier_map[mtid].has_selectable) { metadata.exhaustive_modifiers.right.push([mtid, ""]); }
       metadata.modifier_map[mtid].meets_minimum = !metadata.modifier_map[mtid].has_selectable;
       metadata.incomplete = metadata.incomplete || metadata.modifier_map[mtid].has_selectable;
     }
@@ -403,16 +403,17 @@ export function WCPProductGenerateMetadata(a: WCPProduct, MENU: IMenu, service_t
     return;
   }
 
-  const additional_options_objects = {};
-  Object.keys(a.additional_options).forEach(loc => {
-    additional_options_objects[loc] = a.additional_options[loc].map(x => GetModifierOptionFromMIDOID(MENU, x[0], x[1]));
-  });
+  const additional_options_objects = {
+    left: metadata.additional_modifiers.left.map((x : MTID_MOID) => GetModifierOptionFromMIDOID(MENU, x[0], x[1])),
+    right: metadata.additional_modifiers.right.map((x : MTID_MOID) => GetModifierOptionFromMIDOID(MENU, x[0], x[1])),
+    whole: metadata.additional_modifiers.whole.map((x : MTID_MOID) => GetModifierOptionFromMIDOID(MENU, x[0], x[1])),
+  };
 
   const split_options = ["∅", "∅"];
   const short_split_options = ["∅", "∅"];
   const num_split_options_name = [0, 0];
   const num_split_options_shortname = [0, 0];
-  if (a.additional_options.left.length) {
+  if (metadata.additional_modifiers.left.length) {
     const left_name_filtered_opts = FilterByOmitFromName(additional_options_objects.left);
     const left_shortname_filtered_opts = FilterByOmitFromShortname(additional_options_objects.left);
     num_split_options_name[LEFT_SIDE] = left_name_filtered_opts.length;
@@ -420,7 +421,7 @@ export function WCPProductGenerateMetadata(a: WCPProduct, MENU: IMenu, service_t
     split_options[LEFT_SIDE] = ComponentsListName(left_name_filtered_opts).join(" + ");
     short_split_options[LEFT_SIDE] = ComponentsListShortname(left_shortname_filtered_opts).join(" + ");
   }
-  if (a.additional_options.right.length) {
+  if (metadata.additional_modifiers.right.length) {
     const right_name_filtered_opts = FilterByOmitFromName(additional_options_objects.right);
     const right_shortname_filtered_opts = FilterByOmitFromShortname(additional_options_objects.right);
     num_split_options_name[RIGHT_SIDE] = right_name_filtered_opts.length;
@@ -431,7 +432,7 @@ export function WCPProductGenerateMetadata(a: WCPProduct, MENU: IMenu, service_t
 
   let name_components_list = null;
   let shortname_components_list = null;
-  if (a.is_split) {
+  if (metadata.is_split) {
     name_components_list = ComponentsListName(FilterByOmitFromName(additional_options_objects.whole));
     shortname_components_list = ComponentsListShortname(FilterByOmitFromShortname(additional_options_objects.whole));
     if (match_info.product[LEFT_SIDE].piid === match_info.product[RIGHT_SIDE].piid) {
@@ -632,236 +633,6 @@ export const WCPProductTODODELETE = function (product_class, piid, name, descrip
       product.processed_name = product.name.replace(PRODUCT_NAME_MODIFIER_TEMPLATE_REGEX, (m) => Object.hasOwn(name_template_match_obj, m) ? name_template_match_obj[m] : "");
       product.processed_description = product.description.replace(PRODUCT_NAME_MODIFIER_TEMPLATE_REGEX, (m) => Object.hasOwn(description_template_match_obj, m) ? description_template_match_obj[m] : "");
     }
-
-    const BuildName = (product, service_time) => {
-
-      // TODO PULL THIS OUT to helper function
-      /* NOTE/TODO: 2021_05_02, current issue with the following code is a questionable dependency on what makes a complete product if 
-          modifier options are disabled for non-dependent reasons (like, OOS or some other combination disable that isn't actually intended to make it impossible to complete a product)
-          it's very possible that a more correct logic doesn't look at has_selectable in the modifier map for determining if the product is complete but rather looks at enable_modifier_type.
-          if this is changed, then we need to catch creation of impossible-to-build products in the catalog, before they're surfaced to a customer.
-
-          additionally, since we don't have any checks that we're not exceeding MAX_SELECTED as defined by the modifier type, the modifier_map values for enable_left, enable_right, enable_whole
-          are not actually correct. but the fix for that might need to live in the WOption.IsEnabled method... but probably not since this is the function where we determine very specifically what 
-          our selection count is for LEFT/RIGHT/WHOLE
-      */
-      console.assert(match_info.product[LEFT_SIDE] !== null && match_info.product[RIGHT_SIDE] !== null, "We should have both matches determined by now.");
-      // assign shortcode (easy)
-      product.shortcode = product.is_split && match_info.shortcodes[LEFT_SIDE] !== match_info.shortcodes[RIGHT_SIDE] ? match_info.shortcodes.join("|") : match_info.shortcodes[LEFT_SIDE];
-      product.incomplete = false;
-
-      // determine if we're comparing to the base product on the left and right sides
-      const is_compare_to_base = [
-        BASE_PRODUCT_INSTANCE.piid === match_info.product[LEFT_SIDE].piid,
-        BASE_PRODUCT_INSTANCE.piid === match_info.product[RIGHT_SIDE].piid];
-
-      // mod map is { MTID: { has_selectable: boolean, meets_minimum: boolean, options: { MOID: {placement, enable_left, enable_right, enable_whole } } } }
-      product.modifier_map = {};
-      product.advanced_option_eligible = false;
-      product.advanced_option_selected = false;
-      // split out options beyond the base product into left additions, right additions, and whole additions
-      // each entry in these arrays represents the modifier index on the product class and the option index in that particular modifier
-      product.additional_options = { left: [], right: [], whole: [] };
-      product.exhaustive_options = { left: [], right: [], whole: [] };
-      PRODUCT_CLASS.modifiers.forEach((pc_modifier, mtidx) => {
-        const { mtid } = pc_modifier;
-        const modifier_type_enable_function = pc_modifier.enable;
-        const CATALOG_MODIFIER_INFO = MENU.modifiers[mtid];
-        const is_single_select = CATALOG_MODIFIER_INFO.modifier_type.min_selected === 1 && CATALOG_MODIFIER_INFO.modifier_type.max_selected === 1;
-        const is_base_product_edge_case = is_single_select && !PRODUCT_CLASS.display_flags.show_name_of_base_product;
-        product.modifier_map[mtid] = { has_selectable: false, meets_minimum: false, options: {} };
-        const enable_modifier_type = modifier_type_enable_function === null || WFunctional.ProcessProductInstanceFunction(product, modifier_type_enable_function);
-        for (let moidx = 0; moidx < CATALOG_MODIFIER_INFO.options_list.length; ++moidx) {
-          const option_object = CATALOG_MODIFIER_INFO.options_list[moidx];
-          const is_enabled = enable_modifier_type && DisableDataCheck(option_object.disable_data, service_time)
-          const option_info = {
-            placement: OptionPlacement.NONE,
-            // do we need to figure out if we can de-select? answer: probably
-            enable_left: is_enabled && option_object.can_split && option_object.IsEnabled(product, OptionPlacement.LEFT, MENU),
-            enable_right: is_enabled && option_object.can_split && option_object.IsEnabled(product, OptionPlacement.RIGHT, MENU),
-            enable_whole: is_enabled && option_object.IsEnabled(product, OptionPlacement.WHOLE, MENU),
-          };
-          const enable_left_or_right = option_info.enable_left || option_info.enable_right;
-          product.advanced_option_eligible = product.advanced_option_eligible || enable_left_or_right;
-          product.modifier_map[mtid].options[option_object.moid] = option_info;
-          product.modifier_map[mtid].has_selectable = product.modifier_map[mtid].has_selectable || enable_left_or_right || option_info.enable_whole;
-        }
-
-        const num_selected = [0, 0];
-        if (Object.hasOwn(product.modifiers, mtid)) {
-          product.modifiers[mtid].forEach((placed_option) => {
-            const moid = placed_option[1];
-            const location = placed_option[0];
-            const moidx = CATALOG_MODIFIER_INFO.options[moid].index;
-            product.modifier_map[mtid].options[moid].placement = location;
-            switch (location) {
-              case OptionPlacement.LEFT: product.exhaustive_options.left.push([mtid, moid]); ++num_selected[LEFT_SIDE]; product.advanced_option_selected = true; break;
-              case OptionPlacement.RIGHT: product.exhaustive_options.right.push([mtid, moid]); ++num_selected[RIGHT_SIDE]; product.advanced_option_selected = true; break;
-              case OptionPlacement.WHOLE: product.exhaustive_options.whole.push([mtid, moid]); ++num_selected[LEFT_SIDE]; ++num_selected[RIGHT_SIDE]; break;
-              default: break;
-            }
-            const opt_compare_info = [match_info.comparison[LEFT_SIDE][mtidx][moidx], match_info.comparison[RIGHT_SIDE][mtidx][moidx]];
-            if ((opt_compare_info[LEFT_SIDE] === AT_LEAST && opt_compare_info[RIGHT_SIDE] === AT_LEAST) ||
-              (is_base_product_edge_case && is_compare_to_base[LEFT_SIDE] && is_compare_to_base[RIGHT_SIDE] &&
-                opt_compare_info[LEFT_SIDE] === EXACT_MATCH && opt_compare_info[RIGHT_SIDE] === EXACT_MATCH)) {
-              product.additional_options.whole.push([mtid, moid]);
-            }
-            else if (opt_compare_info[RIGHT_SIDE] === AT_LEAST ||
-              (is_base_product_edge_case && is_compare_to_base[RIGHT_SIDE] && opt_compare_info[RIGHT_SIDE] === EXACT_MATCH)) {
-              product.additional_options.right.push([mtid, moid]);
-            }
-            else if (opt_compare_info[LEFT_SIDE] === AT_LEAST ||
-              (is_base_product_edge_case && is_compare_to_base[LEFT_SIDE] && opt_compare_info[LEFT_SIDE] === EXACT_MATCH)) {
-              product.additional_options.left.push([mtid, moid]);
-            }
-          });
-        }
-        const EMPTY_DISPLAY_AS = CATALOG_MODIFIER_INFO.modifier_type.display_flags.empty_display_as;
-        const MIN_SELECTED = CATALOG_MODIFIER_INFO.modifier_type.min_selected;
-        // we check for an incomplete modifier and add an entry if the empty_display_as flag is anything other than OMIT
-        if (num_selected[LEFT_SIDE] < MIN_SELECTED &&
-          num_selected[RIGHT_SIDE] < MIN_SELECTED) {
-          if (EMPTY_DISPLAY_AS !== "OMIT" && product.modifier_map[mtid].has_selectable) { product.exhaustive_options.whole.push([mtid, -1]); }
-          product.modifier_map[mtid].meets_minimum = !product.modifier_map[mtid].has_selectable;
-          product.incomplete = product.incomplete || product.modifier_map[mtid].has_selectable;
-        }
-        else if (num_selected[LEFT_SIDE] < MIN_SELECTED) {
-          if (EMPTY_DISPLAY_AS !== "OMIT" && product.modifier_map[mtid].has_selectable) { product.exhaustive_options.left.push([mtid, -1]); }
-          product.modifier_map[mtid].meets_minimum = !product.modifier_map[mtid].has_selectable;
-          product.incomplete = product.incomplete || product.modifier_map[mtid].has_selectable;
-        }
-        else if (num_selected[RIGHT_SIDE] < MIN_SELECTED) {
-          if (EMPTY_DISPLAY_AS !== "OMIT" && product.modifier_map[mtid].has_selectable) { product.exhaustive_options.right.push([mtid, -1]); }
-          product.modifier_map[mtid].meets_minimum = !product.modifier_map[mtid].has_selectable;
-          product.incomplete = product.incomplete || product.modifier_map[mtid].has_selectable;
-        }
-        else {
-          // both left and right meet the minimum selected criteria
-          product.modifier_map[mtid].meets_minimum = true;
-        }
-      });
-
-      if (product.piid) {
-        // if we have a PI ID then that means we're an unmodified product instance from the catalog
-        // and we should find that product and assume its name.
-        const catalog_pi = PRODUCT_CLASS_MENU_ENTRY.instances[product.piid];
-        product.name = catalog_pi.name;
-        product.shortname = catalog_pi.shortcode;
-        RunTemplating(product);
-        return;
-      }
-
-      const additional_options_objects = {};
-      Object.keys(product.additional_options).forEach(loc => {
-        additional_options_objects[loc] = product.additional_options[loc].map(x => GetModifierOptionFromMIDOID(MENU, x[0], x[1]));
-      });
-
-      const split_options = ["∅", "∅"];
-      const short_split_options = ["∅", "∅"];
-      const num_split_options_name = [0, 0];
-      const num_split_options_shortname = [0, 0];
-      if (product.additional_options.left.length) {
-        const left_name_filtered_opts = FilterByOmitFromName(additional_options_objects.left);
-        const left_shortname_filtered_opts = FilterByOmitFromShortname(additional_options_objects.left);
-        num_split_options_name[LEFT_SIDE] = left_name_filtered_opts.length;
-        num_split_options_shortname[LEFT_SIDE] = left_shortname_filtered_opts.length;
-        split_options[LEFT_SIDE] = ComponentsListName(left_name_filtered_opts).join(" + ");
-        short_split_options[LEFT_SIDE] = ComponentsListShortname(left_shortname_filtered_opts).join(" + ");
-      }
-      if (product.additional_options.right.length) {
-        const right_name_filtered_opts = FilterByOmitFromName(additional_options_objects.right);
-        const right_shortname_filtered_opts = FilterByOmitFromShortname(additional_options_objects.right);
-        num_split_options_name[RIGHT_SIDE] = right_name_filtered_opts.length;
-        num_split_options_shortname[RIGHT_SIDE] = right_shortname_filtered_opts.length;
-        split_options[RIGHT_SIDE] = ComponentsListName(right_name_filtered_opts).join(" + ");
-        short_split_options[RIGHT_SIDE] = ComponentsListShortname(right_shortname_filtered_opts).join(" + ");
-      }
-
-      let name_components_list = null;
-      let shortname_components_list = null;
-      if (product.is_split) {
-        name_components_list = ComponentsListName(FilterByOmitFromName(additional_options_objects.whole));
-        shortname_components_list = ComponentsListShortname(FilterByOmitFromShortname(additional_options_objects.whole));
-        if (match_info.product[LEFT_SIDE].piid === match_info.product[RIGHT_SIDE].piid) {
-          if (!is_compare_to_base[LEFT_SIDE] || PRODUCT_CLASS.display_flags.show_name_of_base_product) {
-            name_components_list.unshift(match_info.product[LEFT_SIDE].name);
-            shortname_components_list.unshift(match_info.product[LEFT_SIDE].name);
-          }
-          name_components_list.push(`(${split_options.join(" | ")})`);
-          shortname_components_list.push(`(${short_split_options.join(" | ")})`);
-          product.description = match_info.product[LEFT_SIDE].description;
-        }
-        else {
-          // split product, different product instance match on each side
-          // logical assertion: if name_components for a given side are all false, then it's an exact match
-          const names = [
-            (!is_compare_to_base[LEFT_SIDE] || PRODUCT_CLASS.display_flags.show_name_of_base_product) ? [match_info.product[LEFT_SIDE].name] : [],
-            (!is_compare_to_base[RIGHT_SIDE] || PRODUCT_CLASS.display_flags.show_name_of_base_product) ? [match_info.product[RIGHT_SIDE].name] : []
-          ];
-          const shortnames = names.slice();
-          if (additional_options_objects.left.length) {
-            names[LEFT_SIDE] = names[LEFT_SIDE].concat(split_options[LEFT_SIDE]);
-            shortnames[LEFT_SIDE] = shortnames[LEFT_SIDE].concat(short_split_options[LEFT_SIDE]);
-          }
-          if (additional_options_objects.right.length) {
-            names[RIGHT_SIDE] = names[RIGHT_SIDE].concat(split_options[RIGHT_SIDE]);
-            shortnames[RIGHT_SIDE] = shortnames[RIGHT_SIDE].concat(short_split_options[RIGHT_SIDE]);
-          }
-          if (names[LEFT_SIDE].length) { names[LEFT_SIDE].push("∅") };
-          if (names[RIGHT_SIDE].length) { names[RIGHT_SIDE].push("∅") };
-          const left_name = names[LEFT_SIDE].length > 1 || num_split_options_name[LEFT_SIDE] > 1 ? `( ${names[LEFT_SIDE].join(" + ")} )` : names[LEFT_SIDE].join(" + ");
-          const right_name = names[RIGHT_SIDE].length > 1 || num_split_options_name[RIGHT_SIDE] > 1 ? `( ${names[RIGHT_SIDE].join(" + ")} )` : names[RIGHT_SIDE].join(" + ");
-          const split_name = `${left_name} | ${right_name}`;
-          name_components_list.push(name_components_list.length > 0 ? `( ${split_name} )` : split_name);
-          if (shortnames[LEFT_SIDE].length) { shortnames[LEFT_SIDE].push("∅") }
-          if (shortnames[RIGHT_SIDE].length) { shortnames[RIGHT_SIDE].push("∅") }
-          const left_shortname = shortnames[LEFT_SIDE].length > 1 || num_split_options_shortname[LEFT_SIDE] > 1 ? `( ${shortnames[LEFT_SIDE].join(" + ")} )` : shortnames[LEFT_SIDE].join(" + ");
-          const right_shortname = shortnames[RIGHT_SIDE].length > 1 || num_split_options_shortname[RIGHT_SIDE] > 1 ? `( ${shortnames[RIGHT_SIDE].join(" + ")} )` : shortnames[RIGHT_SIDE].join(" + ");
-          const split_shortname = `${left_shortname} | ${right_shortname}`;
-          shortname_components_list.push(shortname_components_list.length > 0 ? `( ${split_shortname} )` : split_shortname);
-          product.description = match_info.product[LEFT_SIDE].description && match_info.product[RIGHT_SIDE].description ? `( ${match_info.product[LEFT_SIDE].description} ) | ( ${match_info.product[RIGHT_SIDE].description} )` : "";
-        }
-      } // end is_split case
-      else {
-        name_components_list = ComponentsListName(FilterByOmitFromName(additional_options_objects.whole));
-        shortname_components_list = ComponentsListShortname(FilterByOmitFromShortname(additional_options_objects.whole));
-        // we're using the left side because we know left and right are the same
-        // if exact match to base product, no need to show the name
-        if (!is_compare_to_base[LEFT_SIDE] || PRODUCT_CLASS.display_flags.show_name_of_base_product) {
-          name_components_list.unshift(match_info.product[LEFT_SIDE].name);
-          shortname_components_list.unshift(match_info.product[LEFT_SIDE].name);
-        }
-        if (match_info.comparison_value[LEFT_SIDE] === EXACT_MATCH) {
-          // assign PIID
-          product.piid = match_info.product[LEFT_SIDE].piid;
-          product.is_base = match_info.product[LEFT_SIDE].is_base;
-        }
-        product.description = match_info.product[LEFT_SIDE].description;
-      }
-      product.ordinal = match_info.product[LEFT_SIDE].ordinal;
-      product.display_flags = match_info.product[LEFT_SIDE].display_flags;
-      product.name = name_components_list.join(" + ");
-      product.shortname = shortname_components_list.length === 0 ? match_info.product[LEFT_SIDE].shortname : shortname_components_list.join(" + ");
-      RunTemplating(product);
-    }
-
-    // iterate through menu, until has_left and has_right are true
-    // TODO: product naming with disabled products, see https://app.asana.com/0/1192054646278650/1192627836647899/f
-    // a name can be assigned once an exact or at least match is found for a given side
-    // instances_list is ordered by WProductSchema.ordinal and that should arrange products according to how we
-    // want this function to find the appropriate name. Meaning the ordinal for base product has the highest number 
-    // and the most modified products have the lowest numbers
-    for (let pi_index = 0; pi_index < PRODUCT_CLASS_MENU_ENTRY.instances_list.length; ++pi_index) {
-      const comparison_product = PRODUCT_CLASS_MENU_ENTRY.instances_list[pi_index];
-      const comparison_info = Compare(this, PRODUCT_CLASS_MENU_ENTRY.instances_list[pi_index], MENU);
-      CheckMatchForSide(LEFT_SIDE, comparison_info, comparison_product);
-      CheckMatchForSide(RIGHT_SIDE, comparison_info, comparison_product);
-      if (match_info.product[LEFT_SIDE] !== null && match_info.product[RIGHT_SIDE] !== null) {
-        // finished, proceed to build the names and assign shortcodes
-        return BuildName(this, service_time);
-      }
-    }
-  };
 
   this.DisplayOptions = (MENU) => {
     const HandleOption = HandleOptionCurry(MENU, HandleOptionNameFilterOmitByName);

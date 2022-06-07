@@ -1,22 +1,22 @@
 import { DisableDataCheck } from "../common";
 import { CreateWCPProductFromPI } from "./WCPProduct";
 import { IMenu, ICatalog, MenuCategories, MenuModifiers, MenuProducts, CategoryEntry, ModifierEntry, ProductEntry, WCPOption, WCPProduct} from "../types";
-import moment from "moment";
 
 
+type DisableFlagGetterType = (x:any) => boolean; 
 /**
  * Checks if a product is enabled and visible
  * @param {WCPProduct} item - the product to check 
  * @param {IMenu} menu - the menu from which to pull catalog data
  * @param {function(Object): boolean} disable_from_menu_flag_getter - getter function to pull the proper display flag from the products
- * @param {moment} order_time - the time to use to check for disable/enable status
+ * @param {Date} order_time - the time to use to check for disable/enable status
  * @returns {boolean} returns true if item is enabled and visible
  */
-export function FilterProduct(item : WCPProduct, menu : IMenu, disable_from_menu_flag_getter, order_time : moment.Moment) {
+export function FilterProduct(item : WCPProduct, menu : IMenu, disable_from_menu_flag_getter : DisableFlagGetterType, order_time : Date) {
   let passes = !disable_from_menu_flag_getter(item.display_flags) && DisableDataCheck(item.PRODUCT_CLASS.disabled, order_time);
   Object.keys(item.modifiers).forEach(mtid => {
     // TODO: for incomplete product instances, this should check for a viable way to order the product
-    passes = passes && Math.min(1, Math.min.apply(null, item.modifiers[mtid].map((x) => DisableDataCheck(menu.modifiers[mtid].options[x[1]].disable_data, order_time))));
+    passes = passes && item.modifiers[mtid].reduce((acc : boolean, x) => (acc && DisableDataCheck(menu.modifiers[mtid].options[x.option_id].mo.item.disabled, order_time)), true);
   });
   return passes;
 }
@@ -26,10 +26,10 @@ export function FilterProduct(item : WCPProduct, menu : IMenu, disable_from_menu
  * empty or disabled products
  * @param {IMenu} menu - the menu from which to pull catalog data
  * @param {function(Object): boolean} disable_from_menu_flag_getter - getter function to pull the proper display flag from the products
- * @param {moment} order_time - the time to use to check for disable/enable status
+ * @param {Date} order_time - the time to use to check for disable/enable status
  * @returns {function(String): boolean} function that takes a category ID and returns true if the category is not empty
  */
-export function FilterEmptyCategories(menu : IMenu, disable_from_menu_flag_getter, order_time : moment.Moment) {
+export function FilterEmptyCategories(menu : IMenu, disable_from_menu_flag_getter : DisableFlagGetterType, order_time : Date) {
   return ( CAT_ID : string ) => {
     const cat_menu = menu.categories[CAT_ID].menu;
     // eslint-disable-next-line no-plusplus
@@ -48,14 +48,14 @@ export function FilterEmptyCategories(menu : IMenu, disable_from_menu_flag_gette
  * we need to do this inefficiently, 
  * @param {WMenu} menu 
  * @param {function(WCPProduct): boolean} filter_products 
- * @param {moment} order_time 
+ * @param {Date} order_time 
  */
-export function FilterWMenu(menu : IMenu, filter_products, order_time : moment.Moment) {
+export function FilterWMenu(menu : IMenu, filter_products : (product : WCPProduct) => boolean, order_time : Date) {
   // prune categories via DFS
   {
-    const catids_to_remove = {};
-    const catids_visited = {};
-    const VisitCategory = (cat_id) => {
+    const catids_to_remove : {[index:string]: boolean} = {};
+    const catids_visited : {[index:string]: boolean} = {};
+    const VisitCategory = (cat_id : string) => {
       if (!Object.hasOwn(catids_visited, cat_id)) {
         catids_visited[cat_id] = true;
         menu.categories[cat_id].children.forEach(x=>VisitCategory(x));
@@ -151,7 +151,7 @@ function ComputeCategories(cat :ICatalog , product_classes : MenuProducts) {
     const category_entry : CategoryEntry = {
       menu: [],
       children: cat.categories[catid].children.sort((a, b) => cat.categories[a].category.ordinal - cat.categories[b].category.ordinal),
-      menu_name: cat.categories[catid].category.description || cat.categories[catid].category.name || "UNDEFINED",
+      menu_name: cat.categories[catid].category.description || cat.categories[catid].category.name,
       subtitle: cat.categories[catid].category.subheading || null,
     }
     cat.categories[catid].products.forEach((product_class) => {
@@ -170,6 +170,6 @@ export function GenerateMenu(catalog: ICatalog) {
   const product_classes = ComputeProducts(catalog);
   const categories = ComputeCategories(catalog, product_classes);
   const menu : IMenu = { modifiers, product_classes, categories, version: catalog.version };
-  Object.values(product_classes).forEach(pc => pc.instances_list.forEach(pi => pi.Initialize(menu)));
+  // Object.values(product_classes).forEach(pc => pc.instances_list.forEach(pi => pi.Initialize(menu)));
   return menu;
 }
