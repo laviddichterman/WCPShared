@@ -109,3 +109,4 @@ build
 test
 *.log
 yarn.lock
+src/*.code-workspace
