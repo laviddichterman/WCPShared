@@ -1,7 +1,7 @@
 import { GetPlacementFromMIDOID } from "../common";
 import { WCPProduct, IConstLiteralExpression, IIfElseExpression, ProductInstanceFunctionOperator, ILogicalExpression, IAbstractExpression, IProductInstanceFunction, ICatalogModifiers, IModifierPlacementExpression, IHasAnyOfModifierExpression, OptionPlacement, IOption } from '../types';
 export class WFunctional {
-  static ProcessIfElseStatement(prod : WCPProduct, stmt : IIfElseExpression) {
+  static ProcessIfElseStatement(prod: WCPProduct, stmt: IIfElseExpression) {
     const branch_test = WFunctional.ProcessAbstractExpressionStatement(prod, stmt.test);
     if (branch_test) {
       return WFunctional.ProcessAbstractExpressionStatement(prod, stmt.true_branch);
@@ -9,11 +9,11 @@ export class WFunctional {
     return WFunctional.ProcessAbstractExpressionStatement(prod, stmt.false_branch);
   }
 
-  static ProcessConstLiteralStatement(stmt : IConstLiteralExpression) {
+  static ProcessConstLiteralStatement(stmt: IConstLiteralExpression) {
     return stmt.value;
   }
 
-  static ProcessLogicalOperatorStatement(prod: WCPProduct, stmt : ILogicalExpression) : boolean {
+  static ProcessLogicalOperatorStatement(prod: WCPProduct, stmt: ILogicalExpression): boolean {
     switch (stmt.operator) {
       case ProductInstanceFunctionOperator.AND:
         return WFunctional.ProcessAbstractExpressionStatement(prod, stmt.operandA) &&
@@ -42,21 +42,21 @@ export class WFunctional {
         return WFunctional.ProcessAbstractExpressionStatement(prod, stmt.operandA) <=
           WFunctional.ProcessAbstractExpressionStatement(prod, <IAbstractExpression>stmt.operandB);
       default:
-        console.error("");
+        throw ("unmatched logical operator");
     }
     return false;
   }
 
-  static ProcessModifierPlacementExtractionOperatorStatement(prod : WCPProduct, stmt : IModifierPlacementExpression) {
+  static ProcessModifierPlacementExtractionOperatorStatement(prod: WCPProduct, stmt: IModifierPlacementExpression) {
     return GetPlacementFromMIDOID(prod, stmt.mtid, stmt.moid).placement;
   }
 
-  static ProcessHasAnyOfModifierTypeExtractionOperatorStatement(prod : WCPProduct, stmt : IHasAnyOfModifierExpression) {
-    return Object.hasOwn(prod.modifiers, stmt.mtid) ? 
+  static ProcessHasAnyOfModifierTypeExtractionOperatorStatement(prod: WCPProduct, stmt: IHasAnyOfModifierExpression) {
+    return Object.hasOwn(prod.modifiers, stmt.mtid) ?
       prod.modifiers[stmt.mtid].filter(x => x.placement !== OptionPlacement.NONE).length > 0 : false;
   }
 
-  static ProcessAbstractExpressionStatement(prod : WCPProduct, stmt : IAbstractExpression) : any {
+  static ProcessAbstractExpressionStatement(prod: WCPProduct, stmt: IAbstractExpression): any {
     switch (stmt.discriminator) {
       case "ConstLiteral":
         return WFunctional.ProcessConstLiteralStatement(<IConstLiteralExpression>stmt.const_literal);
@@ -67,18 +67,18 @@ export class WFunctional {
       case "ModifierPlacement":
         return WFunctional.ProcessModifierPlacementExtractionOperatorStatement(prod, <IModifierPlacementExpression>stmt.modifier_placement);
       case "HasAnyOfModifierType":
-        return WFunctional.ProcessHasAnyOfModifierTypeExtractionOperatorStatement(prod, <IHasAnyOfModifierExpression>stmt.has_any_of_modifier);        
+        return WFunctional.ProcessHasAnyOfModifierTypeExtractionOperatorStatement(prod, <IHasAnyOfModifierExpression>stmt.has_any_of_modifier);
       default:
-        console.error("bad abstract expression");
+        throw ("bad abstract expression");
     }
     return false;
   }
 
-  static ProcessProductInstanceFunction(prod : WCPProduct, func : IProductInstanceFunction) {
+  static ProcessProductInstanceFunction(prod: WCPProduct, func: IProductInstanceFunction) {
     return WFunctional.ProcessAbstractExpressionStatement(prod, func.expression);
   }
 
-  static AbstractExpressionStatementToString(stmt : IAbstractExpression, mods : ICatalogModifiers ) : string {
+  static AbstractExpressionStatementToString(stmt: IAbstractExpression, mods: ICatalogModifiers): string {
     const logical = () => {
       const logicalExpr = <ILogicalExpression>stmt.logical;
       const operandAString = WFunctional.AbstractExpressionStatementToString(logicalExpr.operandA, mods);
@@ -105,9 +105,8 @@ export class WFunctional {
       case "HasAnyOfModifierType":
         return `ANY ${mods[(<IHasAnyOfModifierExpression>stmt.has_any_of_modifier).mtid].modifier_type.name}`;
       default:
-        console.error("bad abstract expression");
+        throw ("bad abstract expression");
     }
-    return "";
   }
 
   // TODO: add function to test an AbstractExpression for completeness see https://app.asana.com/0/1184794277483753/1200242818246330

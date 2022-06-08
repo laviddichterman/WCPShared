@@ -119,10 +119,10 @@ function ComputeModifiers(cat: ICatalog) {
 
 function ComputeProducts(cat: ICatalog) {
   const prods = {} as MenuProducts;
-  Object.keys(cat.products).forEach(pid => {
-    const product_class = cat.products[pid].product;
+  Object.keys(cat.products).forEach(pId => {
+    const product_class = cat.products[pId].product;
     // IMPORTANT: we need to sort by THIS ordinal here to ensure things are named properly.
-    const product_instances = cat.products[pid].instances.sort((a, b) => a.ordinal - b.ordinal);
+    const product_instances = cat.products[pId].instances.sort((a, b) => a.ordinal - b.ordinal);
     const baseProductInstanceIndex = product_instances.findIndex(x => x.is_base);
     if (baseProductInstanceIndex !== -1) {
       // be sure to sort the modifiers, just in case...
@@ -133,10 +133,10 @@ function ComputeProducts(cat: ICatalog) {
         product_entry.instances_list.push(pi);
         product_entry.instances[pi._id] = pi;
       });
-      prods[pid] = product_entry;
+      prods[pId] = product_entry;
     }
     else {
-      console.error(`Pruning incomplete product ${product_class}`);
+      // console.error(`Pruning incomplete product ${product_class}`);
     }
   });
   return prods;
@@ -145,20 +145,20 @@ function ComputeProducts(cat: ICatalog) {
 
 function ComputeCategories(cat: ICatalog, product_classes: MenuProducts) {
   const cats: MenuCategories = {};
-  Object.keys(cat.categories).forEach(catid => {
+  Object.keys(cat.categories).forEach(catId => {
     const category_entry: CategoryEntry = {
       menu: [],
-      children: cat.categories[catid].children.sort((a, b) => cat.categories[a].category.ordinal - cat.categories[b].category.ordinal),
-      menu_name: cat.categories[catid].category.description || cat.categories[catid].category.name,
-      subtitle: cat.categories[catid].category.subheading || null,
+      children: cat.categories[catId].children.sort((a, b) => cat.categories[a].category.ordinal - cat.categories[b].category.ordinal),
+      menu_name: cat.categories[catId].category.description || cat.categories[catId].category.name,
+      subtitle: cat.categories[catId].category.subheading || null,
     }
-    cat.categories[catid].products.forEach((product_class) => {
+    cat.categories[catId].products.forEach((product_class) => {
       if (Object.hasOwn(product_classes, product_class)) {
         category_entry.menu = category_entry.menu.concat(product_classes[product_class].instances_list);
       }
     })
     category_entry.menu.sort((a, b) => a.ordinal - b.ordinal);
-    cats[catid] = category_entry;
+    cats[catId] = category_entry;
   });
   return cats;
 }

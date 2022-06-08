@@ -1,59 +1,59 @@
 {
   "root": true,
-  "env": {
-    "browser": true,
-    "node": true
+  "parser": "@typescript-eslint/parser",
+  "parserOptions": {
+    "project": "./tsconfig.json"
   },
-  "extends": [
-    "airbnb",
-    "plugin:jsx-a11y/recommended",
-    "plugin:react-hooks/recommended",
-    "prettier"
+  "env": {
+    "es6": true
+  },
+  "ignorePatterns": [
+    "node_modules",
+    "build",
+    "coverage"
   ],
   "plugins": [
-    "react",
-    "react-hooks",
-    "prettier"
+    "import",
+    "eslint-comments",
+    "functional"
   ],
-  "parser": "@babel/eslint-parser",
-  "parserOptions": {
-    "ecmaVersion": 8,
-    "requireConfigFile": false,
-    "ecmaFeatures": {
-      "experimentalObjectRestSpread": true,
-      "impliedStrict": true
-    }
+  "extends": [
+    "eslint:recommended",
+    "plugin:eslint-comments/recommended",
+    "plugin:@typescript-eslint/recommended",
+    "plugin:import/typescript",
+    "plugin:functional/lite",
+    "prettier",
+    "prettier/@typescript-eslint"
+  ],
+  "globals": {
+    "BigInt": true,
+    "console": true,
+    "WebAssembly": true
   },
   "rules": {
-    "no-shadow": 0,
-    "no-console": 0,
-    "camelcase": 0,
-    "react/jsx-key": 1,
-    "import/no-cycle": 0,
-    "arrow-body-style": 1,
-    "react/prop-types": 0,
-    "consistent-return": 1,
-    "no-param-reassign": 0,
-    "no-use-before-define": 0,
-    "no-underscore-dangle": 0,
-    "jsx-a11y/anchor-is-valid": 0,
-    "no-promise-executor-return": 0,
-    "no-unsafe-optional-chaining": 0,
-    "react/require-default-props": 0,
-    "react/no-unescaped-entities": 0,
-    "import/prefer-default-export": 0,
-    "import/no-extraneous-dependencies": 0,
-    "no-unused-vars": [
-      1,
+    "@typescript-eslint/explicit-module-boundary-types": "off",
+    "eslint-comments/disable-enable-pair": [
+      "error",
       {
-        "ignoreRestSiblings": false
+        "allowWholeFile": true
       }
     ],
-    "prefer-destructuring": [
-      1,
+    "eslint-comments/no-unused-disable": "error",
+    "import/order": [
+      "error",
       {
-        "object": true,
-        "array": false
+        "newlines-between": "always",
+        "alphabetize": {
+          "order": "asc"
+        }
+      }
+    ],
+    "sort-imports": [
+      "error",
+      {
+        "ignoreDeclarationSort": true,
+        "ignoreCase": true
       }
     ]
   }
