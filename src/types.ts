@@ -71,9 +71,9 @@ export interface ICategory {
 };
 
 export interface ICatalogItem {
-    display_name?: string;
-    description?: string;
-    shortcode?: string;
+    display_name: string;
+    description: string;
+    shortcode: string;
     price: IMoney;
     externalIDs?: IExternalIDs;
     disabled: IDisabled | null;
@@ -104,7 +104,6 @@ export interface IOptionType {
 export interface IOption {
   _id: string;
   item: ICatalogItem;
-  catalog_item?: ICatalogItem;
   ordinal: number;
   option_type_id: string; //{ type: Schema.Types.ObjectId, ref: 'WOptionTypeSchema', required: true }, 
   metadata: {
@@ -112,17 +111,23 @@ export interface IOption {
     bake_factor: number;
     can_split: boolean;
   };
-  enable_function?: string;// { type: Schema.Types.ObjectId, ref: 'WProductInstanceFunction', autopopulate: true },
+  enable_function: string | null;// { type: Schema.Types.ObjectId, ref: 'WProductInstanceFunction', autopopulate: true },
   display_flags: {
     omit_from_shortname: boolean;
     omit_from_name: boolean;
   };
 };
 
-export interface IOptionInstance {
+export interface IWOptionInstance {
   option_id: string;
   placement: keyof typeof OptionPlacement;
-  qualifier?: keyof typeof OptionQualifier;
+  qualifier: keyof typeof OptionQualifier;
+};
+
+export interface IOptionInstance {
+  option_id: string;
+  placement: OptionPlacement;
+  qualifier: OptionQualifier;
 };
 
 export interface IProductDisplayFlags {
@@ -176,12 +181,16 @@ export interface IProduct {
     min_prep_time: number;
     additional_unit_prep_time: number;
   };
-  modifiers: { mtid: string, enable?: string }[];
+  modifiers: { mtid: string, enable: string | null }[];
   category_ids: string[];
 };
 
 export interface ModifiersMap { [index:string] : IOptionInstance[] };
 
+export interface IWModifiersInstance { 
+  modifier_type_id: string;
+  options: IWOptionInstance[];
+};
 export interface IProductInstance {
   _id: string;
   // reference to the WProductSchema ID for this class of item
@@ -191,16 +200,13 @@ export interface IProductInstance {
   ordinal: number;
 
   // applied modifiers for this instance of the product
-  modifiers: { 
-    modifier_type_id: string;
-    options: IOptionInstance[];
-  }[];
+  modifiers: IWModifiersInstance[];
   
   // flag to note that this product instance is the "default" form of the product to which all others should be compared
   is_base: boolean;
 
   display_flags: IProductDisplayFlags,
-  item?: ICatalogItem;
+  item: ICatalogItem;
 };
 
 export interface IConstLiteralExpression {
@@ -237,6 +243,7 @@ export interface IAbstractExpression {
 };
 
 export interface IProductInstanceFunction {
+  _id: string;
   expression: IAbstractExpression;
   name: string;
 };
@@ -259,10 +266,11 @@ export interface MetadataModifierMap { [mtid:string]: MetadataModifierMapEntry }
 export type MTID_MOID = [string, string];
 export interface ModifierDisplayListByLocation {left : MTID_MOID[]; right: MTID_MOID[]; whole: MTID_MOID[];};
 export interface WProductMetadata { 
-  processed_name: string;
-  processed_description: string;
-  base_product_instance_id: string;
-  exhaustive_options : any;
+  name: string;
+  shortname: string;
+  description: string;
+  price: number;
+  pi: [IProductInstance, IProductInstance];
   is_split: boolean;
   incomplete: boolean;
   modifier_map: MetadataModifierMap;
@@ -270,18 +278,13 @@ export interface WProductMetadata {
   advanced_option_selected: boolean;
   additional_modifiers: ModifierDisplayListByLocation;
   exhaustive_modifiers: ModifierDisplayListByLocation;
+  bake_count: [number, number];
+  flavor_count: [number, number];
 }
 
 export interface WCPProduct { 
   PRODUCT_CLASS: IProduct;
-  piid: string;
-  name: string;
-  description: string;
   modifiers: ModifiersMap;
-  ordinal: number;
-  is_base: boolean;
-  shortcode: string;
-  display_flags: IProductDisplayFlags;
   base_product_piid: string;
 };
 
@@ -291,15 +294,17 @@ export interface WCPOption {
   index: number;
 };
 
-export interface CategoryEntry { menu: WCPProduct[]; children: string[]; menu_name: string; subtitle: string | null };
+export interface CategoryEntry { menu: IProductInstance[]; children: string[]; menu_name: string; subtitle: string | null };
 export interface MenuCategories { [index:string]: CategoryEntry };
-export interface ProductEntry { product: IProduct; instances_list: WCPProduct[]; instances: { [index:string]: WCPProduct}};
+export interface ProductEntry { product: IProduct; base_id: string, instances_list: IProductInstance[]; instances: { [index:string]: IProductInstance}};
 export interface MenuProducts {[index:string] : ProductEntry};
 export interface ModifierEntry {modifier_type: IOptionType; options_list: WCPOption[]; options: {[index:string]: WCPOption}};
-export interface MenuModifiers { [index:string]: ModifierEntry};
+export interface MenuModifiers { [index:string]: ModifierEntry };
 export interface IMenu { 
-  modifiers: MenuModifiers;
-  product_classes: MenuProducts;
-  categories: MenuCategories;
-  version: string;
+  readonly modifiers: MenuModifiers;
+  readonly product_classes: MenuProducts;
+  readonly categories: MenuCategories;
+  readonly product_instance_functions: { [index:string] : IProductInstanceFunction };
+  readonly version: string;
+
 };

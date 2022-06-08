@@ -2,7 +2,7 @@
 import moment from 'moment';
 import { DisableDataCheck, PRODUCT_NAME_MODIFIER_TEMPLATE_REGEX } from "../common";
 import { WFunctional } from "./WFunctional";
-import { IProduct, IProductDisplayFlags, IProductInstance, OptionPlacement, ModifiersMap, MODIFIER_MATCH, MODIFIER_LOCATION, WCPProduct, IMenu, WProductMetadata, MetadataModifierMap, IModifierPlacementExpression, MTID_MOID, ModifierEntry, WCPOption } from '../types';
+import { IProduct, IProductDisplayFlags, IProductInstance, OptionPlacement, ModifiersMap, MODIFIER_MATCH, MODIFIER_LOCATION, WCPProduct, IMenu, WProductMetadata, MTID_MOID, ModifierEntry, WCPOption, MenuModifiers, IWModifiersInstance, IOptionInstance, OptionQualifier, MetadataModifierMap, ModifierDisplayListByLocation } from '../types';
 import { IsOptionEnabled } from './WCPOption';
 
 const NO_MATCH = MODIFIER_MATCH.NO_MATCH;
@@ -14,32 +14,32 @@ const RIGHT_SIDE = MODIFIER_LOCATION.RIGHT;
 type SIDE_MODIFIER_MATCH_MATRIX = MODIFIER_MATCH[][];
 type LR_MODIFIER_MATCH_MATRIX = [SIDE_MODIFIER_MATCH_MATRIX, SIDE_MODIFIER_MATCH_MATRIX];
 interface WProductCompareResult { mirror: boolean; match_matrix: LR_MODIFIER_MATCH_MATRIX; match: [MODIFIER_MATCH, MODIFIER_MATCH]; };
-const GetModifierOptionFromMIDOID = (menu : IMenu, mid : string, oid : string) => menu.modifiers[mid].options[oid];
+const GetModifierOptionFromMIDOID = (menu: IMenu, mid: string, oid: string) => menu.modifiers[mid].options[oid];
 
-const ExtractMatch = (matrix : SIDE_MODIFIER_MATCH_MATRIX) : MODIFIER_MATCH => (
+const ExtractMatch = (matrix: SIDE_MODIFIER_MATCH_MATRIX): MODIFIER_MATCH => (
   // we take the min of EXACT_MATCH and the thing we just computed because if there are no modifiers, then we'll get Infinity
   Math.min(EXACT_MATCH, Math.min.apply(null, matrix.map((modcompare_arr) => Math.min.apply(null, modcompare_arr))))
 );
 
-const ComponentsList = (source : WCPOption[], getter : (x: WCPOption) => any) => source.map((x) => getter(x));
+const ComponentsList = (source: WCPOption[], getter: (x: WCPOption) => any) => source.map((x) => getter(x));
 
-const FilterByOmitFromName = (source : WCPOption[]) => (source.filter(x => !x.mo.display_flags || !x.mo.display_flags.omit_from_name));
-const FilterByOmitFromShortname = (source : WCPOption[]) => (source.filter(x => !x.mo.display_flags || !x.mo.display_flags.omit_from_shortname));
+const FilterByOmitFromName = (source: WCPOption[]) => (source.filter(x => !x.mo.display_flags || !x.mo.display_flags.omit_from_name));
+const FilterByOmitFromShortname = (source: WCPOption[]) => (source.filter(x => !x.mo.display_flags || !x.mo.display_flags.omit_from_shortname));
 
-const ComponentsListName = (source : WCPOption[]) => ComponentsList(source, (x : WCPOption) => x.mo.item.display_name);
+const ComponentsListName = (source: WCPOption[]) => ComponentsList(source, (x: WCPOption) => x.mo.item.display_name);
 
-const ComponentsListShortname = (source : WCPOption[]) => ComponentsList(source, (x : WCPOption) => x.mo.item.shortcode);
+const ComponentsListShortname = (source: WCPOption[]) => ComponentsList(source, (x: WCPOption) => x.mo.item.shortcode);
 
-const HandleOptionNameFilterOmitByName = (menu : IMenu, x) => {
+const HandleOptionNameFilterOmitByName = (menu: IMenu, x: MTID_MOID) => {
   const OPTION = GetModifierOptionFromMIDOID(menu, x[0], x[1]);
   return (!OPTION.mo.display_flags || !OPTION.mo.display_flags.omit_from_name) ? OPTION.mo.item.display_name : "";
 }
 
-const HandleOptionNameNoFilter = (menu : IMenu, x : MTID_MOID) => (GetModifierOptionFromMIDOID(menu, x[0], x[1]).mo.item.display_name);
+const HandleOptionNameNoFilter = (menu: IMenu, x: MTID_MOID) => (GetModifierOptionFromMIDOID(menu, x[0], x[1]).mo.item.display_name);
 
-const HandleOptionCurry = (MENU : IMenu, getterfxn) => (x : MTID_MOID) => {
+const HandleOptionCurry = (MENU: IMenu, getterfxn: (menu: IMenu, x: MTID_MOID) => string | undefined) => (x: MTID_MOID) => {
   // TODO: needs to filter disabled or unavailble options
-  const LIST_CHOICES = (CATALOG_MODIFIER_INFO : ModifierEntry) => {
+  const LIST_CHOICES = (CATALOG_MODIFIER_INFO: ModifierEntry) => {
     const choices = CATALOG_MODIFIER_INFO.options_list.map(x => x.mo.item.display_name);
     return choices.length < 3 ? choices.join(" or ") : [choices.slice(0, -1).join(", "), choices[choices.length - 1]].join(", or ");
   };
@@ -65,22 +65,23 @@ export const CopyWCPProduct = (pi: WCPProduct) => { return { ...pi }; }
  * Product must be missing some number of INDEPENDENT, SINGLE SELECT modifier types.
  * Independent meaning there isn't a enable function dependence between any of the incomplete
  * modifier types or their options, single select meaning (MIN===MAX===1)
- * @param {WCPProduct} pi - the product instance to use
- * @param {WMenu} menu
+ * @param {WProductMetadata} metadata - the product instance to use
+ * @param {IMenu} menu
  * @return {[Number]} array of prices in ascending order
  */
-export function ComputePotentialPrices(pi, menu) {
-  const prices = [];
-  Object.keys(pi.modifier_map).forEach(mtid => {
-    if (!pi.modifier_map[mtid].meets_minimum) {
-      const enabled_prices = menu.modifiers[mtid].options_list.filter(x => pi.modifier_map[mtid].options[x.moid].enable_whole).map(x => x.price);
+export function ComputePotentialPrices(metadata: WProductMetadata, menu: IMenu) {
+  const prices: number[][] = [];
+  Object.keys(metadata.modifier_map).forEach(mtid => {
+    if (!metadata.modifier_map[mtid].meets_minimum) {
+      const whole_enabled_modifier_options = menu.modifiers[mtid].options_list.filter(x => metadata.modifier_map[mtid].options[x.mo._id].enable_whole);
+      const enabled_prices = whole_enabled_modifier_options.map(x => x.mo.item.price.amount);
       const deduped_prices = [...new Set(enabled_prices)];
       prices.push(deduped_prices);
     }
   });
 
   while (prices.length >= 2) {
-    const combined_prices = {};
+    const combined_prices: { [index: number]: boolean } = {};
     // eslint-disable-next-line no-restricted-syntax
     for (const price0 of prices[0]) {
       // eslint-disable-next-line no-restricted-syntax
@@ -90,7 +91,7 @@ export function ComputePotentialPrices(pi, menu) {
     }
     prices.splice(0, 2, Object.keys(combined_prices).map(x => Number(x)));
   }
-  return prices[0].sort((a, b) => a - b).map(x => x + pi.price);
+  return prices[0].sort((a, b) => a - b).map(x => x + metadata.price);
 }
 
 // matrix of how products match indexed by [first placement][second placement] containing [left match, right match, break_mirror]
@@ -102,49 +103,50 @@ const MATCH_MATRIX: [MODIFIER_MATCH, MODIFIER_MATCH, boolean][][] = [
   // [[ NONE ], [ LEFT ], [ RIGHT], [ WHOLE]]
 ];
 
-export function CreateWCPProduct(product_class: IProduct, piid: string, name: string, description: string, ordinal: number, modifiers: ModifiersMap, shortcode: string, is_base: boolean, display_flags: IProductDisplayFlags, base_product_piid: string) {
-  return { PRODUCT_CLASS: product_class, piid, name, description, modifiers, shortcode, is_base, display_flags, ordinal, base_product_piid } as WCPProduct;
+export function CreateWCPProduct(product_class: IProduct, piid: string, modifiers: ModifiersMap, base_product_piid: string) {
+  return { PRODUCT_CLASS: product_class, piid, modifiers, base_product_piid } as WCPProduct;
 }
 
 export function CreateWCPProductFromPI(prod: IProduct, pi: IProductInstance, base_piid: string) {
   return CreateWCPProduct(
     prod,
     pi._id,
-    pi.item?.display_name || "",
-    pi.item?.description || "",
-    pi.ordinal,
-    pi.modifiers.reduce((o, key) => ({ ...o, [key.modifier_type_id]: key.options.map(x => { return { ...x } }) }), {}), // this is a deep copy
-    pi.item?.shortcode || "",
-    pi.is_base,
-    pi.display_flags,
+    pi.modifiers.reduce((o, key) => ({ ...o, [key.modifier_type_id]: key.options.map(x => { return { option_id: x.option_id, placement: OptionPlacement[x.placement], qualifier: OptionQualifier[x.qualifier] }; }) }), {}), // this is a deep copy
     base_piid);
 }
 
-export function WProductCompare(a: WCPProduct, b: WCPProduct, MENU: IMenu) {
+function ModifiersMapGetter(mmap: ModifiersMap): (mtid: string) => IOptionInstance[] {
+  return (mtid: string) => Object.hasOwn(mmap, mtid) ? mmap[mtid] : [];
+}
+
+function IWModifiersInstanceListGetter(mil: IWModifiersInstance[]): (mtid: string) => IOptionInstance[] {
+  const mmap: ModifiersMap = mil.reduce((o, key) => ({ ...o, [key.modifier_type_id]: key.options.map(x => { return { option_id: x.option_id, placement: OptionPlacement[x.placement], qualifier: OptionQualifier[x.qualifier] }; }) }), {});
+  return (mtid: string) => Object.hasOwn(mmap, mtid) ? mmap[mtid] : [];
+}
+/**
+ * Takes two products, a and b, and computes comparison info
+ * @param a a WCPProduct
+ * @param bModifiersGetter getter/transformation function for the modifiers of the product we're comparing "a" to, 
+ * required to be of the same product class
+ * @param menuModifiers the modifiers section of the IMenu
+ */
+function WProductCompareGeneric(a: WCPProduct, bModifiersGetter: (mtid: string) => IOptionInstance[], menuModifiers: MenuModifiers) {
   // this is a multi-dim array, in order of the MTID as it exists in the product class definition
   // disabled modifier types and modifier options are all present as they shouldn't contribute to comparison mismatch
   // elements of the modifiers_match_matrix are arrays of <LEFT_MATCH, RIGHT_MATCH> tuples
   const modifiers_match_matrix: LR_MODIFIER_MATCH_MATRIX = [[], []];
-
-  // need to compare PIDs of first and other, then use the PID to develop the modifiers matrix since one of the two product instances might not have a value for every modifier.
-  if (a.PRODUCT_CLASS._id !== b.PRODUCT_CLASS._id) {
-    // no match on PID so we need to return 0
-    return { mirror: false, match_matrix: modifiers_match_matrix, match: [NO_MATCH, NO_MATCH] } as WProductCompareResult;
-  }
-
   a.PRODUCT_CLASS.modifiers.forEach((modifier) => {
-    modifiers_match_matrix[LEFT_SIDE].push(Array(MENU.modifiers[modifier.mtid].options_list.length).fill(EXACT_MATCH));
-    modifiers_match_matrix[RIGHT_SIDE].push(Array(MENU.modifiers[modifier.mtid].options_list.length).fill(EXACT_MATCH));
+    modifiers_match_matrix[LEFT_SIDE].push(Array(menuModifiers[modifier.mtid].options_list.length).fill(EXACT_MATCH));
+    modifiers_match_matrix[RIGHT_SIDE].push(Array(menuModifiers[modifier.mtid].options_list.length).fill(EXACT_MATCH));
   })
-
   let is_mirror = true;
   // main comparison loop!
   a.PRODUCT_CLASS.modifiers.forEach((modifier, midx) => {
     const mtid = modifier.mtid;
     const first_option_list = Object.hasOwn(a.modifiers, mtid) ? a.modifiers[mtid] : [];
-    const other_option_list = Object.hasOwn(b.modifiers, mtid) ? b.modifiers[mtid] : [];
+    const other_option_list = bModifiersGetter(mtid);
     // in each modifier, need to determine if it's a SINGLE or MANY select 
-    const CATALOG_MODIFIER_INFO = MENU.modifiers[mtid];
+    const CATALOG_MODIFIER_INFO = menuModifiers[mtid];
     if (CATALOG_MODIFIER_INFO.modifier_type.min_selected === 1 && CATALOG_MODIFIER_INFO.modifier_type.max_selected === 1) {
       // CASE: SINGLE select modifier, this logic isn't very well-defined. TODO: rework
       if (first_option_list.length === 1) {
@@ -175,8 +177,8 @@ export function WProductCompare(a: WCPProduct, b: WCPProduct, MENU: IMenu) {
         const first_option = first_option_list.find(val => val.option_id == option.mo._id);
         // eslint-disable-next-line eqeqeq
         const other_option = other_option_list.find(val => val.option_id == option.mo._id);
-        const first_option_placement = first_option ? OptionPlacement[first_option.placement] : OptionPlacement.NONE;
-        const other_option_placement = other_option ? OptionPlacement[other_option.placement] : OptionPlacement.NONE;
+        const first_option_placement = first_option?.placement || OptionPlacement.NONE;
+        const other_option_placement = other_option?.placement || OptionPlacement.NONE;
         const MATCH_CONFIGURATION = MATCH_MATRIX[first_option_placement][other_option_placement];
         modifiers_match_matrix[LEFT_SIDE][midx][oidx] = MATCH_CONFIGURATION[LEFT_SIDE];
         modifiers_match_matrix[RIGHT_SIDE][midx][oidx] = MATCH_CONFIGURATION[RIGHT_SIDE];
@@ -191,25 +193,67 @@ export function WProductCompare(a: WCPProduct, b: WCPProduct, MENU: IMenu) {
   } as WProductCompareResult;
 }
 
+export function WProductCompareToIProductInstance(a: WCPProduct, b: IProductInstance, MENU: IMenu) {
+  // need to compare PIDs of first and other, then use the PID to develop the modifiers matrix since one of the two product instances might not have a value for every modifier.
+  // eslint-disable-next-line eqeqeq
+  if (a.PRODUCT_CLASS._id != b.product_id) {
+    // no match on PID so we need to return 0
+    return { mirror: false, match_matrix: [[], []], match: [NO_MATCH, NO_MATCH] } as WProductCompareResult;
+  }
+  return WProductCompareGeneric(a, IWModifiersInstanceListGetter(b.modifiers), MENU.modifiers);
+}
+
+export function WProductCompare(a: WCPProduct, b: WCPProduct, MENU: IMenu) {
+  // need to compare PIDs of first and other, then use the PID to develop the modifiers matrix since one of the two product instances might not have a value for every modifier.
+  if (a.PRODUCT_CLASS._id !== b.PRODUCT_CLASS._id) {
+    // no match on PID so we need to return 0
+    return { mirror: false, match_matrix: [[], []], match: [NO_MATCH, NO_MATCH] } as WProductCompareResult;
+  }
+  return WProductCompareGeneric(a, ModifiersMapGetter(b.modifiers), MENU.modifiers);
+}
+
 export function WProductEquals(a: WCPProduct, b: WCPProduct, MENU: IMenu) {
   const comparison_info = WProductCompare(a, b, MENU);
   return comparison_info.mirror ||
     (comparison_info.match[LEFT_SIDE] === EXACT_MATCH && comparison_info.match[RIGHT_SIDE] === EXACT_MATCH);
 };
 
+/**
+ * 
+ * @param MENU menu
+ * @param exhaustive_modifiers already computed product metadata showing the exhaustive modifiers by section
+ * @returns a list of customer facing options display
+ */
+export function WProductDisplayOptions(MENU: IMenu, exhaustive_modifiers: ModifierDisplayListByLocation) {
+  const HandleOption = HandleOptionCurry(MENU, HandleOptionNameFilterOmitByName);
+  const options_sections = [];
+  if (exhaustive_modifiers.whole.length > 0) {
+    const option_names = exhaustive_modifiers.whole.map(HandleOption).filter(x => x && x !== "");
+    options_sections.push(["Whole", option_names.join(" + ")]);
+  }
+  if (exhaustive_modifiers.left.length > 0) {
+    const option_names = exhaustive_modifiers.left.map(HandleOption).filter(x => x && x !== "");
+    options_sections.push(["Left", option_names.join(" + ")]);
+  }
+  if (exhaustive_modifiers.right.length > 0) {
+    const option_names = exhaustive_modifiers.right.map(HandleOption).filter(x => x && x !== "");
+    options_sections.push(["Right", option_names.join(" + ")]);
+  }
+  return options_sections;
+};
 
 
 type MatchTemplateObject = { [index: string]: string };
-const RunTemplating = (product: WCPProduct, MENU: IMenu, metadata: WProductMetadata) => {
+const RunTemplating = (product: IProduct, MENU: IMenu, metadata: WProductMetadata) => {
   const HandleOption = HandleOptionCurry(MENU, HandleOptionNameNoFilter);
-  const name_template_match_array = product.name.match(PRODUCT_NAME_MODIFIER_TEMPLATE_REGEX);
-  const description_template_match_array = product.description.match(PRODUCT_NAME_MODIFIER_TEMPLATE_REGEX);
+  const name_template_match_array = metadata.name.match(PRODUCT_NAME_MODIFIER_TEMPLATE_REGEX);
+  const description_template_match_array = metadata.description.match(PRODUCT_NAME_MODIFIER_TEMPLATE_REGEX);
   if (name_template_match_array === null && description_template_match_array === null) {
     return metadata;
   }
   const name_template_match_obj = name_template_match_array ? name_template_match_array.reduce((acc: MatchTemplateObject, x) => ({ ...acc, [x]: "" }), {}) : {};
   const description_template_match_obj = description_template_match_array ? description_template_match_array.reduce((acc: MatchTemplateObject, x) => ({ ...acc, [x]: "" }), {}) : {};
-  product.PRODUCT_CLASS.modifiers.forEach((pc_modifier) => {
+  product.modifiers.forEach((pc_modifier) => {
     const { mtid } = pc_modifier;
     const modifier_flags = MENU.modifiers[mtid].modifier_type.display_flags;
     if (modifier_flags && modifier_flags.template_string !== "") {
@@ -217,8 +261,8 @@ const RunTemplating = (product: WCPProduct, MENU: IMenu, metadata: WProductMetad
       const template_in_name = Object.hasOwn(name_template_match_obj, template_string_with_braces);
       const template_in_description = Object.hasOwn(description_template_match_obj, template_string_with_braces);
       if (template_in_name || template_in_description) {
-        const filtered_exhaustive_options = metadata.exhaustive_options.whole.filter(x => x[0] === mtid);
-        const modifier_values = filtered_exhaustive_options.map(HandleOption).filter(x => x !== "");
+        const filtered_exhaustive_modifiers = metadata.exhaustive_modifiers.whole.filter(x => x[0] === mtid);
+        const modifier_values = filtered_exhaustive_modifiers.map(HandleOption).filter(x => x && x !== "");
         if (modifier_values.length > 0) {
           const modifier_values_joined_string = modifier_flags.non_empty_group_prefix + modifier_values.join(modifier_flags.multiple_item_separator) + modifier_flags.non_empty_group_suffix;
           if (template_in_name) {
@@ -233,45 +277,33 @@ const RunTemplating = (product: WCPProduct, MENU: IMenu, metadata: WProductMetad
   });
   return {
     ...metadata,
-    processed_name: product.name.replace(PRODUCT_NAME_MODIFIER_TEMPLATE_REGEX, (m) => Object.hasOwn(name_template_match_obj, m) ? name_template_match_obj[m] : ""),
-    processed_description: product.description.replace(PRODUCT_NAME_MODIFIER_TEMPLATE_REGEX, (m) => Object.hasOwn(description_template_match_obj, m) ? description_template_match_obj[m] : "")
+    name: metadata.name.replace(PRODUCT_NAME_MODIFIER_TEMPLATE_REGEX, (m) => Object.hasOwn(name_template_match_obj, m) ? name_template_match_obj[m] : ""),
+    description: metadata.description.replace(PRODUCT_NAME_MODIFIER_TEMPLATE_REGEX, (m) => Object.hasOwn(description_template_match_obj, m) ? description_template_match_obj[m] : "")
   } as WProductMetadata;
 }
 
-interface IMatchInfo { shortcodes : [string, string]; product: [WCPProduct | null, WCPProduct | null], comparison: LR_MODIFIER_MATCH_MATRIX; comparison_value: [MODIFIER_MATCH, MODIFIER_MATCH] };
+interface IMatchInfo { product: [IProductInstance | null, IProductInstance | null], comparison: LR_MODIFIER_MATCH_MATRIX; comparison_value: [MODIFIER_MATCH, MODIFIER_MATCH] };
 
-export function WCPProductGenerateMetadata(a: WCPProduct, MENU: IMenu, service_time: moment.Moment) {
-  const metadata = {
-    processed_name: a.name,
-    processed_description: a.description,
-    modifier_map: {},
-    advanced_option_eligible: false,
-    advanced_option_selected: false,
-    additional_modifiers: {},
-    exhaustive_modifiers: {}
-  } as WProductMetadata;
+export function WCPProductGenerateMetadata(a: WCPProduct, MENU: IMenu, service_time: Date) {
+  const PRODUCT_CLASS = a.PRODUCT_CLASS;
+  const PRODUCT_CLASS_MENU_ENTRY = MENU.product_classes[a.PRODUCT_CLASS._id];
+  const BASE_PRODUCT_INSTANCE = PRODUCT_CLASS_MENU_ENTRY.instances[PRODUCT_CLASS_MENU_ENTRY.base_id];
 
-  const { PRODUCT_CLASS } = a;
-  const PRODUCT_CLASS_MENU_ENTRY = MENU.product_classes[PRODUCT_CLASS._id];
-
-  // at this point we only know what product class we belong to. we might be an unmodified product, 
-  // but that will need to be determined.
-  const BASE_PRODUCT_INSTANCE = PRODUCT_CLASS_MENU_ENTRY.instances[a.base_product_piid];
+  const bake_count: [number, number] = [0, 0];
+  const flavor_count: [number, number] = [0, 0];
+  let is_split = false;
 
   const match_info = {
-    // TODO: we don't need to track shortcode separately since we can pull it from the matched product
-    shortcodes: [BASE_PRODUCT_INSTANCE.shortcode, BASE_PRODUCT_INSTANCE.shortcode],
     product: [null, null],
     comparison: [[], []],
     comparison_value: [EXACT_MATCH, EXACT_MATCH]
   } as IMatchInfo;
 
-  const CheckMatchForSide = (side: MODIFIER_LOCATION, comparison : WProductCompareResult, comparison_product : WCPProduct) => {
+  const CheckMatchForSide = (side: MODIFIER_LOCATION, comparison: WProductCompareResult, comparison_product: IProductInstance) => {
     if (match_info.product[side] === null && comparison.match[side] !== NO_MATCH) {
       match_info.product[side] = comparison_product;
       match_info.comparison[side] = comparison.match_matrix[side];
       match_info.comparison_value[side] = comparison.match[side];
-      match_info.shortcodes[side] = comparison_product.shortcode;
     }
   }
 
@@ -283,7 +315,7 @@ export function WCPProductGenerateMetadata(a: WCPProduct, MENU: IMenu, service_t
   // and the most modified products have the lowest numbers
   for (let pi_index = 0; pi_index < PRODUCT_CLASS_MENU_ENTRY.instances_list.length; ++pi_index) {
     const comparison_product = PRODUCT_CLASS_MENU_ENTRY.instances_list[pi_index];
-    const comparison_info = WProductCompare(a, PRODUCT_CLASS_MENU_ENTRY.instances_list[pi_index], MENU);
+    const comparison_info = WProductCompareToIProductInstance(a, PRODUCT_CLASS_MENU_ENTRY.instances_list[pi_index], MENU);
     CheckMatchForSide(LEFT_SIDE, comparison_info, comparison_product);
     CheckMatchForSide(RIGHT_SIDE, comparison_info, comparison_product);
     if (match_info.product[LEFT_SIDE] !== null && match_info.product[RIGHT_SIDE] !== null) {
@@ -292,26 +324,62 @@ export function WCPProductGenerateMetadata(a: WCPProduct, MENU: IMenu, service_t
     }
   }
 
-
   /* NOTE/TODO: 2021_05_02, current issue with the following code is a questionable dependency on what makes a complete product if 
-      modifier options are disabled for non-dependent reasons (like, OOS or some other combination disable that isn't actually intended to make it impossible to complete a product)
-      it's very possible that a more correct logic doesn't look at has_selectable in the modifier map for determining if the product is complete but rather looks at enable_modifier_type.
-      if this is changed, then we need to catch creation of impossible-to-build products in the catalog, before they're surfaced to a customer.
+    modifier options are disabled for non-dependent reasons (like, OOS or some other combination disable that isn't actually intended to make it impossible to complete a product)
+    it's very possible that a more correct logic doesn't look at has_selectable in the modifier map for determining if the product is complete but rather looks at enable_modifier_type.
+    if this is changed, then we need to catch creation of impossible-to-build products in the catalog, before they're surfaced to a customer.
 
-      additionally, since we don't have any checks that we're not exceeding MAX_SELECTED as defined by the modifier type, the modifier_map values for enable_left, enable_right, enable_whole
-      are not actually correct. but the fix for that might need to live in the WOption.IsEnabled method... but probably not since this is the function where we determine very specifically what 
-      our selection count is for LEFT/RIGHT/WHOLE
+    additionally, since we don't have any checks that we're not exceeding MAX_SELECTED as defined by the modifier type, the modifier_map values for enable_left, enable_right, enable_whole
+    are not actually correct. but the fix for that might need to live in the WOption.IsEnabled method... but probably not since this is the function where we determine very specifically what 
+    our selection count is for LEFT/RIGHT/WHOLE
   */
- 
-  console.assert(match_info.product[LEFT_SIDE] !== null && match_info.product[RIGHT_SIDE] !== null, "We should have both matches determined by now.");
-  // assign shortcode (easy)
-  a.shortcode = metadata.is_split && match_info.shortcodes[LEFT_SIDE] !== match_info.shortcodes[RIGHT_SIDE] ? match_info.shortcodes.join("|") : match_info.shortcodes[LEFT_SIDE];
-  metadata.incomplete = false;
+  const leftPI = match_info.product[LEFT_SIDE];
+  const rightPI = match_info.product[RIGHT_SIDE];
+  if (leftPI === null || rightPI === null) {
+    console.assert(false, "We should have both matches determined by now.");
+    throw ("Unable to determine product metadata");
+  }
+
+  let price = PRODUCT_CLASS.price.amount;
+
+  // We need to compute this before the modifier match matrix, otherwise the metadata limits won't be pre-computed
+  Object.entries(a.modifiers).forEach(([mtid, options]) => {
+    options.forEach((opt) => {
+      const mo = MENU.modifiers[mtid].options[opt.option_id].mo;
+      if (opt.placement === OptionPlacement.LEFT || opt.placement === OptionPlacement.WHOLE) {
+        bake_count[LEFT_SIDE] += mo.metadata.bake_factor;
+        flavor_count[LEFT_SIDE] += mo.metadata.flavor_factor;
+      }
+      if (opt.placement === OptionPlacement.RIGHT || opt.placement === OptionPlacement.WHOLE) {
+        bake_count[RIGHT_SIDE] += mo.metadata.bake_factor;
+        flavor_count[RIGHT_SIDE] += mo.metadata.flavor_factor;
+      }
+      if (opt.placement !== OptionPlacement.NONE) { price += mo.item.price.amount; }
+      is_split ||= opt.placement === OptionPlacement.LEFT || opt.placement === OptionPlacement.RIGHT;
+    });
+  });
+
+  const metadata: WProductMetadata = {
+    name: '',
+    description: '',
+    shortname: '',
+    pi: [leftPI, rightPI],
+    is_split,
+    price: price / 100,
+    incomplete: false,
+    modifier_map: {} as MetadataModifierMap,
+    advanced_option_eligible: false,
+    advanced_option_selected: false,
+    additional_modifiers: {} as ModifierDisplayListByLocation,
+    exhaustive_modifiers: {} as ModifierDisplayListByLocation,
+    bake_count,
+    flavor_count,
+  };
 
   // determine if we're comparing to the base product on the left and right sides
   const is_compare_to_base = [
-    BASE_PRODUCT_INSTANCE.piid === match_info.product[LEFT_SIDE]?.piid,
-    BASE_PRODUCT_INSTANCE.piid === match_info.product[RIGHT_SIDE]?.piid];
+    BASE_PRODUCT_INSTANCE._id === leftPI._id,
+    BASE_PRODUCT_INSTANCE._id === rightPI._id];
 
   // split out options beyond the base product into left additions, right additions, and whole additions
   // each entry in these arrays represents the modifier index on the product class and the option index in that particular modifier
@@ -322,28 +390,28 @@ export function WCPProductGenerateMetadata(a: WCPProduct, MENU: IMenu, service_t
     const is_single_select = CATALOG_MODIFIER_INFO.modifier_type.min_selected === 1 && CATALOG_MODIFIER_INFO.modifier_type.max_selected === 1;
     const is_base_product_edge_case = is_single_select && !PRODUCT_CLASS.display_flags.show_name_of_base_product;
     metadata.modifier_map[mtid] = { has_selectable: false, meets_minimum: false, options: {} };
-    const enable_modifier_type = modifier_type_enable_function === null || WFunctional.ProcessProductInstanceFunction(a, modifier_type_enable_function);
+    const enable_modifier_type = modifier_type_enable_function === null || WFunctional.ProcessProductInstanceFunction(a, MENU.product_instance_functions[modifier_type_enable_function]);
     for (let moidx = 0; moidx < CATALOG_MODIFIER_INFO.options_list.length; ++moidx) {
       const option_object = CATALOG_MODIFIER_INFO.options_list[moidx];
-      const is_enabled = enable_modifier_type && DisableDataCheck(option_object.mo.catalog_item?.disabled, service_time)
+      const is_enabled = enable_modifier_type && DisableDataCheck(option_object.mo.item.disabled, service_time)
       const option_info = {
         placement: OptionPlacement.NONE,
         // do we need to figure out if we can de-select? answer: probably
-        enable_left: is_enabled && option_object.mo.metadata.can_split && option_object.IsEnabled(a, OptionPlacement.LEFT, MENU),
-        enable_right: is_enabled && option_object.mo.metadata.can_split && option_object.IsEnabled(a, OptionPlacement.RIGHT, MENU),
-        enable_whole: is_enabled && option_object.IsEnabled(a, OptionPlacement.WHOLE, MENU),
+        enable_left: is_enabled && option_object.mo.metadata.can_split && IsOptionEnabled(option_object, a, OptionPlacement.LEFT, MENU),
+        enable_right: is_enabled && option_object.mo.metadata.can_split && IsOptionEnabled(option_object, a, OptionPlacement.RIGHT, MENU),
+        enable_whole: is_enabled && IsOptionEnabled(option_object, a, OptionPlacement.WHOLE, MENU),
       };
       const enable_left_or_right = option_info.enable_left || option_info.enable_right;
-      metadata.advanced_option_eligible = metadata.advanced_option_eligible || enable_left_or_right;
+      metadata.advanced_option_eligible ||= enable_left_or_right;
       metadata.modifier_map[mtid].options[option_object.mo._id] = option_info;
-      metadata.modifier_map[mtid].has_selectable = metadata.modifier_map[mtid].has_selectable || enable_left_or_right || option_info.enable_whole;
+      metadata.modifier_map[mtid].has_selectable ||= enable_left_or_right || option_info.enable_whole;
     }
 
     const num_selected = [0, 0];
     if (Object.hasOwn(a.modifiers, mtid)) {
       a.modifiers[mtid].forEach((placed_option) => {
         const moid = placed_option.option_id;
-        const location = OptionPlacement[placed_option.placement];
+        const location = placed_option.placement;
         const moidx = CATALOG_MODIFIER_INFO.options[moid].index;
         metadata.modifier_map[mtid].options[moid].placement = location;
         switch (location) {
@@ -375,17 +443,17 @@ export function WCPProductGenerateMetadata(a: WCPProduct, MENU: IMenu, service_t
       num_selected[RIGHT_SIDE] < MIN_SELECTED) {
       if (EMPTY_DISPLAY_AS !== "OMIT" && metadata.modifier_map[mtid].has_selectable) { metadata.exhaustive_modifiers.whole.push([mtid, ""]); }
       metadata.modifier_map[mtid].meets_minimum = !metadata.modifier_map[mtid].has_selectable;
-      metadata.incomplete = metadata.incomplete || metadata.modifier_map[mtid].has_selectable;
+      metadata.incomplete ||= metadata.modifier_map[mtid].has_selectable;
     }
     else if (num_selected[LEFT_SIDE] < MIN_SELECTED) {
       if (EMPTY_DISPLAY_AS !== "OMIT" && metadata.modifier_map[mtid].has_selectable) { metadata.exhaustive_modifiers.left.push([mtid, ""]); }
       metadata.modifier_map[mtid].meets_minimum = !metadata.modifier_map[mtid].has_selectable;
-      metadata.incomplete = metadata.incomplete || metadata.modifier_map[mtid].has_selectable;
+      metadata.incomplete ||= metadata.modifier_map[mtid].has_selectable;
     }
     else if (num_selected[RIGHT_SIDE] < MIN_SELECTED) {
       if (EMPTY_DISPLAY_AS !== "OMIT" && metadata.modifier_map[mtid].has_selectable) { metadata.exhaustive_modifiers.right.push([mtid, ""]); }
       metadata.modifier_map[mtid].meets_minimum = !metadata.modifier_map[mtid].has_selectable;
-      metadata.incomplete = metadata.incomplete || metadata.modifier_map[mtid].has_selectable;
+      metadata.incomplete ||= metadata.modifier_map[mtid].has_selectable;
     }
     else {
       // both left and right meet the minimum selected criteria
@@ -393,20 +461,21 @@ export function WCPProductGenerateMetadata(a: WCPProduct, MENU: IMenu, service_t
     }
   });
 
-  if (a.piid) {
-    // if we have a PI ID then that means we're an unmodified product instance from the catalog
-    // and we should find that product and assume its name.
-    const catalog_pi = PRODUCT_CLASS_MENU_ENTRY.instances[a.piid];
-    a.name = catalog_pi.name;
-    a.shortname = catalog_pi.shortcode;
-    RunTemplating(a);
-    return;
+  // check for an exact match before going through all the name computation
+  if (!is_split && match_info.comparison_value[LEFT_SIDE] === EXACT_MATCH && match_info.comparison_value[RIGHT_SIDE] === EXACT_MATCH) {
+    // if we're an unmodified product instance from the catalog,
+    // we should find that product and assume its name.
+    metadata.name = leftPI.item.display_name;
+    metadata.shortname = leftPI.item.shortcode;
+    metadata.description = leftPI.item.description;
+    RunTemplating(PRODUCT_CLASS, MENU, metadata);
+    return metadata;
   }
 
   const additional_options_objects = {
-    left: metadata.additional_modifiers.left.map((x : MTID_MOID) => GetModifierOptionFromMIDOID(MENU, x[0], x[1])),
-    right: metadata.additional_modifiers.right.map((x : MTID_MOID) => GetModifierOptionFromMIDOID(MENU, x[0], x[1])),
-    whole: metadata.additional_modifiers.whole.map((x : MTID_MOID) => GetModifierOptionFromMIDOID(MENU, x[0], x[1])),
+    left: metadata.additional_modifiers.left.map((x: MTID_MOID) => GetModifierOptionFromMIDOID(MENU, x[0], x[1])),
+    right: metadata.additional_modifiers.right.map((x: MTID_MOID) => GetModifierOptionFromMIDOID(MENU, x[0], x[1])),
+    whole: metadata.additional_modifiers.whole.map((x: MTID_MOID) => GetModifierOptionFromMIDOID(MENU, x[0], x[1])),
   };
 
   const split_options = ["∅", "∅"];
@@ -435,21 +504,21 @@ export function WCPProductGenerateMetadata(a: WCPProduct, MENU: IMenu, service_t
   if (metadata.is_split) {
     name_components_list = ComponentsListName(FilterByOmitFromName(additional_options_objects.whole));
     shortname_components_list = ComponentsListShortname(FilterByOmitFromShortname(additional_options_objects.whole));
-    if (match_info.product[LEFT_SIDE].piid === match_info.product[RIGHT_SIDE].piid) {
+    if (leftPI._id === leftPI._id) {
       if (!is_compare_to_base[LEFT_SIDE] || PRODUCT_CLASS.display_flags.show_name_of_base_product) {
-        name_components_list.unshift(match_info.product[LEFT_SIDE].name);
-        shortname_components_list.unshift(match_info.product[LEFT_SIDE].name);
+        name_components_list.unshift(leftPI.item.display_name);
+        shortname_components_list.unshift(leftPI.item.display_name);
       }
       name_components_list.push(`(${split_options.join(" | ")})`);
       shortname_components_list.push(`(${short_split_options.join(" | ")})`);
-      a.description = match_info.product[LEFT_SIDE].description;
+      metadata.description = leftPI.item.description;
     }
     else {
       // split product, different product instance match on each side
       // logical assertion: if name_components for a given side are all false, then it's an exact match
       const names = [
-        (!is_compare_to_base[LEFT_SIDE] || PRODUCT_CLASS.display_flags.show_name_of_base_product) ? [match_info.product[LEFT_SIDE].name] : [],
-        (!is_compare_to_base[RIGHT_SIDE] || PRODUCT_CLASS.display_flags.show_name_of_base_product) ? [match_info.product[RIGHT_SIDE].name] : []
+        (!is_compare_to_base[LEFT_SIDE] || PRODUCT_CLASS.display_flags.show_name_of_base_product) ? [leftPI.item.display_name] : [],
+        (!is_compare_to_base[RIGHT_SIDE] || PRODUCT_CLASS.display_flags.show_name_of_base_product) ? [rightPI.item.display_name] : []
       ];
       const shortnames = names.slice();
       if (additional_options_objects.left.length) {
@@ -472,7 +541,7 @@ export function WCPProductGenerateMetadata(a: WCPProduct, MENU: IMenu, service_t
       const right_shortname = shortnames[RIGHT_SIDE].length > 1 || num_split_options_shortname[RIGHT_SIDE] > 1 ? `( ${shortnames[RIGHT_SIDE].join(" + ")} )` : shortnames[RIGHT_SIDE].join(" + ");
       const split_shortname = `${left_shortname} | ${right_shortname}`;
       shortname_components_list.push(shortname_components_list.length > 0 ? `( ${split_shortname} )` : split_shortname);
-      a.description = match_info.product[LEFT_SIDE].description && match_info.product[RIGHT_SIDE].description ? `( ${match_info.product[LEFT_SIDE].description} ) | ( ${match_info.product[RIGHT_SIDE].description} )` : "";
+      metadata.description = leftPI.item.description && rightPI.item.description ? `( ${leftPI.item.description} ) | ( ${rightPI.item.description} )` : "";
     }
   } // end is_split case
   else {
@@ -481,212 +550,12 @@ export function WCPProductGenerateMetadata(a: WCPProduct, MENU: IMenu, service_t
     // we're using the left side because we know left and right are the same
     // if exact match to base product, no need to show the name
     if (!is_compare_to_base[LEFT_SIDE] || PRODUCT_CLASS.display_flags.show_name_of_base_product) {
-      name_components_list.unshift(match_info.product[LEFT_SIDE].name);
-      shortname_components_list.unshift(match_info.product[LEFT_SIDE].name);
+      name_components_list.unshift(leftPI.item.display_name);
+      shortname_components_list.unshift(leftPI.item.display_name);
     }
-    if (match_info.comparison_value[LEFT_SIDE] === EXACT_MATCH) {
-      // assign PIID
-      a.piid = match_info.product[LEFT_SIDE].piid;
-      a.is_base = match_info.product[LEFT_SIDE].is_base;
-    }
-    a.description = match_info.product[LEFT_SIDE].description;
+    metadata.description = leftPI.item.description;
   }
-  a.ordinal = match_info.product[LEFT_SIDE].ordinal;
-  a.display_flags = match_info.product[LEFT_SIDE].display_flags;
-  a.name = name_components_list.join(" + ");
-  a.shortname = shortname_components_list.length === 0 ? match_info.product[LEFT_SIDE].shortname : shortname_components_list.join(" + ");
-  RunTemplating(a);
+  metadata.name = name_components_list.join(" + ");
+  metadata.shortname = shortname_components_list.length === 0 ? leftPI.item.shortcode : shortname_components_list.join(" + ");
+  return RunTemplating(PRODUCT_CLASS, MENU, metadata);
 }
-
-
-
-}
-
-export function WCPProductInitialize(a: WCPProduct, MENU: IMenu, service_time: moment.Moment) {
-  this.SetBaseProductPIID(MENU);
-  this.OrderModifiersAndOptions(MENU);
-  this.price = this.ComputePrice(MENU);
-  this.RecomputeMetadata(MENU);
-  this.RecomputeName(MENU, service_time);
-  this.options_sections = this.DisplayOptions(MENU);
-}
-
-// we need to take a map of these fields and allow name to be null if piid is _NOT_ set, piid should only be set if it's an exact match of a product instance in the catalog
-export const WCPProductTODODELETE = function (product_class, piid, name, description, ordinal, modifiers, shortcode, is_base, display_flag: ) {
-  this.PRODUCT_CLASS = product_class;
-  this.piid = piid;
-  this.name = name;
-  this.description = description;
-  this.ordinal = ordinal;
-  this.is_base = is_base;
-  this.shortcode = shortcode;
-  this.display_flags = display_flags;
-  this.base_product_piid = null;
-  // product.modifiers[mtid] = [[placement, option_id]]
-  // enum is 0: none, 1: left, 2: right, 3: both
-  this.modifiers = DeepCopyPlacedOptions(modifiers);
-  // memoized metadata
-  this.price = null;
-  this.is_split = false;
-  this.bake_count = [0, 0];
-  this.flavor_count = [0, 0];
-
-  this.ComputePrice = (MENU) => {
-    let price = this.PRODUCT_CLASS.price.amount / 100;
-    Object.keys(this.modifiers).forEach(mtid => {
-      this.modifiers[mtid].forEach((opt) => {
-        if (opt[0] !== OptionPlacement.NONE) {
-          price += MENU.modifiers[mtid].options[opt[1]].price;
-        }
-      });
-    });
-    return price;
-  };
-
-  this.RecomputeMetadata = (MENU) => {
-    // recomputes bake_count, flavor_count, is_split
-    const bake_count_compute = [0, 0];
-    const flavor_count_compute = [0, 0];
-    let is_split_compute = false;
-    Object.keys(this.modifiers).forEach(mtid => {
-      this.modifiers[mtid].forEach((opt) => {
-        const option_obj = MENU.modifiers[mtid].options[opt[1]];
-        if (opt[0] === OptionPlacement.LEFT || opt[0] === OptionPlacement.WHOLE) {
-          bake_count_compute[LEFT_SIDE] += option_obj.bake_factor;
-          flavor_count_compute[LEFT_SIDE] += option_obj.flavor_factor;
-        }
-        if (opt[0] === OptionPlacement.RIGHT || opt[0] === OptionPlacement.WHOLE) {
-          bake_count_compute[RIGHT_SIDE] += option_obj.bake_factor;
-          flavor_count_compute[RIGHT_SIDE] += option_obj.flavor_factor;
-        }
-        is_split_compute = is_split_compute || opt[0] === OptionPlacement.LEFT || opt[0] === OptionPlacement.RIGHT;
-      });
-    });
-    this.bake_count = bake_count_compute;
-    this.flavor_count = flavor_count_compute;
-    this.is_split = is_split_compute;
-  };
-
-
-
-  this.Equals = (other: WCPProduct, MENU: IMenu) => WProductEquals(this, other, MENU);
-
-  // eslint-disable-next-line consistent-return
-  this.RecomputeName = (MENU, service_time) => {
-    const { PRODUCT_CLASS } = this;
-    const PRODUCT_CLASS_MENU_ENTRY = MENU.product_classes[PRODUCT_CLASS._id];
-
-    // at this point we only know what product class we belong to. we might be an unmodified product, 
-    // but that will need to be determined.
-    const BASE_PRODUCT_INSTANCE = PRODUCT_CLASS_MENU_ENTRY.instances[this.base_product_piid];
-
-    const match_info = {
-      // TODO: we don't need to track shortcode separately since we can pull it from the matched product
-      shortcodes: [BASE_PRODUCT_INSTANCE.shortcode, BASE_PRODUCT_INSTANCE.shortcode],
-      product: [null, null],
-      comparison: [[], []],
-      comparison_value: [EXACT_MATCH, EXACT_MATCH]
-    }
-
-    const CheckMatchForSide = (side, comparison, comparison_product) => {
-      if (match_info.product[side] === null && comparison.match[side] !== NO_MATCH) {
-        match_info.product[side] = comparison_product;
-        match_info.comparison[side] = comparison.match_matrix[side];
-        match_info.comparison_value[side] = comparison.match[side];
-        match_info.shortcodes[side] = comparison_product.shortcode;
-      }
-    }
-
-    const RunTemplating = (product) => {
-      const HandleOption = HandleOptionCurry(MENU, HandleOptionNameNoFilter);
-      const name_template_match_array = product.name.match(PRODUCT_NAME_MODIFIER_TEMPLATE_REGEX);
-      const description_template_match_array = product.description.match(PRODUCT_NAME_MODIFIER_TEMPLATE_REGEX);
-      if (name_template_match_array === null && description_template_match_array === null) {
-        product.processed_name = product.name;
-        product.processed_description = product.description;
-        return;
-      }
-      const name_template_match_obj = name_template_match_array ? name_template_match_array.reduce((acc, x) => Object.assign(acc, { [x]: "" }), {}) : {};
-      const description_template_match_obj = description_template_match_array ? description_template_match_array.reduce((acc, x) => Object.assign(acc, { [x]: "" }), {}) : {};
-      PRODUCT_CLASS.modifiers.forEach((pc_modifier) => {
-        const { mtid } = pc_modifier;
-        const modifier_flags = MENU.modifiers[mtid].modifier_type.display_flags;
-        if (modifier_flags && modifier_flags.template_string !== "") {
-          const template_string_with_braces = `{${modifier_flags.template_string}}`;
-          const template_in_name = Object.hasOwn(name_template_match_obj, template_string_with_braces);
-          const template_in_description = Object.hasOwn(description_template_match_obj, template_string_with_braces);
-          if (template_in_name || template_in_description) {
-            const filtered_exhaustive_options = product.exhaustive_options.whole.filter(x => x[0] === mtid);
-            const modifier_values = filtered_exhaustive_options.map(HandleOption).filter(x => x !== "");
-            if (modifier_values.length > 0) {
-              const modifier_values_joined_string = modifier_flags.non_empty_group_prefix + modifier_values.join(modifier_flags.multiple_item_separator) + modifier_flags.non_empty_group_suffix;
-              if (template_in_name) {
-                name_template_match_obj[template_string_with_braces] = modifier_values_joined_string;
-              }
-              if (template_in_description) {
-                description_template_match_obj[template_string_with_braces] = modifier_values_joined_string;
-              }
-            }
-          }
-        }
-      });
-      product.processed_name = product.name.replace(PRODUCT_NAME_MODIFIER_TEMPLATE_REGEX, (m) => Object.hasOwn(name_template_match_obj, m) ? name_template_match_obj[m] : "");
-      product.processed_description = product.description.replace(PRODUCT_NAME_MODIFIER_TEMPLATE_REGEX, (m) => Object.hasOwn(description_template_match_obj, m) ? description_template_match_obj[m] : "");
-    }
-
-  this.DisplayOptions = (MENU) => {
-    const HandleOption = HandleOptionCurry(MENU, HandleOptionNameFilterOmitByName);
-    const options_sections = [];
-    if (this.exhaustive_options.whole.length > 0) {
-      const option_names = this.exhaustive_options.whole.map(HandleOption).filter(x => x !== "");
-      options_sections.push(["Whole", option_names.join(" + ")]);
-    }
-    if (this.exhaustive_options.left.length > 0) {
-      const option_names = this.exhaustive_options.left.map(HandleOption).filter(x => x !== "");
-      options_sections.push(["Left", option_names.join(" + ")]);
-    }
-    if (this.exhaustive_options.right.length > 0) {
-      const option_names = this.exhaustive_options.right.map(HandleOption).filter(x => x !== "");
-      options_sections.push(["Right", option_names.join(" + ")]);
-    }
-    return options_sections;
-  };
-
-  this.SetBaseProductPIID = (MENU) => {
-    const PRODUCT_CLASS_MENU_ENTRY = MENU.product_classes[this.PRODUCT_CLASS._id];
-    const BASE_PRODUCT_INSTANCE = PRODUCT_CLASS_MENU_ENTRY.instances_list.find((prod) => prod.is_base === true);
-    if (!BASE_PRODUCT_INSTANCE) {
-      console.error(`Cannot find base product instance of ${JSON.stringify(this.PRODUCT_CLASS)}.`);
-      return;
-    }
-    this.base_product_piid = BASE_PRODUCT_INSTANCE.piid;
-  }
-
-  this.OrderModifiersAndOptions = (MENU) => {
-    const new_obj = {};
-    const sorted_mtids = Object.keys(this.modifiers).sort((a, b) => MENU.modifiers[a].modifier_type.ordinal - MENU.modifiers[b].modifier_type.ordinal)
-    for (let mtidx = 0; mtidx < sorted_mtids.length; ++mtidx) {
-      const mtid = sorted_mtids[mtidx];
-      new_obj[mtid] = this.modifiers[mtid].sort((a, b) => MENU.modifiers[mtid].options[a[1]].index - MENU.modifiers[mtid].options[b[1]].index);
-    }
-    this.modifiers = new_obj;
-  }
-
-  this.Initialize = (MENU) => {
-    this.SetBaseProductPIID(MENU);
-    this.OrderModifiersAndOptions(MENU);
-    this.price = this.ComputePrice(MENU);
-    this.RecomputeMetadata(MENU);
-    const service_time = moment();
-    this.RecomputeName(MENU, service_time);
-    this.options_sections = this.DisplayOptions(MENU);
-  };
-
-  this.ToDTO = () => ({
-    pid: this.PRODUCT_CLASS._id,
-    modifiers: this.modifiers
-  });
-
-};
-
-export default WCPProduct;
