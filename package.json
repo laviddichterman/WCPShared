@@ -2,7 +2,11 @@
   "name": "@wcp/wcpshared",
   "version": "3.0.0",
   "description": "Shared JS/TS modules for WARIO",
-  "main": "dist/wcpshared.js",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "/dist"
+  ],
   "scripts": {
     "build": "npx webpack --mode development ./src",
     "buildprod": "npx webpack --mode production ./src",
@@ -29,22 +33,26 @@
   "devDependencies": {
     "@babel/cli": "^7.17.10",
     "@babel/core": "^7.18.2",
+    "@babel/eslint-parser": "^7.18.2",
     "@babel/plugin-transform-arrow-functions": "^7.17.12",
     "@babel/plugin-transform-runtime": "^7.18.2",
     "@babel/preset-env": "^7.18.2",
+    "@typescript-eslint/eslint-plugin": "^5.27.1",
+    "@typescript-eslint/parser": "^5.27.1",
+    "awesome-typescript-loader": "^5.2.1",
     "babel-loader": "^8.2.5",
+    "eslint": "^8.17.0",
     "eslint-config-airbnb": "^19.0.4",
     "eslint-config-prettier": "^8.5.0",
     "eslint-plugin-flowtype": "^8.0.3",
     "eslint-plugin-import": "^2.26.0",
     "eslint-plugin-jsx-a11y": "^6.5.1",
     "eslint-plugin-prettier": "^4.0.0",
+    "terser-webpack-plugin": "^5.3.3",
+    "ts-loader": "^9.3.0",
+    "typescript": "^4.7.3",
     "webpack": "^5.73.0",
     "webpack-cli": "^4.9.2",
-    "webpack-dev-server": "^4.9.2",
-    "@babel/eslint-parser": "^7.18.2",
-    "@typescript-eslint/eslint-plugin": "^5.27.1",
-    "@typescript-eslint/parser": "^5.27.1",
-    "eslint": "^8.17.0"
+    "webpack-dev-server": "^4.9.2"
   }
 }

@@ -1,5 +1,5 @@
-import { GetPlacementFromMIDOID, TOPPING_NONE } from "../common";
-import { WCPProduct, IConstLiteralExpression, IIfElseExpression, ProductInstanceFunctionOperator, ILogicalExpression, IAbstractExpression, IProductInstanceFunction, ICatalogModifiers, IModifierPlacementExpression, IHasAnyOfModifierExpression } from '../types';
+import { GetPlacementFromMIDOID } from "../common";
+import { WCPProduct, IConstLiteralExpression, IIfElseExpression, ProductInstanceFunctionOperator, ILogicalExpression, IAbstractExpression, IProductInstanceFunction, ICatalogModifiers, IModifierPlacementExpression, IHasAnyOfModifierExpression, OptionPlacement, IOption } from '../types';
 export class WFunctional {
   static ProcessIfElseStatement(prod : WCPProduct, stmt : IIfElseExpression) {
     const branch_test = WFunctional.ProcessAbstractExpressionStatement(prod, stmt.test);
@@ -48,12 +48,12 @@ export class WFunctional {
   }
 
   static ProcessModifierPlacementExtractionOperatorStatement(prod : WCPProduct, stmt : IModifierPlacementExpression) {
-    return GetPlacementFromMIDOID(prod, stmt.mtid, stmt.moid);
+    return GetPlacementFromMIDOID(prod, stmt.mtid, stmt.moid).placement;
   }
 
   static ProcessHasAnyOfModifierTypeExtractionOperatorStatement(prod : WCPProduct, stmt : IHasAnyOfModifierExpression) {
     return Object.hasOwn(prod.modifiers, stmt.mtid) ? 
-      prod.modifiers[stmt.mtid].filter(x => x[0] !== TOPPING_NONE).length > 0 : false;
+      prod.modifiers[stmt.mtid].filter(x => x.placement !== OptionPlacement.NONE).length > 0 : false;
   }
 
   static ProcessAbstractExpressionStatement(prod : WCPProduct, stmt : IAbstractExpression) : any {
@@ -85,11 +85,13 @@ export class WFunctional {
       return logicalExpr.operator === ProductInstanceFunctionOperator.NOT || !logicalExpr.operandB ? `NOT (${operandAString})` : `(${operandAString} ${logicalExpr.operator} ${WFunctional.AbstractExpressionStatementToString(logicalExpr.operandB, mods)})`;
     }
     const modifierPlacement = () => {
-      if (!stmt.modifier_placement || !Object.hasOwn(mods, stmt.modifier_placement.mtid)) {
+      const mps = stmt.modifier_placement as unknown as IModifierPlacementExpression;
+      if (!Object.hasOwn(mods, mps.mtid)) {
         return "";
       }
-      const modPlacementExpr = stmt.modifier_placement;
-      return `${mods[modPlacementExpr.mtid].modifier_type.name}.${mods[modPlacementExpr.mtid].options.find(x => x._id == modPlacementExpr.moid).item.display_name}`;
+      const val = mods[mps.mtid];
+      const opt = val.options.find(x => x._id == mps.moid) as unknown as IOption;
+      return `${val.modifier_type.name}.${opt.item.display_name}`;
     }
     switch (stmt.discriminator) {
       case "ConstLiteral":

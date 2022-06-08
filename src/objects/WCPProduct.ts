@@ -1,8 +1,7 @@
 /* eslint-disable no-plusplus */
-import moment from 'moment';
 import { DisableDataCheck, PRODUCT_NAME_MODIFIER_TEMPLATE_REGEX } from "../common";
 import { WFunctional } from "./WFunctional";
-import { IProduct, IProductDisplayFlags, IProductInstance, OptionPlacement, ModifiersMap, MODIFIER_MATCH, MODIFIER_LOCATION, WCPProduct, IMenu, WProductMetadata, MTID_MOID, ModifierEntry, WCPOption, MenuModifiers, IWModifiersInstance, IOptionInstance, OptionQualifier, MetadataModifierMap, ModifierDisplayListByLocation } from '../types';
+import { IProduct, IProductInstance, OptionPlacement, ModifiersMap, MODIFIER_MATCH, MODIFIER_LOCATION, WCPProduct, IMenu, WProductMetadata, MTID_MOID, ModifierEntry, WCPOption, MenuModifiers, IWModifiersInstance, IOptionInstance, OptionQualifier, MetadataModifierMap, ModifierDisplayListByLocation } from '../types';
 import { IsOptionEnabled } from './WCPOption';
 
 const NO_MATCH = MODIFIER_MATCH.NO_MATCH;
@@ -397,9 +396,9 @@ export function WCPProductGenerateMetadata(a: WCPProduct, MENU: IMenu, service_t
       const option_info = {
         placement: OptionPlacement.NONE,
         // do we need to figure out if we can de-select? answer: probably
-        enable_left: is_enabled && option_object.mo.metadata.can_split && IsOptionEnabled(option_object, a, OptionPlacement.LEFT, MENU),
-        enable_right: is_enabled && option_object.mo.metadata.can_split && IsOptionEnabled(option_object, a, OptionPlacement.RIGHT, MENU),
-        enable_whole: is_enabled && IsOptionEnabled(option_object, a, OptionPlacement.WHOLE, MENU),
+        enable_left: is_enabled && option_object.mo.metadata.can_split && IsOptionEnabled(option_object, a, metadata.bake_count, metadata.flavor_count, OptionPlacement.LEFT, MENU),
+        enable_right: is_enabled && option_object.mo.metadata.can_split && IsOptionEnabled(option_object, a, metadata.bake_count, metadata.flavor_count, OptionPlacement.RIGHT, MENU),
+        enable_whole: is_enabled && IsOptionEnabled(option_object, a, metadata.bake_count, metadata.flavor_count, OptionPlacement.WHOLE, MENU),
       };
       const enable_left_or_right = option_info.enable_left || option_info.enable_right;
       metadata.advanced_option_eligible ||= enable_left_or_right;

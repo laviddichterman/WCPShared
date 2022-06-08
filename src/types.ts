@@ -1,3 +1,27 @@
+/**
+ * A mapping from Service index, exclusion date to a list of excluded intervals
+ * @typedef  {{service: Number, exclusion_date: String, excluded_intervals: [{start:Number, end:Number}] }} BlockedOffIntervalMap
+ */
+
+/**
+ * @typedef {[[[[[]]]]]} BLOCKED_OFF_WIRE_FORMAT - is stored in the memory/wire format here of:
+ * [service_index][<String, [<start, end>]>], 
+ *  meaning an array indexed by service_index of...
+ * ... an array of two-tuples ...
+ * ... whose 0th element is the string representation of the date, and whose 1th element is a list of interval tuples
+ */
+
+
+/**
+ * @typedef {{blocked_off_union: [[Number]], operating_intervals: [[Number]], leadtime: Number, min_time_step: Number}} AVAILABILITY_INFO_MAP - an object containing...
+ * ...blocked_off_union - the union of blocked off times for the services specified in computation stored as a list of two tuples
+ * ...operating_intervals - the union of operating hours for the services specified in computation stored as a list of two tuples
+ * ...leadtime - the minutes from current time needed to prepare the order
+ * ...min_time_step - the minimum number of minutes between selectable options for any services specified in computation
+ */
+
+export enum DayIndex { SUNDAY, MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY };
+
 export enum DISPLAY_AS {
   OMIT = 'OMIT',
   YOUR_CHOICE_OF = 'YOUR_CHOICE_OF', 
