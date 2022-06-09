@@ -1,5 +1,5 @@
 import { GetPlacementFromMIDOID } from "../common";
-import { WCPProduct, IConstLiteralExpression, IIfElseExpression, ProductInstanceFunctionOperator, ILogicalExpression, IAbstractExpression, IProductInstanceFunction, ICatalogModifiers, IModifierPlacementExpression, IHasAnyOfModifierExpression, OptionPlacement, IOption } from '../types';
+import { WCPProduct, IConstLiteralExpression, IIfElseExpression, ProductInstanceFunctionOperator, ILogicalExpression, IAbstractExpression, IProductInstanceFunction, ICatalogModifiers, IModifierPlacementExpression, IHasAnyOfModifierExpression, OptionPlacement, IOption, ProductInstanceFunctionType } from '../types';
 export class WFunctional {
   static ProcessIfElseStatement(prod: WCPProduct, stmt: IIfElseExpression) {
     const branch_test = WFunctional.ProcessAbstractExpressionStatement(prod, stmt.test);
@@ -58,15 +58,15 @@ export class WFunctional {
 
   static ProcessAbstractExpressionStatement(prod: WCPProduct, stmt: IAbstractExpression): any {
     switch (stmt.discriminator) {
-      case "ConstLiteral":
+      case ProductInstanceFunctionType.ConstLiteral:
         return WFunctional.ProcessConstLiteralStatement(<IConstLiteralExpression>stmt.const_literal);
-      case "IfElse":
+      case ProductInstanceFunctionType.IfElse:
         return WFunctional.ProcessIfElseStatement(prod, <IIfElseExpression>stmt.if_else);
-      case "Logical":
+      case ProductInstanceFunctionType.Logical:
         return WFunctional.ProcessLogicalOperatorStatement(prod, <ILogicalExpression>stmt.logical);
-      case "ModifierPlacement":
+      case ProductInstanceFunctionType.ModifierPlacement:
         return WFunctional.ProcessModifierPlacementExtractionOperatorStatement(prod, <IModifierPlacementExpression>stmt.modifier_placement);
-      case "HasAnyOfModifierType":
+      case ProductInstanceFunctionType.HasAnyOfModifierType:
         return WFunctional.ProcessHasAnyOfModifierTypeExtractionOperatorStatement(prod, <IHasAnyOfModifierExpression>stmt.has_any_of_modifier);
       default:
         throw ("bad abstract expression");

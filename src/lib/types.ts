@@ -63,7 +63,13 @@ export enum PriceDisplay {
   'LIST'
 };
 
-export enum ProductInstanceFunctionType { 'ConstLiteral', 'IfElse', 'Logical', 'ModifierPlacement', 'HasAnyOfModifierType' };
+export enum ProductInstanceFunctionType {
+  'ConstLiteral' = "ConstLiteral",
+  'IfElse' = 'IfElse',
+  'Logical' = 'Logical',
+  'ModifierPlacement' = 'ModifierPlacement',
+  'HasAnyOfModifierType' = 'HasAnyOfModifierType'
+};
 
 export interface IExternalIDs {
   revelID: string;
