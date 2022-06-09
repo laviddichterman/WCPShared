@@ -1,5 +1,5 @@
 import { lightFormat, addMinutes, isSameDay, getDay, getHours, getMinutes, isBefore } from 'date-fns';
-import { AvailabilityInfoMap, DayIndex, IntervalTupleList, IWSettings, JSFEBlockedOff, OperatingHoursList, ServicesEnableMap } from '../types';
+import { AvailabilityInfoMap, DayIndex, IntervalTupleList, IWSettings, JSFEBlockedOff, OperatingHoursList, ServicesEnableMap, WIntervalTuple } from '../types';
 
 export class WDateUtils {
 
@@ -181,12 +181,8 @@ export class WDateUtils {
 
   /**
    * Computes a list of operating times available from the operating ranges
-   * @param {*} operating_ranges 
-   * @param {*} step 
-   * @param {Number} lead_time_min
-   * @returns 
    */
-  static GetOperatingTimesForDate(operating_ranges, step: number, lead_time_min: number) {
+  static GetOperatingTimesForDate(operating_ranges: IntervalTupleList, step: number, lead_time_min: number) {
     const retval = [];
     // eslint-disable-next-line no-restricted-syntax
     for (const i in operating_ranges) {
@@ -225,14 +221,14 @@ export class WDateUtils {
   static GetInfoMapForAvailabilityComputation(BLOCKED_OFF: JSFEBlockedOff, SETTINGS: IWSettings, LEAD_TIMES: number[], date: Date, services: ServicesEnableMap, stuff_to_depreciate_map: { cart_based_lead_time: number; size: number; }) {
     const internal_formatted_date = lightFormat(date, WDateUtils.DATE_STRING_INTERNAL_FORMAT);
     const blocked_off_union = WDateUtils.BlockedOffIntervalsForServicesAndDay(BLOCKED_OFF, services, internal_formatted_date);
-    const operating_intervals = WDateUtils.GetOperatingHoursForServicesAndDay(SETTINGS.operating_hours, services, getDay(date);
+    const operating_intervals = WDateUtils.GetOperatingHoursForServicesAndDay(SETTINGS.operating_hours, services, getDay(date));
     const min_time_step = Math.min(...SETTINGS.time_step.filter((_, i) => Object.hasOwn(services, i) && services[i]));
     const min_lead_time = Math.min(...LEAD_TIMES.filter((_: any, i: PropertyKey) => Object.hasOwn(services, i) && services[Number(i)]));
     const order_size = Object.hasOwn(stuff_to_depreciate_map, "size") ? stuff_to_depreciate_map.size : 1;
     const cart_based_lead_time = Object.hasOwn(stuff_to_depreciate_map, "cart_based_lead_time") ? stuff_to_depreciate_map.cart_based_lead_time : 0;
     // cart_based_lead_time and service/size lead time don't stack
-    const leadtime = Math.max(min_lead_time + ((order_size - 1) * SETTINGS.additional_pizza_lead_time), cart_based_lead_time);
-    return { blocked_off_union, operating_intervals, min_time_step, leadtime } as AvailabilityInfoMap;
+    const leadTime = Math.max(min_lead_time + ((order_size - 1) * SETTINGS.additional_pizza_lead_time), cart_based_lead_time);
+    return { blocked_off_union, operating_intervals, min_time_step, leadTime } as AvailabilityInfoMap;
   }
 
   /**
@@ -270,17 +266,17 @@ export class WDateUtils {
     if (INFO.operating_intervals.length === 0) {
       return -1;
     }
-    const current_time_plus_leadtime = addMinutes(currently, INFO.leadtime);
-    if (isSameDay(date, current_time_plus_leadtime)) {
+    const currentTimePlusLeadTime = addMinutes(currently, INFO.leadTime);
+    if (isSameDay(date, currentTimePlusLeadTime)) {
       // NOTE: this doesn't work if we have active hours during a DST change
-      const current_time_plus_leadtime_mins_from_start = getHours(current_time_plus_leadtime) * 60 + getMinutes(current_time_plus_leadtime);
-      if (current_time_plus_leadtime_mins_from_start > INFO.operating_intervals[0][0]) {
-        const clamped_start = Math.ceil((current_time_plus_leadtime_mins_from_start) / INFO.min_time_step) * INFO.min_time_step;
+      const currentTimePlusLeadTimeMinsFromStartOfDay = getHours(currentTimePlusLeadTime) * 60 + getMinutes(currentTimePlusLeadTime);
+      if (currentTimePlusLeadTimeMinsFromStartOfDay > INFO.operating_intervals[0][0]) {
+        const clamped_start = Math.ceil((currentTimePlusLeadTimeMinsFromStartOfDay) / INFO.min_time_step) * INFO.min_time_step;
         return WDateUtils.HandleBlockedOffTime(INFO.blocked_off_union, INFO.operating_intervals, clamped_start, INFO.min_time_step);
       }
     }
 
-    if (isBefore(date, current_time_plus_leadtime)) {
+    if (isBefore(date, currentTimePlusLeadTime)) {
       // if we don't have any operating hours for the day or
       // if by adding the lead time we've passed the date we're looking for
       return -1;
@@ -315,7 +311,7 @@ export class WDateUtils {
   /**
    * Creates a ReactJS safe object copy of the BlockedOff interval map array with
    * interval_map[service_index][day_index][1][interval_index] element removed
-   * NOTE: when we stop using socketio to update blocked off times, this will not be a useful function
+   * NOTE: when we stop using socketIo to update blocked off times, this will not be a useful function
    * and we'll want to replace it with a specific interval to remove from a service and date's blocked off array
    * @param {Number} service_index 
    * @param {Number} day_index 

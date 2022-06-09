@@ -5,24 +5,24 @@
 
 
 
- export interface IWInterval { 
+export interface IWInterval {
   start: number;
   end: number;
 };
 
- export type WIntervalTuple = [number, number];
- export type IntervalTupleList = WIntervalTuple[];
- export type OperatingHoursList = [IntervalTupleList, IntervalTupleList, IntervalTupleList, IntervalTupleList, IntervalTupleList, IntervalTupleList, IntervalTupleList];
- // TODO: convert { [index:number]: boolean } => boolean[];
- export interface ServicesEnableMap { [index:number]: boolean }; 
+export type WIntervalTuple = [number, number];
+export type IntervalTupleList = WIntervalTuple[];
+export type OperatingHoursList = [IntervalTupleList, IntervalTupleList, IntervalTupleList, IntervalTupleList, IntervalTupleList, IntervalTupleList, IntervalTupleList];
+// TODO: convert { [index:number]: boolean } => boolean[];
+export interface ServicesEnableMap { [index: number]: boolean };
 export interface IWSettings {
-    additional_pizza_lead_time: number;
-    time_step: number[];
-    pipeline_info: {
-      baking_pipeline: { slots: Number, time: Number }[];
-      transfer_padding: number;
-    };
-    operating_hours: OperatingHoursList[]
+  additional_pizza_lead_time: number;
+  time_step: number[];
+  pipeline_info: {
+    baking_pipeline: { slots: Number, time: Number }[];
+    transfer_padding: number;
+  };
+  operating_hours: OperatingHoursList[]
 };
 export interface IWBlockedOff {
   blocked_off: {
@@ -31,15 +31,15 @@ export interface IWBlockedOff {
     excluded_intervals: IWInterval[];
   }[];
 };
-export interface AvailabilityInfoMap { 
+export interface AvailabilityInfoMap {
   // the union of blocked off times for the services specified in computation stored as a list of two tuples
   blocked_off_union: IntervalTupleList;
   // the union of operating hours for the services specified in computation stored as a list of two tuples
   operating_intervals: IntervalTupleList;
   // the minutes from current time needed to prepare the order
-  leadtime: number;
+  leadTime: number;
   // the minimum number of minutes between selectable options for any services specified in computation
-  min_time_step: number 
+  min_time_step: number
 };
 /**
  * @typedef {[string, IntervalTupleList][][]} JSFEBlockedOff - is stored in the memory/wire format here of:
@@ -54,7 +54,7 @@ export enum DayIndex { SUNDAY, MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SAT
 
 export enum DISPLAY_AS {
   OMIT = 'OMIT',
-  YOUR_CHOICE_OF = 'YOUR_CHOICE_OF', 
+  YOUR_CHOICE_OF = 'YOUR_CHOICE_OF',
   LIST_CHOICES = 'LIST_CHOICES'
 };
 
@@ -62,12 +62,12 @@ export enum MODIFIER_MATCH { NO_MATCH, AT_LEAST, EXACT_MATCH };
 
 export enum MODIFIER_LOCATION { LEFT, RIGHT };
 
-export enum PriceDisplay { 
-  'FROM_X', 
+export enum PriceDisplay {
+  'FROM_X',
   'VARIES',
-  'ALWAYS', 
-  'MIN_TO_MAX', 
-  'LIST' 
+  'ALWAYS',
+  'MIN_TO_MAX',
+  'LIST'
 };
 
 export enum ProductInstanceFunctionType { 'ConstLiteral', 'IfElse', 'Logical', 'ModifierPlacement', 'HasAnyOfModifierType' };
@@ -79,16 +79,16 @@ export interface IExternalIDs {
 
 export enum MODIFIER_CLASS {
   SIZE = 'SIZE',
-  ADD = 'ADD', 
-  SUB = 'SUB', 
-  REMOVAL = 'REMOVAL', 
-  NOTE = 'NOTE', 
+  ADD = 'ADD',
+  SUB = 'SUB',
+  REMOVAL = 'REMOVAL',
+  NOTE = 'NOTE',
   PROMPT = 'PROMPT'
 };
-export enum CALL_LINE_DISPLAY { 
+export enum CALL_LINE_DISPLAY {
   'SHORTCODE', 'SHORTNAME'
 };
-export enum CURRENCY { 
+export enum CURRENCY {
   USD = "USD"
 };
 
@@ -100,7 +100,7 @@ export enum OptionQualifier {
   'REGULAR', 'LITE', 'HEAVY', 'OTS'
 };
 
-export interface IMoney { 
+export interface IMoney {
   amount: number;
   currency: CURRENCY;
 };
@@ -121,13 +121,13 @@ export interface ICategory {
 };
 
 export interface ICatalogItem {
-    display_name: string;
-    description: string;
-    shortcode: string;
-    price: IMoney;
-    externalIDs?: IExternalIDs;
-    disabled: IWInterval | null;
-    permanent_disable?: boolean;
+  display_name: string;
+  description: string;
+  shortcode: string;
+  price: IMoney;
+  externalIDs?: IExternalIDs;
+  disabled: IWInterval | null;
+  permanent_disable?: boolean;
 };
 
 export interface IOptionType {
@@ -219,7 +219,7 @@ export interface IProduct {
   price: IMoney;
   disabled: IWInterval | null;
   service_disable: number[];
-  
+
   display_flags: {
     flavor_max: number;
     bake_max: number;
@@ -235,9 +235,9 @@ export interface IProduct {
   category_ids: string[];
 };
 
-export interface ModifiersMap { [index:string] : IOptionInstance[] };
+export interface ModifiersMap { [index: string]: IOptionInstance[] };
 
-export interface IWModifiersInstance { 
+export interface IWModifiersInstance {
   modifier_type_id: string;
   options: IWOptionInstance[];
 };
@@ -251,7 +251,7 @@ export interface IProductInstance {
 
   // applied modifiers for this instance of the product
   modifiers: IWModifiersInstance[];
-  
+
   // flag to note that this product instance is the "default" form of the product to which all others should be compared
   is_base: boolean;
 
@@ -298,24 +298,24 @@ export interface IProductInstanceFunction {
   name: string;
 };
 
-export interface ICatalogModifiers { [index:string]: { options: IOption[]; modifier_type: IOptionType; }; };
-export interface ICatalogCategories { [index:string]: { category: ICategory; children: string[]; products: string[]; }; };
-export interface ICatalogProducts { [index:string]: { product: IProduct, instances: IProductInstance[] }};
+export interface ICatalogModifiers { [index: string]: { options: IOption[]; modifier_type: IOptionType; }; };
+export interface ICatalogCategories { [index: string]: { category: ICategory; children: string[]; products: string[]; }; };
+export interface ICatalogProducts { [index: string]: { product: IProduct, instances: IProductInstance[] } };
 export interface ICatalog {
   modifiers: ICatalogModifiers;
   categories: ICatalogCategories;
   products: ICatalogProducts;
   product_instance_functions: IProductInstanceFunction[]
   version: string;
-  apiver: {major: number; minor: number; patch: number;};
+  apiver: { major: number; minor: number; patch: number; };
 };
 
-export interface MetadataModifierOptionMapEntry {placement : OptionPlacement; enable_left : boolean; enable_right : boolean; enable_whole : boolean };
-export interface MetadataModifierMapEntry { has_selectable: boolean, meets_minimum: boolean, options: { [MOID:string]: MetadataModifierOptionMapEntry } };
-export interface MetadataModifierMap { [mtid:string]: MetadataModifierMapEntry };
+export interface MetadataModifierOptionMapEntry { placement: OptionPlacement; enable_left: boolean; enable_right: boolean; enable_whole: boolean };
+export interface MetadataModifierMapEntry { has_selectable: boolean, meets_minimum: boolean, options: { [MOID: string]: MetadataModifierOptionMapEntry } };
+export interface MetadataModifierMap { [mtid: string]: MetadataModifierMapEntry };
 export type MTID_MOID = [string, string];
-export interface ModifierDisplayListByLocation {left : MTID_MOID[]; right: MTID_MOID[]; whole: MTID_MOID[];};
-export interface WProductMetadata { 
+export interface ModifierDisplayListByLocation { left: MTID_MOID[]; right: MTID_MOID[]; whole: MTID_MOID[]; };
+export interface WProductMetadata {
   name: string;
   shortname: string;
   description: string;
@@ -332,7 +332,7 @@ export interface WProductMetadata {
   flavor_count: [number, number];
 }
 
-export interface WCPProduct { 
+export interface WCPProduct {
   PRODUCT_CLASS: IProduct;
   modifiers: ModifiersMap;
   base_product_piid: string;
@@ -345,16 +345,16 @@ export interface WCPOption {
 };
 
 export interface CategoryEntry { menu: IProductInstance[]; children: string[]; menu_name: string; subtitle: string | null };
-export interface MenuCategories { [index:string]: CategoryEntry };
-export interface ProductEntry { product: IProduct; base_id: string, instances_list: IProductInstance[]; instances: { [index:string]: IProductInstance}};
-export interface MenuProducts {[index:string] : ProductEntry};
-export interface ModifierEntry {modifier_type: IOptionType; options_list: WCPOption[]; options: {[index:string]: WCPOption}};
-export interface MenuModifiers { [index:string]: ModifierEntry };
-export interface IMenu { 
+export interface MenuCategories { [index: string]: CategoryEntry };
+export interface ProductEntry { product: IProduct; base_id: string, instances_list: IProductInstance[]; instances: { [index: string]: IProductInstance } };
+export interface MenuProducts { [index: string]: ProductEntry };
+export interface ModifierEntry { modifier_type: IOptionType; options_list: WCPOption[]; options: { [index: string]: WCPOption } };
+export interface MenuModifiers { [index: string]: ModifierEntry };
+export interface IMenu {
   readonly modifiers: MenuModifiers;
   readonly product_classes: MenuProducts;
   readonly categories: MenuCategories;
-  readonly product_instance_functions: { [index:string] : IProductInstanceFunction };
+  readonly product_instance_functions: { [index: string]: IProductInstanceFunction };
   readonly version: string;
 
 };
