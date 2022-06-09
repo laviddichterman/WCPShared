@@ -1,10 +1,3 @@
-/**
- * A mapping from Service index, exclusion date to a list of excluded intervals
- * @typedef  {{service: Number, exclusion_date: String, excluded_intervals: [{start:Number, end:Number}] }} BlockedOffIntervalMap
- */
-
-
-
 export interface IWInterval {
   start: number;
   end: number;

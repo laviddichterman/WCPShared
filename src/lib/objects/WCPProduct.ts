@@ -37,7 +37,7 @@ const HandleOptionNameFilterOmitByName = (menu: IMenu, x: MTID_MOID) => {
 const HandleOptionNameNoFilter = (menu: IMenu, x: MTID_MOID) => (GetModifierOptionFromMIDOID(menu, x[0], x[1]).mo.item.display_name);
 
 const HandleOptionCurry = (MENU: IMenu, getterfxn: (menu: IMenu, x: MTID_MOID) => string | undefined) => (x: MTID_MOID) => {
-  // TODO: needs to filter disabled or unavailble options
+  // TODO: needs to filter disabled or unavailable options
   const LIST_CHOICES = (CATALOG_MODIFIER_INFO: ModifierEntry) => {
     const choices = CATALOG_MODIFIER_INFO.options_list.map(x => x.mo.item.display_name);
     return choices.length < 3 ? choices.join(" or ") : [choices.slice(0, -1).join(", "), choices[choices.length - 1]].join(", or ");
@@ -47,7 +47,7 @@ const HandleOptionCurry = (MENU: IMenu, getterfxn: (menu: IMenu, x: MTID_MOID) =
     switch (CATALOG_MODIFIER_INFO.modifier_type.display_flags.empty_display_as) {
       case "YOUR_CHOICE_OF": return `Your choice of ${CATALOG_MODIFIER_INFO.modifier_type.display_name ? CATALOG_MODIFIER_INFO.modifier_type.display_name : CATALOG_MODIFIER_INFO.modifier_type.name}`;
       case "LIST_CHOICES": return LIST_CHOICES(CATALOG_MODIFIER_INFO);
-      default: console.error(`Unknown value for empty_display_as flag: ${CATALOG_MODIFIER_INFO.modifier_type.display_flags.empty_display_as}`); return "";
+      default: throw (`Unknown value for empty_display_as flag: ${CATALOG_MODIFIER_INFO.modifier_type.display_flags.empty_display_as}`);
     }
   }
   else {
@@ -151,7 +151,7 @@ function WProductCompareGeneric(a: WCPProduct, bModifiersGetter: (mtid: string) 
       if (first_option_list.length === 1) {
         const first_option = first_option_list[0];
         if (other_option_list.length != 1) {
-          console.error(`got other option list of ${JSON.stringify(other_option_list)} but we were expecting a list of length 1`);
+          throw (`got other option list of ${JSON.stringify(other_option_list)} but we were expecting a list of length 1`);
           // we log this error because we're not sure how the logic was working before converting to typescript
         }
         if (other_option_list.length === 1 && first_option.option_id !== other_option_list[0].option_id) {
@@ -335,7 +335,6 @@ export function WCPProductGenerateMetadata(a: WCPProduct, MENU: IMenu, service_t
   const leftPI = match_info.product[LEFT_SIDE];
   const rightPI = match_info.product[RIGHT_SIDE];
   if (leftPI === null || rightPI === null) {
-    console.assert(false, "We should have both matches determined by now.");
     throw ("Unable to determine product metadata");
   }
 
