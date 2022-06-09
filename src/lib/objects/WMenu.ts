@@ -150,7 +150,8 @@ function ComputeCategories(cat: ICatalog, product_classes: MenuProducts) {
       menu: [],
       children: cat.categories[catId].children.sort((a, b) => cat.categories[a].category.ordinal - cat.categories[b].category.ordinal),
       menu_name: cat.categories[catId].category.description || cat.categories[catId].category.name,
-      subtitle: cat.categories[catId].category.subheading || null,
+      subtitle: cat.categories[catId].category?.subheading || null,
+      footer: cat.categories[catId].category?.footnotes || null
     }
     cat.categories[catId].products.forEach((product_class) => {
       if (Object.hasOwn(product_classes, product_class)) {

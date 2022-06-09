@@ -337,7 +337,7 @@ export interface WCPOption {
   index: number;
 };
 
-export interface CategoryEntry { menu: IProductInstance[]; children: string[]; menu_name: string; subtitle: string | null };
+export interface CategoryEntry { menu: IProductInstance[]; children: string[]; menu_name: string; subtitle: string | null, footer: string | null; };
 export interface MenuCategories { [index: string]: CategoryEntry };
 export interface ProductEntry { product: IProduct; base_id: string, instances_list: IProductInstance[]; instances: { [index: string]: IProductInstance } };
 export interface MenuProducts { [index: string]: ProductEntry };
