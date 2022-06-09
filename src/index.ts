@@ -1,7 +1,7 @@
-export * from './types';
-export * from "./common";
-export * from "./objects/WCPOption";
-export * from "./objects/WCPProduct";
-// export * from "./objects/WDateUtils";
-export * from "./objects/WFunctional";
-export * from "./objects/WMenu";
+export * from './lib/types';
+export * from "./lib/common";
+export * from "./lib/objects/WCPOption";
+export * from "./lib/objects/WCPProduct";
+export * from "./lib/objects/WDateUtils";
+export * from "./lib/objects/WFunctional";
+export * from "./lib/objects/WMenu";

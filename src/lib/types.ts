@@ -3,22 +3,52 @@
  * @typedef  {{service: Number, exclusion_date: String, excluded_intervals: [{start:Number, end:Number}] }} BlockedOffIntervalMap
  */
 
+
+
+ export interface IWInterval { 
+  start: number;
+  end: number;
+};
+
+ export type WIntervalTuple = [number, number];
+ export type IntervalTupleList = WIntervalTuple[];
+ export type OperatingHoursList = [IntervalTupleList, IntervalTupleList, IntervalTupleList, IntervalTupleList, IntervalTupleList, IntervalTupleList, IntervalTupleList];
+ // TODO: convert { [index:number]: boolean } => boolean[];
+ export interface ServicesEnableMap { [index:number]: boolean }; 
+export interface IWSettings {
+    additional_pizza_lead_time: number;
+    time_step: number[];
+    pipeline_info: {
+      baking_pipeline: { slots: Number, time: Number }[];
+      transfer_padding: number;
+    };
+    operating_hours: OperatingHoursList[]
+};
+export interface IWBlockedOff {
+  blocked_off: {
+    service: number;
+    exclusion_date: string;
+    excluded_intervals: IWInterval[];
+  }[];
+};
+export interface AvailabilityInfoMap { 
+  // the union of blocked off times for the services specified in computation stored as a list of two tuples
+  blocked_off_union: IntervalTupleList;
+  // the union of operating hours for the services specified in computation stored as a list of two tuples
+  operating_intervals: IntervalTupleList;
+  // the minutes from current time needed to prepare the order
+  leadtime: number;
+  // the minimum number of minutes between selectable options for any services specified in computation
+  min_time_step: number 
+};
 /**
- * @typedef {[[[[[]]]]]} BLOCKED_OFF_WIRE_FORMAT - is stored in the memory/wire format here of:
+ * @typedef {[string, IntervalTupleList][][]} JSFEBlockedOff - is stored in the memory/wire format here of:
  * [service_index][<String, [<start, end>]>], 
  *  meaning an array indexed by service_index of...
  * ... an array of two-tuples ...
  * ... whose 0th element is the string representation of the date, and whose 1th element is a list of interval tuples
  */
-
-
-/**
- * @typedef {{blocked_off_union: [[Number]], operating_intervals: [[Number]], leadtime: Number, min_time_step: Number}} AVAILABILITY_INFO_MAP - an object containing...
- * ...blocked_off_union - the union of blocked off times for the services specified in computation stored as a list of two tuples
- * ...operating_intervals - the union of operating hours for the services specified in computation stored as a list of two tuples
- * ...leadtime - the minutes from current time needed to prepare the order
- * ...min_time_step - the minimum number of minutes between selectable options for any services specified in computation
- */
+export type JSFEBlockedOff = ([string, IntervalTupleList])[][];
 
 export enum DayIndex { SUNDAY, MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY };
 
@@ -75,10 +105,6 @@ export interface IMoney {
   currency: CURRENCY;
 };
 
-export interface IDisabled { 
-  start: number;
-  end: number;
-};
 
 export interface ICategory {
   _id: string;
@@ -100,7 +126,7 @@ export interface ICatalogItem {
     shortcode: string;
     price: IMoney;
     externalIDs?: IExternalIDs;
-    disabled: IDisabled | null;
+    disabled: IWInterval | null;
     permanent_disable?: boolean;
 };
 
@@ -191,7 +217,7 @@ export interface IProduct {
   _id: string;
   item?: ICatalogItem;
   price: IMoney;
-  disabled: IDisabled | null;
+  disabled: IWInterval | null;
   service_disable: number[];
   
   display_flags: {
