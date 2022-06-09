@@ -1,5 +1,6 @@
 import { DisableDataCheck } from "../common";
-import { IMenu, ICatalog, MenuCategories, MenuModifiers, MenuProducts, CategoryEntry, ModifierEntry, ProductEntry, WCPOption, IProductInstance } from "../types";
+import { IMenu, ICatalog, MenuCategories, MenuModifiers, MenuProducts, CategoryEntry, ModifierEntry, ProductEntry, MenuProductInstanceMetadata, WCPOption, IProductInstance, MenuProductInstanceFunctions } from "../types";
+import { CreateWCPProductFromPI, WCPProductGenerateMetadata } from "./WCPProduct";
 
 type DisableFlagGetterType = (x: any) => boolean;
 /**
@@ -32,7 +33,6 @@ export function FilterProduct(item: IProductInstance, menu: IMenu, disable_from_
 export function FilterEmptyCategories(menu: IMenu, disable_from_menu_flag_getter: DisableFlagGetterType, order_time: Date) {
   return (CAT_ID: string) => {
     const cat_menu = menu.categories[CAT_ID].menu;
-    // eslint-disable-next-line no-plusplus
     for (let i = 0; i < cat_menu.length; ++i) {
       if (FilterProduct(cat_menu[i], menu, disable_from_menu_flag_getter, order_time)) {
         return true;
@@ -43,7 +43,7 @@ export function FilterEmptyCategories(menu: IMenu, disable_from_menu_flag_getter
 }
 
 /**
- * Mutates the passed menu instance to remove disabled categories, products, modifer types, and modifer options
+ * Mutates the passed menu instance to remove disabled categories, products, modifier types, and modifier options
  * unfortunately since we're modifying the data structure we're using to determine what should be disabled
  * we need to do this inefficiently, 
  * @param {WMenu} menu 
@@ -53,25 +53,25 @@ export function FilterEmptyCategories(menu: IMenu, disable_from_menu_flag_getter
 export function FilterWMenu(menu: IMenu, filter_products: (product: IProductInstance) => boolean, order_time: Date) {
   // prune categories via DFS
   {
-    const catids_to_remove: { [index: string]: boolean } = {};
-    const catids_visited: { [index: string]: boolean } = {};
+    const catIdsToRemove: { [index: string]: boolean } = {};
+    const catIdsVisited: { [index: string]: boolean } = {};
     const VisitCategory = (cat_id: string) => {
-      if (!Object.hasOwn(catids_visited, cat_id)) {
-        catids_visited[cat_id] = true;
+      if (!Object.hasOwn(catIdsVisited, cat_id)) {
+        catIdsVisited[cat_id] = true;
         menu.categories[cat_id].children.forEach(x => VisitCategory(x));
         menu.categories[cat_id].menu = menu.categories[cat_id].menu.filter(filter_products);
-        menu.categories[cat_id].children = menu.categories[cat_id].children.filter(x => !Object.hasOwn(catids_to_remove, x));
+        menu.categories[cat_id].children = menu.categories[cat_id].children.filter(x => !Object.hasOwn(catIdsToRemove, x));
         if (menu.categories[cat_id].children.length === 0 &&
           menu.categories[cat_id].menu.length === 0) {
-          catids_to_remove[cat_id] = true;
+          catIdsToRemove[cat_id] = true;
           delete menu.categories[cat_id];
         }
       }
     }
 
-    Object.keys(menu.categories).forEach(catid => {
-      if (!Object.hasOwn(catids_visited, catid)) {
-        VisitCategory(catid);
+    Object.keys(menu.categories).forEach(catId => {
+      if (!Object.hasOwn(catIdsVisited, catId)) {
+        VisitCategory(catId);
       }
     });
   }
@@ -164,11 +164,22 @@ function ComputeCategories(cat: ICatalog, product_classes: MenuProducts) {
   return cats;
 }
 
-export function GenerateMenu(catalog: ICatalog) {
+function ComputeProductInstanceMetadata(menuProducts: MenuProducts, menuModifiers: MenuModifiers, menuProductInstanceFunctions: MenuProductInstanceFunctions, service_time: Date) {
+  const md: MenuProductInstanceMetadata = {};
+  Object.values(menuProducts).forEach(productEntry => {
+    productEntry.instances_list.forEach(pi => {
+      md[pi._id] = WCPProductGenerateMetadata(CreateWCPProductFromPI(productEntry.product, pi), productEntry, menuModifiers, menuProductInstanceFunctions, service_time)
+    });
+  });
+  return md;
+}
+
+export function GenerateMenu(catalog: ICatalog, service_time: Date) {
   const modifiers = ComputeModifiers(catalog);
   const product_classes = ComputeProducts(catalog);
   const categories = ComputeCategories(catalog, product_classes);
   const product_instance_functions = catalog.product_instance_functions.reduce((acc, x) => { return { ...acc, [x._id]: x }; }, {});
-  const menu: IMenu = { modifiers, product_classes, categories, product_instance_functions, version: catalog.version };
+  const product_instance_metadata = ComputeProductInstanceMetadata(product_classes, modifiers, product_instance_functions, service_time);
+  const menu: IMenu = { modifiers, product_classes, product_instance_metadata, categories, product_instance_functions, version: catalog.version };
   return menu;
 }

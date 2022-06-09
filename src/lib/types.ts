@@ -99,6 +99,46 @@ export interface IMoney {
 };
 
 
+export interface IConstLiteralExpression {
+  value: any;
+};
+export interface IIfElseExpression {
+  true_branch: IAbstractExpression;
+  false_branch: IAbstractExpression;
+  test: IAbstractExpression;
+};
+
+export enum ProductInstanceFunctionOperator { 'AND' = "AND", 'OR' = "OR", 'NOT' = "NOT", 'EQ' = "EQ", 'NE' = "NE", 'GT' = "GT", 'GE' = "GE", 'LT' = "LT", 'LE' = "LE" };
+
+export interface ILogicalExpression {
+  operandA: IAbstractExpression;
+  operandB?: IAbstractExpression;
+  operator: keyof typeof ProductInstanceFunctionOperator;
+};
+export interface IModifierPlacementExpression {
+  mtid: string;
+  moid: string;
+};
+export interface IHasAnyOfModifierExpression {
+  mtid: string;
+};
+
+export interface IAbstractExpression {
+  const_literal?: IConstLiteralExpression;
+  if_else?: IIfElseExpression;
+  logical?: ILogicalExpression;
+  modifier_placement?: IModifierPlacementExpression;
+  has_any_of_modifier?: IHasAnyOfModifierExpression;
+  discriminator: keyof typeof ProductInstanceFunctionType;
+};
+
+export interface IProductInstanceFunction {
+  _id: string;
+  expression: IAbstractExpression;
+  name: string;
+};
+
+
 export interface ICategory {
   _id: string;
   name: string;
@@ -154,7 +194,7 @@ export interface IOption {
     bake_factor: number;
     can_split: boolean;
   };
-  enable_function: string | null;// { type: Schema.Types.ObjectId, ref: 'WProductInstanceFunction', autopopulate: true },
+  enable_function: IProductInstanceFunction | null;// { type: Schema.Types.ObjectId, ref: 'WProductInstanceFunction', autopopulate: true },
   display_flags: {
     omit_from_shortname: boolean;
     omit_from_name: boolean;
@@ -224,7 +264,7 @@ export interface IProduct {
     min_prep_time: number;
     additional_unit_prep_time: number;
   };
-  modifiers: { mtid: string, enable: string | null }[];
+  modifiers: { mtid: string, enable: IProductInstanceFunction | null }[];
   category_ids: string[];
 };
 
@@ -250,45 +290,6 @@ export interface IProductInstance {
 
   display_flags: IProductDisplayFlags,
   item: ICatalogItem;
-};
-
-export interface IConstLiteralExpression {
-  value: any;
-};
-export interface IIfElseExpression {
-  true_branch: IAbstractExpression;
-  false_branch: IAbstractExpression;
-  test: IAbstractExpression;
-};
-
-export enum ProductInstanceFunctionOperator { 'AND', 'OR', 'NOT', 'EQ', 'NE', 'GT', 'GE', 'LT', 'LE' };
-
-export interface ILogicalExpression {
-  operandA: IAbstractExpression;
-  operandB?: IAbstractExpression;
-  operator: ProductInstanceFunctionOperator;
-};
-export interface IModifierPlacementExpression {
-  mtid: string;
-  moid: string;
-};
-export interface IHasAnyOfModifierExpression {
-  mtid: string;
-};
-
-export interface IAbstractExpression {
-  const_literal?: IConstLiteralExpression;
-  if_else?: IIfElseExpression;
-  logical?: ILogicalExpression;
-  modifier_placement?: IModifierPlacementExpression;
-  has_any_of_modifier?: IHasAnyOfModifierExpression;
-  discriminator: keyof typeof ProductInstanceFunctionType;
-};
-
-export interface IProductInstanceFunction {
-  _id: string;
-  expression: IAbstractExpression;
-  name: string;
 };
 
 export interface ICatalogModifiers { [index: string]: { options: IOption[]; modifier_type: IOptionType; }; };
@@ -328,7 +329,6 @@ export interface WProductMetadata {
 export interface WCPProduct {
   PRODUCT_CLASS: IProduct;
   modifiers: ModifiersMap;
-  base_product_piid: string;
 };
 
 export interface WCPOption {
@@ -341,13 +341,16 @@ export interface CategoryEntry { menu: IProductInstance[]; children: string[]; m
 export interface MenuCategories { [index: string]: CategoryEntry };
 export interface ProductEntry { product: IProduct; base_id: string, instances_list: IProductInstance[]; instances: { [index: string]: IProductInstance } };
 export interface MenuProducts { [index: string]: ProductEntry };
+export interface MenuProductInstanceMetadata { [index: string]: WProductMetadata };
 export interface ModifierEntry { modifier_type: IOptionType; options_list: WCPOption[]; options: { [index: string]: WCPOption } };
 export interface MenuModifiers { [index: string]: ModifierEntry };
+export interface MenuProductInstanceFunctions { [index: string]: IProductInstanceFunction };
 export interface IMenu {
   readonly modifiers: MenuModifiers;
   readonly product_classes: MenuProducts;
   readonly categories: MenuCategories;
-  readonly product_instance_functions: { [index: string]: IProductInstanceFunction };
+  readonly product_instance_functions: MenuProductInstanceFunctions;
+  readonly product_instance_metadata: MenuProductInstanceMetadata;
   readonly version: string;
 
 };

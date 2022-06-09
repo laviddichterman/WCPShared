@@ -25,6 +25,9 @@
     "retval",
     "sandboxed",
     "SHORTCODE",
+    "shortcodes",
+    "shortnames",
+    "Templating",
     "transpiled",
     "typedoc",
     "untracked"
