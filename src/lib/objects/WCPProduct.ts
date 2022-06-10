@@ -113,6 +113,10 @@ export function CreateWCPProductFromPI(prod: IProduct, pi: IProductInstance) {
   );
 }
 
+export function DeepCopyModifiers(modifiers: ModifiersMap) {
+  return Object.entries(modifiers).reduce((o, [k, v]) => ({ ...o, [k]: v.map(x => ({ ...x })) }), {} as ModifiersMap);
+}
+
 function ModifiersMapGetter(mMap: ModifiersMap): (mtid: string) => IOptionInstance[] {
   return (mtid: string) => Object.hasOwn(mMap, mtid) ? mMap[mtid] : [];
 }
