@@ -90,7 +90,7 @@ export class WFunctional {
         return "";
       }
       const val = mods[mps.mtid];
-      const opt = val.options.find(x => x._id == mps.moid) as unknown as IOption;
+      const opt = val.options.find(x => String(x._id) === mps.moid) as unknown as IOption;
       return `${val.modifier_type.name}.${opt.item.display_name}`;
     }
     switch (stmt.discriminator) {

@@ -1,4 +1,4 @@
-import { lightFormat, addMinutes, isSameDay, getDay, getHours, getMinutes, isBefore } from 'date-fns';
+import { lightFormat, addMinutes, isSameDay, getDay, getHours, getMinutes, isBefore, parse, compareAsc } from 'date-fns';
 import { AvailabilityInfoMap, DayIndex, IntervalTupleList, IWSettings, JSFEBlockedOff, OperatingHoursList, ServicesEnableMap, WIntervalTuple } from '../types';
 
 export class WDateUtils {
@@ -19,9 +19,15 @@ export class WDateUtils {
     return `${printHour}:${printMinute}${meridian}`;
   }
 
-  static CompareIntervals(a: [number, number], b: [number, number]) {
+  static CompareIntervals(a: WIntervalTuple, b: WIntervalTuple) {
     // compares the starting time of two intervals
     return a[0] - b[0];
+  };
+
+  static ExtractCompareDate(a: [string, IntervalTupleList], b: [string, IntervalTupleList]) {
+    // compares the starting time of two intervals
+    const reference = new Date();
+    return compareAsc(parse(a[0], WDateUtils.DATE_STRING_INTERNAL_FORMAT, reference), parse(b[0], WDateUtils.DATE_STRING_INTERNAL_FORMAT, reference));
   };
 
   /**
@@ -320,6 +326,35 @@ export class WDateUtils {
    * @returns an updated interval_map
    */
   static RemoveIntervalFromBlockedOffWireFormat(service_index: number, day_index: number, interval_index: number, interval_map: JSFEBlockedOff) {
+    const new_interval_map = interval_map.slice();
+    const new_interval_map_for_service = new_interval_map[service_index].slice();
+    const new_interval_map_for_intervals = new_interval_map_for_service[day_index][1].slice();
+    new_interval_map_for_intervals.splice(interval_index, 1);
+    new_interval_map_for_service[day_index] = [new_interval_map_for_service[day_index][0], new_interval_map_for_intervals];
+    if (new_interval_map_for_intervals.length === 0) {
+      new_interval_map_for_service.splice(day_index, 1);
+    }
+    new_interval_map[service_index] = new_interval_map_for_service;
+    return new_interval_map;
+  }
+
+  static AddIntervalToService(service_index: number, parsed_date: string, interval: WIntervalTuple, new_interval_map: JSFEBlockedOff) {
+    for (var date_index in new_interval_map[service_index]) {
+      if (parsed_date === new_interval_map[service_index][date_index][0]) {
+        const new_interval_map_for_service_and_day = new_interval_map[service_index][date_index][1].slice();
+        new_interval_map_for_service_and_day.push(interval);
+        new_interval_map_for_service_and_day.sort(WDateUtils.CompareIntervals);
+        new_interval_map[service_index][date_index] = [new_interval_map[service_index][date_index][0], new_interval_map_for_service_and_day];
+        return;
+      }
+    }
+    const new_interval_map_for_service = new_interval_map[service_index].slice();
+    new_interval_map_for_service.push([parsed_date, [interval]]);
+    new_interval_map_for_service.sort(WDateUtils.ExtractCompareDate);
+    new_interval_map[service_index] = new_interval_map_for_service;
+  }
+
+  static RemoveInterval(service_index: number, day_index: DayIndex, interval_index: number, interval_map: JSFEBlockedOff) {
     const new_interval_map = interval_map.slice();
     const new_interval_map_for_service = new_interval_map[service_index].slice();
     const new_interval_map_for_intervals = new_interval_map_for_service[day_index][1].slice();
