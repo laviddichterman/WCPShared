@@ -1,4 +1,4 @@
-import { lightFormat, addMinutes, isSameDay, getDay, getHours, getMinutes, isBefore, parse, compareAsc } from 'date-fns';
+import { lightFormat, addMinutes, isSameDay, getDay, getHours, getMinutes, isBefore, parse, compareAsc, startOfDay } from 'date-fns';
 import { AvailabilityInfoMap, DayIndex, IntervalTupleList, IWSettings, JSFEBlockedOff, OperatingHoursList, ServicesEnableMap, WIntervalTuple } from '../types';
 
 export class WDateUtils {
@@ -282,7 +282,7 @@ export class WDateUtils {
       }
     }
 
-    if (isBefore(date, currentTimePlusLeadTime)) {
+    if (isBefore(date, startOfDay(currentTimePlusLeadTime))) {
       // if we don't have any operating hours for the day or
       // if by adding the lead time we've passed the date we're looking for
       return -1;
