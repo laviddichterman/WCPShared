@@ -56,11 +56,11 @@ export enum MODIFIER_MATCH { NO_MATCH, AT_LEAST, EXACT_MATCH };
 export enum MODIFIER_LOCATION { LEFT, RIGHT };
 
 export enum PriceDisplay {
-  'FROM_X',
-  'VARIES',
-  'ALWAYS',
-  'MIN_TO_MAX',
-  'LIST'
+  'FROM_X' = 'FROM_X',
+  'VARIES' = 'VARIES',
+  'ALWAYS' = 'ALWAYS',
+  'MIN_TO_MAX' = 'MIN_TO_MAX',
+  'LIST' = 'LIST'
 };
 
 export enum ProductInstanceFunctionType {

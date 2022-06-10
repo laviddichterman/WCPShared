@@ -1,6 +1,6 @@
 import { DisableDataCheck, PRODUCT_NAME_MODIFIER_TEMPLATE_REGEX } from "../common";
 import { WFunctional } from "./WFunctional";
-import { IProduct, IProductInstance, OptionPlacement, ModifiersMap, MODIFIER_MATCH, MODIFIER_LOCATION, WCPProduct, WProductMetadata, MTID_MOID, ModifierEntry, WCPOption, MenuModifiers, IWModifiersInstance, IOptionInstance, OptionQualifier, MetadataModifierMap, ModifierDisplayListByLocation, ProductEntry, MenuProductInstanceFunctions } from '../types';
+import { IProduct, IProductInstance, OptionPlacement, ModifiersMap, MODIFIER_MATCH, MODIFIER_LOCATION, WCPProduct, WProductMetadata, MTID_MOID, ModifierEntry, WCPOption, MenuModifiers, IWModifiersInstance, IOptionInstance, OptionQualifier, MetadataModifierMap, ModifierDisplayListByLocation, ProductEntry, MenuProductInstanceFunctions, DISPLAY_AS } from '../types';
 import { IsOptionEnabled } from './WCPOption';
 
 const NO_MATCH = MODIFIER_MATCH.NO_MATCH;
@@ -44,8 +44,9 @@ const HandleOptionCurry = (menuModifiers: MenuModifiers, getterFxn: (menuModifie
   if (x[1] === "") {
     const CATALOG_MODIFIER_INFO = menuModifiers[x[0]];
     switch (CATALOG_MODIFIER_INFO.modifier_type.display_flags.empty_display_as) {
-      case "YOUR_CHOICE_OF": return `Your choice of ${CATALOG_MODIFIER_INFO.modifier_type.display_name ? CATALOG_MODIFIER_INFO.modifier_type.display_name : CATALOG_MODIFIER_INFO.modifier_type.name}`;
-      case "LIST_CHOICES": return LIST_CHOICES(CATALOG_MODIFIER_INFO);
+      case DISPLAY_AS.YOUR_CHOICE_OF: return `Your choice of ${CATALOG_MODIFIER_INFO.modifier_type.display_name ? CATALOG_MODIFIER_INFO.modifier_type.display_name : CATALOG_MODIFIER_INFO.modifier_type.name}`;
+      case DISPLAY_AS.LIST_CHOICES: return LIST_CHOICES(CATALOG_MODIFIER_INFO);
+      // DISPLAY_AS.OMIT is handled elsewhere
       default: throw (`Unknown value for empty_display_as flag: ${CATALOG_MODIFIER_INFO.modifier_type.display_flags.empty_display_as}`);
     }
   }
@@ -436,17 +437,17 @@ export function WCPProductGenerateMetadata(a: WCPProduct, productClassMenu: Prod
     // we check for an incomplete modifier and add an entry if the empty_display_as flag is anything other than OMIT
     if (num_selected[LEFT_SIDE] < MIN_SELECTED &&
       num_selected[RIGHT_SIDE] < MIN_SELECTED) {
-      if (EMPTY_DISPLAY_AS !== "OMIT" && metadata.modifier_map[mtid].has_selectable) { metadata.exhaustive_modifiers.whole.push([mtid, ""]); }
+      if (EMPTY_DISPLAY_AS !== DISPLAY_AS.OMIT && metadata.modifier_map[mtid].has_selectable) { metadata.exhaustive_modifiers.whole.push([mtid, ""]); }
       metadata.modifier_map[mtid].meets_minimum = !metadata.modifier_map[mtid].has_selectable;
       metadata.incomplete ||= metadata.modifier_map[mtid].has_selectable;
     }
     else if (num_selected[LEFT_SIDE] < MIN_SELECTED) {
-      if (EMPTY_DISPLAY_AS !== "OMIT" && metadata.modifier_map[mtid].has_selectable) { metadata.exhaustive_modifiers.left.push([mtid, ""]); }
+      if (EMPTY_DISPLAY_AS !== DISPLAY_AS.OMIT && metadata.modifier_map[mtid].has_selectable) { metadata.exhaustive_modifiers.left.push([mtid, ""]); }
       metadata.modifier_map[mtid].meets_minimum = !metadata.modifier_map[mtid].has_selectable;
       metadata.incomplete ||= metadata.modifier_map[mtid].has_selectable;
     }
     else if (num_selected[RIGHT_SIDE] < MIN_SELECTED) {
-      if (EMPTY_DISPLAY_AS !== "OMIT" && metadata.modifier_map[mtid].has_selectable) { metadata.exhaustive_modifiers.right.push([mtid, ""]); }
+      if (EMPTY_DISPLAY_AS !== DISPLAY_AS.OMIT && metadata.modifier_map[mtid].has_selectable) { metadata.exhaustive_modifiers.right.push([mtid, ""]); }
       metadata.modifier_map[mtid].meets_minimum = !metadata.modifier_map[mtid].has_selectable;
       metadata.incomplete ||= metadata.modifier_map[mtid].has_selectable;
     }
@@ -463,8 +464,7 @@ export function WCPProductGenerateMetadata(a: WCPProduct, productClassMenu: Prod
     metadata.name = leftPI.item.display_name;
     metadata.shortname = leftPI.item.shortcode;
     metadata.description = leftPI.item.description;
-    RunTemplating(PRODUCT_CLASS, menuModifiers, metadata);
-    return metadata;
+    return RunTemplating(PRODUCT_CLASS, menuModifiers, metadata);
   }
 
   const additional_options_objects = {
