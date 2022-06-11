@@ -1,6 +1,6 @@
 import { GetPlacementFromMIDOID } from "../common";
 import { WFunctional } from "./WFunctional";
-import { OptionPlacement, WCPProduct, WCPOption, MODIFIER_LOCATION, MenuProductInstanceFunctions } from '../types';
+import { OptionPlacement, WCPProduct, WCPOption, PRODUCT_LOCATION, MenuProductInstanceFunctions } from '../types';
 
 // matrix of proposed_delta indexed by [current placement][proposed placement]
 const DELTA_MATRIX = [
@@ -11,8 +11,8 @@ const DELTA_MATRIX = [
   // [[ NONE ], [ LEFT ], [ RIGHT], [ WHOLE]]
 ];
 
-const LEFT_SIDE = MODIFIER_LOCATION.LEFT;
-const RIGHT_SIDE = MODIFIER_LOCATION.RIGHT;
+const LEFT_SIDE = PRODUCT_LOCATION.LEFT;
+const RIGHT_SIDE = PRODUCT_LOCATION.RIGHT;
 
 export function IsOptionEnabled(option: WCPOption, product: WCPProduct, bake_count: [number, number], flavor_count: [number, number], location: OptionPlacement, productInstanceFunctions: MenuProductInstanceFunctions) {
   // TODO: needs to factor in disable data for time based disable

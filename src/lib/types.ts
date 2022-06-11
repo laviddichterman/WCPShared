@@ -53,7 +53,7 @@ export enum DISPLAY_AS {
 
 export enum MODIFIER_MATCH { NO_MATCH, AT_LEAST, EXACT_MATCH };
 
-export enum MODIFIER_LOCATION { LEFT, RIGHT };
+export enum PRODUCT_LOCATION { LEFT, RIGHT };
 
 export enum PriceDisplay {
   'FROM_X' = 'FROM_X',

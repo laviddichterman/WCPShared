@@ -1,13 +1,13 @@
 import { DisableDataCheck, PRODUCT_NAME_MODIFIER_TEMPLATE_REGEX } from "../common";
 import { WFunctional } from "./WFunctional";
-import { IProduct, IProductInstance, OptionPlacement, ModifiersMap, MODIFIER_MATCH, MODIFIER_LOCATION, WCPProduct, WProductMetadata, MTID_MOID, ModifierEntry, WCPOption, MenuModifiers, IWModifiersInstance, IOptionInstance, OptionQualifier, MetadataModifierMap, ModifierDisplayListByLocation, ProductEntry, MenuProductInstanceFunctions, DISPLAY_AS } from '../types';
+import { IProduct, IProductInstance, OptionPlacement, ModifiersMap, MODIFIER_MATCH, PRODUCT_LOCATION, WCPProduct, WProductMetadata, MTID_MOID, ModifierEntry, WCPOption, MenuModifiers, IWModifiersInstance, IOptionInstance, OptionQualifier, MetadataModifierMap, ModifierDisplayListByLocation, ProductEntry, MenuProductInstanceFunctions, DISPLAY_AS, IMenu } from '../types';
 import { IsOptionEnabled } from './WCPOption';
 
 const NO_MATCH = MODIFIER_MATCH.NO_MATCH;
 const AT_LEAST = MODIFIER_MATCH.AT_LEAST;
 const EXACT_MATCH = MODIFIER_MATCH.EXACT_MATCH;
-const LEFT_SIDE = MODIFIER_LOCATION.LEFT;
-const RIGHT_SIDE = MODIFIER_LOCATION.RIGHT;
+const LEFT_SIDE = PRODUCT_LOCATION.LEFT;
+const RIGHT_SIDE = PRODUCT_LOCATION.RIGHT;
 
 type SIDE_MODIFIER_MATCH_MATRIX = MODIFIER_MATCH[][];
 type LR_MODIFIER_MATCH_MATRIX = [SIDE_MODIFIER_MATCH_MATRIX, SIDE_MODIFIER_MATCH_MATRIX];
@@ -105,6 +105,20 @@ const MATCH_MATRIX: [MODIFIER_MATCH, MODIFIER_MATCH, boolean][][] = [
 export function CreateWCPProduct(product_class: IProduct, modifiers: ModifiersMap) {
   return { PRODUCT_CLASS: product_class, modifiers } as WCPProduct;
 }
+
+interface WCPProductJsFeDto {
+  pid: string;
+  modifiers: { [index: string]: [OptionPlacement, string][] };
+};
+export function CreateProductWithMetadataFromJsFeDto(dto: WCPProductJsFeDto, menu: IMenu, service_time: Date) {
+  //[<quantity, {pid, modifiers: {MID: [<placement, OID>]}}]}
+  const productEntry = menu.product_classes[dto.pid];
+  const modifiers = Object.entries(dto.modifiers).reduce((acc, [mtId, placements]) => ({ ...acc, [mtId]: placements.map(([placement, moId]) => ({ option_id: moId, placement: placement, qualifier: OptionQualifier.REGULAR })) }), {} as ModifiersMap);
+  const wcpProduct = CreateWCPProduct(productEntry.product, modifiers);
+  const productMetadata = WCPProductGenerateMetadata(wcpProduct, productEntry, menu.modifiers, menu.product_instance_functions, service_time);
+  return { product: wcpProduct, metadata: productMetadata };
+}
+
 
 export function CreateWCPProductFromPI(prod: IProduct, pi: IProductInstance) {
   return CreateWCPProduct(
@@ -297,7 +311,7 @@ export function WCPProductGenerateMetadata(a: WCPProduct, productClassMenu: Prod
     comparison_value: [EXACT_MATCH, EXACT_MATCH]
   } as IMatchInfo;
 
-  const CheckMatchForSide = (side: MODIFIER_LOCATION, comparison: WProductCompareResult, comparison_product: IProductInstance) => {
+  const CheckMatchForSide = (side: PRODUCT_LOCATION, comparison: WProductCompareResult, comparison_product: IProductInstance) => {
     if (match_info.product[side] === null && comparison.match[side] !== NO_MATCH) {
       match_info.product[side] = comparison_product;
       match_info.comparison[side] = comparison.match_matrix[side];
@@ -334,7 +348,7 @@ export function WCPProductGenerateMetadata(a: WCPProduct, productClassMenu: Prod
   const leftPI = match_info.product[LEFT_SIDE];
   const rightPI = match_info.product[RIGHT_SIDE];
   if (leftPI === null || rightPI === null) {
-    throw ("Unable to determine product metadata");
+    throw (`Unable to determine product metadata. Match info for PC_ID ${PRODUCT_CLASS._id} with modifiers of ${JSON.stringify(a.modifiers)}: ${JSON.stringify(match_info)}.`);
   }
 
   let price = PRODUCT_CLASS.price.amount;
