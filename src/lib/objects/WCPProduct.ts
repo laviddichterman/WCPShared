@@ -477,7 +477,9 @@ export function WCPProductGenerateMetadata(a: WCPProduct, productClassMenu: Prod
     // if we're an unmodified product instance from the catalog,
     // we should find that product and assume its name.
     metadata.name = leftPI.item.display_name;
-    metadata.shortname = leftPI.item.shortcode;
+    // NOTE: the following assignment of display name to shortname isn't really what we want for product naming, but the shortcode
+    // wasn't being applied for modified products. the team wanted to see 4 Pepper + ex_mozz instead of F + ex_mozz for now
+    metadata.shortname = leftPI.item.display_name;
     metadata.description = leftPI.item.description;
     return RunTemplating(PRODUCT_CLASS, menuModifiers, metadata);
   }
