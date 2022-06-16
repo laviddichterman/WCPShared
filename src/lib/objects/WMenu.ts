@@ -105,7 +105,7 @@ function ComputeModifiers(cat: ICatalog) {
     const mod = cat.modifiers[mtid].modifier_type;
     let opt_index = 0;
     const modifier_entry: ModifierEntry = { modifier_type: mod, options_list: [], options: {} };
-    cat.modifiers[mtid].options.sort((a, b) => a.ordinal - b.ordinal).forEach((opt) => {
+    cat.modifiers[mtid].options.slice().sort((a, b) => a.ordinal - b.ordinal).forEach((opt) => {
       const option: WCPOption = { index: opt_index, mo: opt, mt: mod };
       modifier_entry.options_list.push(option);
       modifier_entry.options[String(option.mo._id)] = option;
@@ -122,12 +122,12 @@ function ComputeProducts(cat: ICatalog) {
   Object.keys(cat.products).forEach(pId => {
     const product_class = cat.products[pId].product;
     // IMPORTANT: we need to sort by THIS ordinal here to ensure things are named properly.
-    const product_instances = cat.products[pId].instances.sort((a, b) => a.ordinal - b.ordinal);
+    const product_instances = cat.products[pId].instances.slice().sort((a, b) => a.ordinal - b.ordinal);
     const baseProductInstanceIndex = product_instances.findIndex(x => x.is_base);
     if (baseProductInstanceIndex !== -1) {
       // be sure to sort the modifiers, just in case...
       // TODO: better expectations around sorting
-      product_class.modifiers.sort((a, b) => cat.modifiers[a.mtid].modifier_type.ordinal - cat.modifiers[b.mtid].modifier_type.ordinal);
+      product_class.modifiers.slice().sort((a, b) => cat.modifiers[a.mtid].modifier_type.ordinal - cat.modifiers[b.mtid].modifier_type.ordinal);
       const product_entry: ProductEntry = { product: product_class, instances_list: [], instances: {}, base_id: String(product_instances[baseProductInstanceIndex]._id) };
       product_instances.forEach((pi) => {
         product_entry.instances_list.push(pi);
@@ -148,7 +148,7 @@ function ComputeCategories(cat: ICatalog, product_classes: MenuProducts) {
   Object.keys(cat.categories).forEach(catId => {
     const category_entry: CategoryEntry = {
       menu: [],
-      children: cat.categories[catId].children.sort((a, b) => cat.categories[a].category.ordinal - cat.categories[b].category.ordinal),
+      children: cat.categories[catId].children.slice().sort((a, b) => cat.categories[a].category.ordinal - cat.categories[b].category.ordinal),
       menu_name: cat.categories[catId].category.description || cat.categories[catId].category.name,
       subtitle: cat.categories[catId].category?.subheading || null,
       footer: cat.categories[catId].category?.footnotes || null

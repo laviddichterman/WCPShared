@@ -1,6 +1,6 @@
 {
   "name": "@wcp/wcpshared",
-  "version": "3.0.6",
+  "version": "3.0.7",
   "description": "Shared JS/TS modules for WARIO",
   "main": "build/main/index.js",
   "typings": "build/main/index.d.ts",
@@ -54,8 +54,8 @@
   "devDependencies": {
     "@ava/typescript": "^3.0.1",
     "@istanbuljs/nyc-config-typescript": "^1.0.2",
-    "@typescript-eslint/eslint-plugin": "^5.27.1",
-    "@typescript-eslint/parser": "^5.27.1",
+    "@typescript-eslint/eslint-plugin": "^5.28.0",
+    "@typescript-eslint/parser": "^5.28.0",
     "ava": "^4.3.0",
     "codecov": "^3.8.2",
     "cspell": "^6.1.2",
@@ -69,7 +69,7 @@
     "npm-run-all": "^4.1.5",
     "nyc": "^15.1.0",
     "open-cli": "^7.0.1",
-    "prettier": "^2.6.2",
+    "prettier": "^2.7.0",
     "standard-version": "^9.5.0",
     "ts-node": "^10.8.1",
     "typedoc": "^0.22.17",
