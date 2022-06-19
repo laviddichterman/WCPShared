@@ -207,18 +207,20 @@ export interface IOption {
   };
 };
 
+export interface IOptionState {
+  placement: OptionPlacement;
+  qualifier: OptionQualifier;
+}
+
 export interface IWOptionInstance {
   option_id: string;
   placement: keyof typeof OptionPlacement;
   qualifier: keyof typeof OptionQualifier;
 };
 
-export interface IOptionInstance {
+export interface IOptionInstance extends IOptionState {
   option_id: string;
-  placement: OptionPlacement;
-  qualifier: OptionQualifier;
 };
-
 export interface IProductDisplayFlags {
   menu: {
     // ordering within this product instance's category in menu page
@@ -310,7 +312,7 @@ export interface ICatalog {
   apiver: { major: number; minor: number; patch: number; };
 };
 
-export interface MetadataModifierOptionMapEntry { placement: OptionPlacement; enable_left: boolean; enable_right: boolean; enable_whole: boolean };
+export interface MetadataModifierOptionMapEntry extends IOptionState { enable_left: boolean; enable_right: boolean; enable_whole: boolean };
 export interface MetadataModifierMapEntry { has_selectable: boolean, meets_minimum: boolean, options: { [MOID: string]: MetadataModifierOptionMapEntry } };
 export interface MetadataModifierMap { [mtid: string]: MetadataModifierMapEntry };
 export type MTID_MOID = [string, string];
@@ -320,7 +322,7 @@ export interface WProductMetadata {
   shortname: string;
   description: string;
   price: number;
-  pi: [IProductInstance, IProductInstance];
+  pi: [string, string];
   is_split: boolean;
   incomplete: boolean;
   modifier_map: MetadataModifierMap;

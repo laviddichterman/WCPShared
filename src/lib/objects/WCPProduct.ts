@@ -1,7 +1,16 @@
 import { DisableDataCheck, PRODUCT_NAME_MODIFIER_TEMPLATE_REGEX } from "../common";
 import { WFunctional } from "./WFunctional";
-import { IProduct, IProductInstance, OptionPlacement, ModifiersMap, MODIFIER_MATCH, PRODUCT_LOCATION, WCPProduct, WProductMetadata, MTID_MOID, ModifierEntry, WCPOption, MenuModifiers, IWModifiersInstance, IOptionInstance, OptionQualifier, MetadataModifierMap, ModifierDisplayListByLocation, ProductEntry, MenuProductInstanceFunctions, DISPLAY_AS, IMenu } from '../types';
+import { IProduct, IProductInstance, OptionPlacement, ModifiersMap, MODIFIER_MATCH, PRODUCT_LOCATION, WCPProduct, WProductMetadata, MTID_MOID, ModifierEntry, WCPOption, MenuModifiers, IWModifiersInstance, IOptionInstance, OptionQualifier, MetadataModifierMap, ModifierDisplayListByLocation, ProductEntry, MenuProductInstanceFunctions, DISPLAY_AS, IMenu, MetadataModifierOptionMapEntry } from '../types';
 import { IsOptionEnabled } from './WCPOption';
+
+
+/* TODO: we need to pull out the computations into memoizable functions
+this should remove the dependencies on the menu
+we also need to remove the menu object itself because it's pre-cached stuff that should be memoized functions based on
+catalog data as we get it.
+calls to GetModifierOptionFromMIdOId might be easy places to start looking to remove this dependency
+*/
+
 
 const NO_MATCH = MODIFIER_MATCH.NO_MATCH;
 const AT_LEAST = MODIFIER_MATCH.AT_LEAST;
@@ -225,10 +234,9 @@ export function WProductCompare(a: WCPProduct, b: WCPProduct, menuModifiers: Men
   return WProductCompareGeneric(a, ModifiersMapGetter(b.modifiers), menuModifiers);
 }
 
-export function WProductEquals(a: WCPProduct, b: WCPProduct, menuModifiers: MenuModifiers) {
-  const comparison_info = WProductCompare(a, b, menuModifiers);
-  return comparison_info.mirror ||
-    (comparison_info.match[LEFT_SIDE] === EXACT_MATCH && comparison_info.match[RIGHT_SIDE] === EXACT_MATCH);
+export function WProductEquals(comparison: WProductCompareResult) {
+  return comparison.mirror ||
+    (comparison.match[LEFT_SIDE] === EXACT_MATCH && comparison.match[RIGHT_SIDE] === EXACT_MATCH);
 };
 
 /**
@@ -374,7 +382,7 @@ export function WCPProductGenerateMetadata(a: WCPProduct, productClassMenu: Prod
     name: '',
     description: '',
     shortname: '',
-    pi: [leftPI, rightPI],
+    pi: [leftPI._id, rightPI._id],
     is_split,
     price: price / 100,
     incomplete: false,
@@ -407,11 +415,12 @@ export function WCPProductGenerateMetadata(a: WCPProduct, productClassMenu: Prod
       const is_enabled = enable_modifier_type && DisableDataCheck(option_object.mo.item.disabled, service_time)
       const option_info = {
         placement: OptionPlacement.NONE,
+        qualifier: OptionQualifier.REGULAR,
         // do we need to figure out if we can de-select? answer: probably
         enable_left: is_enabled && option_object.mo.metadata.can_split && IsOptionEnabled(option_object, a, metadata.bake_count, metadata.flavor_count, OptionPlacement.LEFT, productInstanceFunctions),
         enable_right: is_enabled && option_object.mo.metadata.can_split && IsOptionEnabled(option_object, a, metadata.bake_count, metadata.flavor_count, OptionPlacement.RIGHT, productInstanceFunctions),
         enable_whole: is_enabled && IsOptionEnabled(option_object, a, metadata.bake_count, metadata.flavor_count, OptionPlacement.WHOLE, productInstanceFunctions),
-      };
+      } as MetadataModifierOptionMapEntry;
       const enable_left_or_right = option_info.enable_left || option_info.enable_right;
       metadata.advanced_option_eligible ||= enable_left_or_right;
       metadata.modifier_map[mtid].options[String(option_object.mo._id)] = option_info;
