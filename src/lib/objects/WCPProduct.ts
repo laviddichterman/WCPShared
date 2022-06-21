@@ -2,6 +2,7 @@ import { DisableDataCheck, PRODUCT_NAME_MODIFIER_TEMPLATE_REGEX } from "../commo
 import { WFunctional } from "./WFunctional";
 import { IProduct, IProductInstance, OptionPlacement, ModifiersMap, MODIFIER_MATCH, PRODUCT_LOCATION, WCPProduct, WProductMetadata, MTID_MOID, ModifierEntry, WCPOption, MenuModifiers, IWModifiersInstance, IOptionInstance, OptionQualifier, MetadataModifierMap, ModifierDisplayListByLocation, ProductEntry, MenuProductInstanceFunctions, DISPLAY_AS, IMenu, MetadataModifierOptionMapEntry } from '../types';
 import { IsOptionEnabled } from './WCPOption';
+// import { memoize } from 'lodash';qqq
 
 
 /* TODO: we need to pull out the computations into memoizable functions
@@ -148,27 +149,33 @@ function IWModifiersInstanceListGetter(mil: IWModifiersInstance[]): (mtid: strin
   const mMap: ModifiersMap = mil.reduce((o, key) => ({ ...o, [key.modifier_type_id]: key.options.map(x => { return { option_id: x.option_id, placement: OptionPlacement[x.placement], qualifier: OptionQualifier[x.qualifier] }; }) }), {});
   return (mtid: string) => Object.hasOwn(mMap, mtid) ? mMap[mtid] : [];
 }
+
+function MetadataModifiersInstanceListGetter(mil: MetadataModifierMap): (mtid: string) => IOptionInstance[] {
+  const mMap: ModifiersMap = Object.entries(mil).reduce((o, [k, v]) => ({ ...o, [k]: Object.entries(v.options).map(([moid, opt]) => ({ ...opt, option_id: moid } as IOptionInstance)) }), {});
+  return (mtid: string) => Object.hasOwn(mil, mtid) ? mMap[mtid] : [];
+}
 /**
  * Takes two products, a and b, and computes comparison info
- * @param a a WCPProduct
+ * @param productClass the shared IProduct of A and B
+ * @param aModifiersGetter a WCPProduct
  * @param bModifiersGetter getter/transformation function for the modifiers of the product we're comparing "a" to, 
  * required to be of the same product class
  * @param menuModifiers the modifiers section of the IMenu
  */
-function WProductCompareGeneric(a: WCPProduct, bModifiersGetter: (mtid: string) => IOptionInstance[], menuModifiers: MenuModifiers) {
+function WProductCompareGeneric(productClass: IProduct, aModifiersGetter: (mtid: string) => IOptionInstance[], bModifiersGetter: (mtid: string) => IOptionInstance[], menuModifiers: MenuModifiers) {
   // this is a multi-dim array, in order of the MTID as it exists in the product class definition
   // disabled modifier types and modifier options are all present as they shouldn't contribute to comparison mismatch
   // elements of the modifiers_match_matrix are arrays of <LEFT_MATCH, RIGHT_MATCH> tuples
   const modifiers_match_matrix: LR_MODIFIER_MATCH_MATRIX = [[], []];
-  a.PRODUCT_CLASS.modifiers.forEach((modifier) => {
+  productClass.modifiers.forEach((modifier) => {
     modifiers_match_matrix[LEFT_SIDE].push(Array(menuModifiers[modifier.mtid].options_list.length).fill(EXACT_MATCH));
     modifiers_match_matrix[RIGHT_SIDE].push(Array(menuModifiers[modifier.mtid].options_list.length).fill(EXACT_MATCH));
   })
   let is_mirror = true;
   // main comparison loop!
-  a.PRODUCT_CLASS.modifiers.forEach((modifier, mIdX) => {
+  productClass.modifiers.forEach((modifier, mIdX) => {
     const mtid = modifier.mtid;
-    const first_option_list = Object.hasOwn(a.modifiers, mtid) ? a.modifiers[mtid] : [];
+    const first_option_list = aModifiersGetter(mtid);
     const other_option_list = bModifiersGetter(mtid);
     // in each modifier, need to determine if it's a SINGLE or MANY select 
     const CATALOG_MODIFIER_INFO = menuModifiers[mtid];
@@ -216,13 +223,17 @@ function WProductCompareGeneric(a: WCPProduct, bModifiersGetter: (mtid: string) 
   } as WProductCompareResult;
 }
 
+export function WProductMetadataCompareProducts(productClass: IProduct, a: MetadataModifierMap, b: MetadataModifierMap, menuModifiers: MenuModifiers) {
+  return WProductCompareGeneric(productClass, MetadataModifiersInstanceListGetter(a), MetadataModifiersInstanceListGetter(b), menuModifiers);
+}
+
 export function WProductCompareToIProductInstance(a: WCPProduct, b: IProductInstance, menuModifiers: MenuModifiers) {
   // need to compare PIDs of first and other, then use the PID to develop the modifiers matrix since one of the two product instances might not have a value for every modifier.
   if (String(a.PRODUCT_CLASS._id) !== String(b.product_id)) {
     // no match on PID so we need to return 0
     return { mirror: false, match_matrix: [[], []], match: [NO_MATCH, NO_MATCH] } as WProductCompareResult;
   }
-  return WProductCompareGeneric(a, IWModifiersInstanceListGetter(b.modifiers), menuModifiers);
+  return WProductCompareGeneric(a.PRODUCT_CLASS, ModifiersMapGetter(a.modifiers), IWModifiersInstanceListGetter(b.modifiers), menuModifiers);
 }
 
 export function WProductCompare(a: WCPProduct, b: WCPProduct, menuModifiers: MenuModifiers) {
@@ -231,7 +242,7 @@ export function WProductCompare(a: WCPProduct, b: WCPProduct, menuModifiers: Men
     // no match on PID so we need to return 0
     return { mirror: false, match_matrix: [[], []], match: [NO_MATCH, NO_MATCH] } as WProductCompareResult;
   }
-  return WProductCompareGeneric(a, ModifiersMapGetter(b.modifiers), menuModifiers);
+  return WProductCompareGeneric(a.PRODUCT_CLASS, ModifiersMapGetter(a.modifiers), ModifiersMapGetter(b.modifiers), menuModifiers);
 }
 
 export function WProductEquals(comparison: WProductCompareResult) {
