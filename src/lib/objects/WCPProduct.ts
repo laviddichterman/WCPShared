@@ -130,11 +130,26 @@ export function CreateProductWithMetadataFromJsFeDto(dto: WCPProductJsFeDto, men
 }
 
 
-export function CreateWCPProductFromPI(prod: IProduct, pi: IProductInstance) {
+export function CreateWCPProductFromPI(prod: IProduct, pi: IProductInstance, menuModifiers: MenuModifiers) {
   return CreateWCPProduct(
     prod,
-    pi.modifiers.reduce((o, key) => ({ ...o, [key.modifier_type_id]: key.options.map(x => { return { option_id: x.option_id, placement: OptionPlacement[x.placement], qualifier: OptionQualifier[x.qualifier] }; }) }), {}), // this is a deep copy
+    [...pi.modifiers].sort((a, b) => menuModifiers[a.modifier_type_id].modifier_type.ordinal - menuModifiers[b.modifier_type_id].modifier_type.ordinal).reduce((o, key) => {
+      const oMap = menuModifiers[key.modifier_type_id].options;
+      return {
+        ...o,
+        [key.modifier_type_id]: [...key.options].sort((a, b) => oMap[a.option_id].index - oMap[b.option_id].index).map(
+          x => ({ option_id: x.option_id, placement: OptionPlacement[x.placement], qualifier: OptionQualifier[x.qualifier] }))
+      };
+    }, {}), // this is a deep copy
   );
+}
+export function SortModifersAndOptions(mMap: ModifiersMap, menuModifiers: MenuModifiers) {
+  return Object.entries(mMap).sort(
+    (a, b) => menuModifiers[a[0]].modifier_type.ordinal - menuModifiers[b[0]].modifier_type.ordinal).reduce(
+      (acc, [mtId, options]) => {
+        const oMap = menuModifiers[mtId].options;
+        return { ...acc, [mtId]: [...options].sort((a, b) => oMap[a.option_id].index - oMap[b.option_id].index) };
+      }, {} as ModifiersMap);
 }
 
 export function DeepCopyModifiers(modifiers: ModifiersMap) {
@@ -183,15 +198,10 @@ function WProductCompareGeneric(productClass: IProduct, aModifiersGetter: (mtid:
       // CASE: SINGLE select modifier, this logic isn't very well-defined. TODO: rework
       if (first_option_list.length === 1) {
         const first_option = first_option_list[0];
-        if (other_option_list.length != 1) {
-          throw (`got other option list of ${JSON.stringify(other_option_list)} but we were expecting a list of length 1`);
-          // we log this error because we're not sure how the logic was working before converting to typescript
-        }
-        if (other_option_list.length === 1 && first_option.option_id !== other_option_list[0].option_id) {
+        if ((other_option_list.length === 1 && first_option.option_id !== other_option_list[0].option_id) || other_option_list.length !== 1) {
           // OID doesn't match, need to set AT_LEAST for JUST the option on the "first" product
           CATALOG_MODIFIER_INFO.options_list.forEach((option, oIdX) => {
-            // eslint-disable-next-line
-            if (first_option.option_id == String(option.mo._id)) {
+            if (first_option.option_id === String(option.mo._id)) {
               modifiers_match_matrix[LEFT_SIDE][mIdX][oIdX] = AT_LEAST;
               modifiers_match_matrix[RIGHT_SIDE][mIdX][oIdX] = AT_LEAST;
               is_mirror = false;
