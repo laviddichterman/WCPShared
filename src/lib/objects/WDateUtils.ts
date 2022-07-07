@@ -224,7 +224,7 @@ export class WDateUtils {
     return pushed_time > operating_intervals[operating_intervals.length - 1][1] ? -1 : pushed_time;
   }
 
-  static GetInfoMapForAvailabilityComputation(BLOCKED_OFF: JSFEBlockedOff, SETTINGS: IWSettings, LEAD_TIMES: number[], date: Date, services: ServicesEnableMap, stuff_to_depreciate_map: { cart_based_lead_time: number; size: number; }) {
+  static GetInfoMapForAvailabilityComputation(BLOCKED_OFF: JSFEBlockedOff, SETTINGS: IWSettings, LEAD_TIMES: number[], date: Date | number, services: ServicesEnableMap, stuff_to_depreciate_map: { cart_based_lead_time: number; size: number; }) {
     const internal_formatted_date = lightFormat(date, WDateUtils.DATE_STRING_INTERNAL_FORMAT);
     const blocked_off_union = WDateUtils.BlockedOffIntervalsForServicesAndDay(BLOCKED_OFF, services, internal_formatted_date);
     const operating_intervals = WDateUtils.GetOperatingHoursForServicesAndDay(SETTINGS.operating_hours, services, getDay(date));
@@ -245,7 +245,7 @@ export class WDateUtils {
    * @param {moment} currently - the current date and time according to dog (the server, whatever)
    * @returns {[{value: Number, disabled: Boolean}]}
    */
-  static GetOptionsForDate(INFO: AvailabilityInfoMap, date: Date, currently: Date) {
+  static GetOptionsForDate(INFO: AvailabilityInfoMap, date: Date | number, currently: Date) {
     let earliest_time = WDateUtils.ComputeFirstAvailableTimeForDate(INFO, date, currently);
     if (earliest_time === -1) {
       return [];
@@ -268,7 +268,7 @@ export class WDateUtils {
    * @param {Date} current_moment - the current date and time according to dog (the server, whatever)
    * @returns the first available time in minutes from the start of the day (not taking into account DST), or -1 if no time is available
    */
-  static ComputeFirstAvailableTimeForDate(INFO: AvailabilityInfoMap, date: Date, currently: Date) {
+  static ComputeFirstAvailableTimeForDate(INFO: AvailabilityInfoMap, date: Date | number, currently: Date | number) {
     if (INFO.operating_intervals.length === 0) {
       return -1;
     }
