@@ -1,6 +1,5 @@
 import { IWInterval, OptionPlacement, OptionQualifier, WCPProduct } from "./types";
 
-// eslint-disable-next-line prefer-regex-literals
 export const EMAIL_REGEX = new RegExp(/^[_A-Za-z0-9\-+]+(\.[_A-Za-z0-9\-+]+)*@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*(\.[A-Za-z]{2,})$/);
 
 export const CREDIT_REGEX = /[A-Za-z0-9]{3}-[A-Za-z0-9]{2}-[A-Za-z0-9]{3}-[A-Z0-9]{8}$/;
