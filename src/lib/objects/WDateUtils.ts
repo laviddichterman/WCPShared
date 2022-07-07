@@ -1,4 +1,16 @@
-import { lightFormat, addMinutes, isSameDay, getDay, getHours, getMinutes, isBefore, parse, compareAsc, startOfDay } from 'date-fns';
+import {
+  addMinutes,
+  compareAsc,
+  getDay,
+  getHours,
+  getMinutes,
+  isBefore,
+  isSameDay,
+  lightFormat,
+  parse,
+  startOfDay
+} from 'date-fns';
+
 import { AvailabilityInfoMap, DayIndex, IntervalTupleList, IWSettings, JSFEBlockedOff, OperatingHoursList, ServicesEnableMap, WIntervalTuple } from '../types';
 
 export class WDateUtils {

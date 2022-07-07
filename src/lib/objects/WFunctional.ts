@@ -1,5 +1,5 @@
 import { GetPlacementFromMIDOID } from "../common";
-import { WCPProduct, IConstLiteralExpression, IIfElseExpression, ProductInstanceFunctionOperator, ILogicalExpression, IAbstractExpression, IProductInstanceFunction, ICatalogModifiers, IModifierPlacementExpression, IHasAnyOfModifierExpression, OptionPlacement, IOption, ProductInstanceFunctionType } from '../types';
+import { IAbstractExpression, ICatalogModifiers, IConstLiteralExpression, IHasAnyOfModifierExpression, IIfElseExpression, ILogicalExpression, IModifierPlacementExpression, IOption, IProductInstanceFunction, OptionPlacement, ProductInstanceFunctionOperator, ProductInstanceFunctionType, WCPProduct } from '../types';
 export class WFunctional {
   static ProcessIfElseStatement(prod: WCPProduct, stmt: IIfElseExpression) {
     const branch_test = WFunctional.ProcessAbstractExpressionStatement(prod, stmt.test);

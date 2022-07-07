@@ -1,5 +1,6 @@
 import { DisableDataCheck } from "../common";
-import { IMenu, ICatalog, MenuCategories, MenuModifiers, MenuProducts, CategoryEntry, ModifierEntry, ProductEntry, MenuProductInstanceMetadata, WCPOption, IProductInstance, MenuProductInstanceFunctions } from "../types";
+import { CategoryEntry, ICatalog, IMenu, IProductInstance, MenuCategories, MenuModifiers, MenuProductInstanceFunctions, MenuProductInstanceMetadata, MenuProducts, ModifierEntry, ProductEntry, WCPOption } from "../types";
+
 import { CreateWCPProductFromPI, WCPProductGenerateMetadata } from "./WCPProduct";
 
 type DisableFlagGetterType = (x: any) => boolean;
