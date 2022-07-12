@@ -21,7 +21,7 @@ export class WDateUtils {
 
   static MinutesToPrintTime(minutes: number) {
     if (Number.isNaN(minutes) || minutes < 0) {
-      return minutes;
+      return "ERROR";
     }
     const hour = Math.floor(minutes / 60);
     const minute = minutes - (hour * 60);
@@ -252,12 +252,12 @@ export class WDateUtils {
   /**
    * Gets an array of Objects containing information for WCPReactConfig's blocked off
    * select widget
-   * @param {AvailabilityInfoMap} INFO - as computed by GetInfoMapForAvailabilityComputation
-   * @param {moment} date - date to find the first available time for
-   * @param {moment} currently - the current date and time according to dog (the server, whatever)
+   * @param INFO - as computed by GetInfoMapForAvailabilityComputation
+   * @param date - date to find the first available time for
+   * @param currently - the current date and time according to dog (the server, whatever)
    * @returns {[{value: Number, disabled: Boolean}]}
    */
-  static GetOptionsForDate(INFO: AvailabilityInfoMap, date: Date | number, currently: Date) {
+  static GetOptionsForDate(INFO: AvailabilityInfoMap, date: Date | number, currently: Date | number) {
     let earliest_time = WDateUtils.ComputeFirstAvailableTimeForDate(INFO, date, currently);
     if (earliest_time === -1) {
       return [];
@@ -276,8 +276,8 @@ export class WDateUtils {
 
   /**
    * @param {AvailabilityInfoMap} INFO - as computed by GetInfoMapForAvailabilityComputation  
-   * @param {Date} date - date to find the first available time for
-   * @param {Date} current_moment - the current date and time according to dog (the server, whatever)
+   * @param date - date to find the first available time for
+   * @param current_moment - the current date and time according to dog (the server, whatever)
    * @returns the first available time in minutes from the start of the day (not taking into account DST), or -1 if no time is available
    */
   static ComputeFirstAvailableTimeForDate(INFO: AvailabilityInfoMap, date: Date | number, currently: Date | number) {

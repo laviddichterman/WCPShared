@@ -1,3 +1,5 @@
+export interface SEMVER { major: number; minor: number; patch: number; };
+
 export interface IWInterval {
   start: number;
   end: number;
@@ -85,7 +87,8 @@ export enum MODIFIER_CLASS {
   PROMPT = 'PROMPT'
 };
 export enum CALL_LINE_DISPLAY {
-  'SHORTCODE', 'SHORTNAME'
+  'SHORTCODE' = 'SHORTCODE',
+  'SHORTNAME' = 'SHORTNAME'
 };
 export enum CURRENCY {
   USD = "USD"
@@ -155,7 +158,7 @@ export interface ICategory {
   footnotes?: string,
   display_flags: {
     call_line_name: string;
-    call_line_display: keyof typeof CALL_LINE_DISPLAY;
+    call_line_display: CALL_LINE_DISPLAY;
   };
 };
 
@@ -309,7 +312,7 @@ export interface ICatalog {
   products: ICatalogProducts;
   product_instance_functions: IProductInstanceFunction[]
   version: string;
-  apiver: { major: number; minor: number; patch: number; };
+  api: SEMVER;
 };
 
 export interface MetadataModifierOptionMapEntry extends IOptionState { enable_left: boolean; enable_right: boolean; enable_whole: boolean };
