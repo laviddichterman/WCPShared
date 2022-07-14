@@ -142,14 +142,14 @@ export interface IAbstractExpression {
 };
 
 export interface IProductInstanceFunction {
-  _id: string;
+  id: string;
   expression: IAbstractExpression;
   name: string;
 };
 
 
 export interface ICategory {
-  _id: string;
+  id: string;
   name: string;
   description: string | null;
   ordinal: number;
@@ -173,7 +173,7 @@ export interface ICatalogItem {
 };
 
 export interface IOptionType {
-  _id: string;
+  id: string;
   name: string;
   display_name: string;
   externalIDs?: IExternalIDs;
@@ -194,7 +194,7 @@ export interface IOptionType {
   };
 };
 export interface IOption {
-  _id: string;
+  id: string;
   item: ICatalogItem;
   ordinal: number;
   option_type_id: string; //{ type: Schema.Types.ObjectId, ref: 'WOptionTypeSchema', required: true }, 
@@ -203,7 +203,7 @@ export interface IOption {
     bake_factor: number;
     can_split: boolean;
   };
-  enable_function: IProductInstanceFunction | null;// { type: Schema.Types.ObjectId, ref: 'WProductInstanceFunction', autopopulate: true },
+  enable_function: string | null;
   display_flags: {
     omit_from_shortname: boolean;
     omit_from_name: boolean;
@@ -258,7 +258,7 @@ export interface IProductDisplayFlags {
 };
 
 export interface IProduct {
-  _id: string;
+  id: string;
   item?: ICatalogItem;
   price: IMoney;
   disabled: IWInterval | null;
@@ -275,7 +275,7 @@ export interface IProduct {
     min_prep_time: number;
     additional_unit_prep_time: number;
   };
-  modifiers: { mtid: string, enable: IProductInstanceFunction | null }[];
+  modifiers: { mtid: string, enable: string | null }[];
   category_ids: string[];
 };
 
@@ -286,7 +286,7 @@ export interface IWModifiersInstance {
   options: IWOptionInstance[];
 };
 export interface IProductInstance {
-  _id: string;
+  id: string;
   // reference to the WProductSchema ID for this class of item
   product_id: string; //{ type: Schema.Types.ObjectId, ref: 'WProductSchema'},
 
@@ -341,6 +341,11 @@ export interface WCPProduct {
   PRODUCT_CLASS: IProduct;
   modifiers: ModifiersMap;
 };
+
+export interface WProduct {
+  p: WCPProduct;
+  m: WProductMetadata;
+}
 
 export interface WCPOption {
   mt: IOptionType;

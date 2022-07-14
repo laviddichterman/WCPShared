@@ -1,6 +1,6 @@
 import { DisableDataCheck, PRODUCT_NAME_MODIFIER_TEMPLATE_REGEX } from "../common";
 import { WFunctional } from "./WFunctional";
-import { IProduct, IProductInstance, OptionPlacement, ModifiersMap, MODIFIER_MATCH, PRODUCT_LOCATION, WCPProduct, WProductMetadata, MTID_MOID, ModifierEntry, WCPOption, MenuModifiers, IWModifiersInstance, IOptionInstance, OptionQualifier, MetadataModifierMap, ModifierDisplayListByLocation, ProductEntry, MenuProductInstanceFunctions, DISPLAY_AS, IMenu, MetadataModifierOptionMapEntry } from '../types';
+import { IProduct, IProductInstance, OptionPlacement, ModifiersMap, MODIFIER_MATCH, PRODUCT_LOCATION, WCPProduct, WProductMetadata, MTID_MOID, ModifierEntry, WCPOption, MenuModifiers, IWModifiersInstance, IOptionInstance, OptionQualifier, MetadataModifierMap, ModifierDisplayListByLocation, ProductEntry, MenuProductInstanceFunctions, DISPLAY_AS, IMenu, MetadataModifierOptionMapEntry, WProduct } from '../types';
 import { IsOptionEnabled } from './WCPOption';
 // import { memoize } from 'lodash';qqq
 
@@ -82,7 +82,7 @@ export function ComputePotentialPrices(metadata: WProductMetadata, menuModifiers
   const prices: number[][] = [];
   Object.keys(metadata.modifier_map).forEach(mtid => {
     if (!metadata.modifier_map[mtid].meets_minimum) {
-      const whole_enabled_modifier_options = menuModifiers[mtid].options_list.filter(x => metadata.modifier_map[mtid].options[String(x.mo._id)].enable_whole);
+      const whole_enabled_modifier_options = menuModifiers[mtid].options_list.filter(x => metadata.modifier_map[mtid].options[String(x.mo.id)].enable_whole);
       const enabled_prices = whole_enabled_modifier_options.map(x => x.mo.item.price.amount);
       const deduped_prices = [...new Set(enabled_prices)];
       prices.push(deduped_prices);
@@ -120,13 +120,13 @@ interface WCPProductJsFeDto {
   pid: string;
   modifiers: { [index: string]: [OptionPlacement, string][] };
 };
-export function CreateProductWithMetadataFromJsFeDto(dto: WCPProductJsFeDto, menu: IMenu, service_time: Date) {
+export function CreateProductWithMetadataFromJsFeDto(dto: WCPProductJsFeDto, menu: IMenu, service_time: Date): WProduct {
   //[<quantity, {pid, modifiers: {MID: [<placement, OID>]}}]}
   const productEntry = menu.product_classes[dto.pid];
   const modifiers = Object.entries(dto.modifiers).reduce((acc, [mtId, placements]) => ({ ...acc, [mtId]: placements.map(([placement, moId]) => ({ option_id: moId, placement: placement, qualifier: OptionQualifier.REGULAR })) }), {} as ModifiersMap);
   const wcpProduct = CreateWCPProduct(productEntry.product, modifiers);
   const productMetadata = WCPProductGenerateMetadata(wcpProduct, productEntry, menu.modifiers, menu.product_instance_functions, service_time);
-  return { product: wcpProduct, metadata: productMetadata };
+  return { p: wcpProduct, m: productMetadata };
 }
 
 
@@ -201,7 +201,7 @@ function WProductCompareGeneric(productClass: IProduct, aModifiersGetter: (mtid:
         if ((other_option_list.length === 1 && first_option.option_id !== other_option_list[0].option_id) || other_option_list.length !== 1) {
           // OID doesn't match, need to set AT_LEAST for JUST the option on the "first" product
           CATALOG_MODIFIER_INFO.options_list.forEach((option, oIdX) => {
-            if (first_option.option_id === String(option.mo._id)) {
+            if (first_option.option_id === String(option.mo.id)) {
               modifiers_match_matrix[LEFT_SIDE][mIdX][oIdX] = AT_LEAST;
               modifiers_match_matrix[RIGHT_SIDE][mIdX][oIdX] = AT_LEAST;
               is_mirror = false;
@@ -215,8 +215,8 @@ function WProductCompareGeneric(productClass: IProduct, aModifiersGetter: (mtid:
       CATALOG_MODIFIER_INFO.options_list.forEach((option, oIdX) => {
         // todo: since the options will be in order, we can be smarter about not using a find here and track 2 indices instead   
         // var finder = modifier_option_find_function_factory(option.moid);     
-        const first_option = first_option_list.find(val => val.option_id === String(option.mo._id));
-        const other_option = other_option_list.find(val => val.option_id === String(option.mo._id));
+        const first_option = first_option_list.find(val => val.option_id === String(option.mo.id));
+        const other_option = other_option_list.find(val => val.option_id === String(option.mo.id));
         const first_option_placement = first_option?.placement || OptionPlacement.NONE;
         const other_option_placement = other_option?.placement || OptionPlacement.NONE;
         const MATCH_CONFIGURATION = MATCH_MATRIX[first_option_placement][other_option_placement];
@@ -239,7 +239,7 @@ export function WProductMetadataCompareProducts(productClass: IProduct, a: Metad
 
 export function WProductCompareToIProductInstance(a: WCPProduct, b: IProductInstance, menuModifiers: MenuModifiers) {
   // need to compare PIDs of first and other, then use the PID to develop the modifiers matrix since one of the two product instances might not have a value for every modifier.
-  if (String(a.PRODUCT_CLASS._id) !== String(b.product_id)) {
+  if (String(a.PRODUCT_CLASS.id) !== String(b.product_id)) {
     // no match on PID so we need to return 0
     return { mirror: false, match_matrix: [[], []], match: [NO_MATCH, NO_MATCH] } as WProductCompareResult;
   }
@@ -248,7 +248,7 @@ export function WProductCompareToIProductInstance(a: WCPProduct, b: IProductInst
 
 export function WProductCompare(a: WCPProduct, b: WCPProduct, menuModifiers: MenuModifiers) {
   // need to compare PIDs of first and other, then use the PID to develop the modifiers matrix since one of the two product instances might not have a value for every modifier.
-  if (String(a.PRODUCT_CLASS._id) !== String(b.PRODUCT_CLASS._id)) {
+  if (String(a.PRODUCT_CLASS.id) !== String(b.PRODUCT_CLASS.id)) {
     // no match on PID so we need to return 0
     return { mirror: false, match_matrix: [[], []], match: [NO_MATCH, NO_MATCH] } as WProductCompareResult;
   }
@@ -377,7 +377,7 @@ export function WCPProductGenerateMetadata(a: WCPProduct, productClassMenu: Prod
   const leftPI = match_info.product[LEFT_SIDE];
   const rightPI = match_info.product[RIGHT_SIDE];
   if (leftPI === null || rightPI === null) {
-    throw (`Unable to determine product metadata. Match info for PC_ID ${PRODUCT_CLASS._id} with modifiers of ${JSON.stringify(a.modifiers)}: ${JSON.stringify(match_info)}.`);
+    throw (`Unable to determine product metadata. Match info for PC_ID ${PRODUCT_CLASS.id} with modifiers of ${JSON.stringify(a.modifiers)}: ${JSON.stringify(match_info)}.`);
   }
 
   let price = PRODUCT_CLASS.price.amount;
@@ -403,7 +403,7 @@ export function WCPProductGenerateMetadata(a: WCPProduct, productClassMenu: Prod
     name: '',
     description: '',
     shortname: '',
-    pi: [leftPI._id, rightPI._id],
+    pi: [leftPI.id, rightPI.id],
     is_split,
     price: price / 100,
     incomplete: false,
@@ -418,8 +418,8 @@ export function WCPProductGenerateMetadata(a: WCPProduct, productClassMenu: Prod
 
   // determine if we're comparing to the base product on the left and right sides
   const is_compare_to_base = [
-    String(BASE_PRODUCT_INSTANCE._id) === String(leftPI._id),
-    String(BASE_PRODUCT_INSTANCE._id) === String(rightPI._id)];
+    String(BASE_PRODUCT_INSTANCE.id) === String(leftPI.id),
+    String(BASE_PRODUCT_INSTANCE.id) === String(rightPI.id)];
 
   // split out options beyond the base product into left additions, right additions, and whole additions
   // each entry in these arrays represents the modifier index on the product class and the option index in that particular modifier
@@ -430,7 +430,7 @@ export function WCPProductGenerateMetadata(a: WCPProduct, productClassMenu: Prod
     const is_single_select = CATALOG_MODIFIER_INFO.modifier_type.min_selected === 1 && CATALOG_MODIFIER_INFO.modifier_type.max_selected === 1;
     const is_base_product_edge_case = is_single_select && !PRODUCT_CLASS.display_flags.show_name_of_base_product;
     metadata.modifier_map[mtid] = { has_selectable: false, meets_minimum: false, options: {} };
-    const enable_modifier_type = modifier_type_enable_function === null || WFunctional.ProcessProductInstanceFunction(a, productInstanceFunctions[String(modifier_type_enable_function._id)]);
+    const enable_modifier_type = modifier_type_enable_function === null || WFunctional.ProcessProductInstanceFunction(a, productInstanceFunctions[String(modifier_type_enable_function)]);
     for (let moIdX = 0; moIdX < CATALOG_MODIFIER_INFO.options_list.length; ++moIdX) {
       const option_object = CATALOG_MODIFIER_INFO.options_list[moIdX];
       const is_enabled = enable_modifier_type && DisableDataCheck(option_object.mo.item.disabled, service_time)
@@ -444,7 +444,7 @@ export function WCPProductGenerateMetadata(a: WCPProduct, productClassMenu: Prod
       } as MetadataModifierOptionMapEntry;
       const enable_left_or_right = option_info.enable_left || option_info.enable_right;
       metadata.advanced_option_eligible ||= enable_left_or_right;
-      metadata.modifier_map[mtid].options[String(option_object.mo._id)] = option_info;
+      metadata.modifier_map[mtid].options[String(option_object.mo.id)] = option_info;
       metadata.modifier_map[mtid].has_selectable ||= enable_left_or_right || option_info.enable_whole;
     }
 
@@ -546,7 +546,7 @@ export function WCPProductGenerateMetadata(a: WCPProduct, productClassMenu: Prod
   if (metadata.is_split) {
     name_components_list = ComponentsListName(FilterByOmitFromName(additional_options_objects.whole));
     shortname_components_list = ComponentsListShortname(FilterByOmitFromShortname(additional_options_objects.whole));
-    if (String(leftPI._id) === String(rightPI._id)) {
+    if (String(leftPI.id) === String(rightPI.id)) {
       if (!is_compare_to_base[LEFT_SIDE] || PRODUCT_CLASS.display_flags.show_name_of_base_product) {
         name_components_list.unshift(leftPI.item.display_name);
         shortname_components_list.unshift(leftPI.item.display_name);

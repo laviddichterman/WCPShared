@@ -81,7 +81,7 @@ export function FilterWMenu(menu: IMenu, filter_products: (product: IProductInst
   Object.keys(menu.product_classes).forEach(pid => {
     menu.product_classes[pid].instances_list = menu.product_classes[pid].instances_list.filter(filter_products);
     if (menu.product_classes[pid].instances_list.length > 0) {
-      menu.product_classes[pid].instances = menu.product_classes[pid].instances_list.reduce((acc, x) => Object.assign(acc, { [String(x._id)]: x }), {})
+      menu.product_classes[pid].instances = menu.product_classes[pid].instances_list.reduce((acc, x) => Object.assign(acc, { [x.id]: x }), {})
     }
     else {
       delete menu.product_classes[pid];
@@ -92,7 +92,7 @@ export function FilterWMenu(menu: IMenu, filter_products: (product: IProductInst
   Object.keys(menu.modifiers).forEach(mtid => {
     menu.modifiers[mtid].options_list = menu.modifiers[mtid].options_list.filter((opt) => DisableDataCheck(opt.mo.item.disabled, order_time));
     if (menu.modifiers[mtid].options_list.length > 0) {
-      menu.modifiers[mtid].options = menu.modifiers[mtid].options_list.reduce((acc, x) => Object.assign(acc, { [String(x.mo._id)]: x }), {})
+      menu.modifiers[mtid].options = menu.modifiers[mtid].options_list.reduce((acc, x) => Object.assign(acc, { [x.mo.id]: x }), {})
     }
     else {
       delete menu.modifiers[mtid];
@@ -109,7 +109,7 @@ function ComputeModifiers(cat: ICatalog) {
     cat.modifiers[mtid].options.slice().sort((a, b) => a.ordinal - b.ordinal).forEach((opt) => {
       const option: WCPOption = { index: opt_index, mo: opt, mt: mod };
       modifier_entry.options_list.push(option);
-      modifier_entry.options[String(option.mo._id)] = option;
+      modifier_entry.options[option.mo.id] = option;
       opt_index += 1;
     });
     mods[mtid] = modifier_entry;
@@ -129,10 +129,10 @@ function ComputeProducts(cat: ICatalog) {
       // be sure to sort the modifiers, just in case...
       // TODO: better expectations around sorting
       product_class.modifiers = [...product_class.modifiers].sort((a, b) => cat.modifiers[a.mtid].modifier_type.ordinal - cat.modifiers[b.mtid].modifier_type.ordinal);
-      const product_entry: ProductEntry = { product: product_class, instances_list: [], instances: {}, base_id: String(product_instances[baseProductInstanceIndex]._id) };
+      const product_entry: ProductEntry = { product: product_class, instances_list: [], instances: {}, base_id: product_instances[baseProductInstanceIndex].id };
       product_instances.forEach((pi) => {
         product_entry.instances_list.push(pi);
-        product_entry.instances[String(pi._id)] = pi;
+        product_entry.instances[pi.id] = pi;
       });
       prods[pId] = product_entry;
     }
@@ -169,7 +169,7 @@ function ComputeProductInstanceMetadata(menuProducts: MenuProducts, menuModifier
   const md: MenuProductInstanceMetadata = {};
   Object.values(menuProducts).forEach(productEntry => {
     productEntry.instances_list.forEach(pi => {
-      md[String(pi._id)] = WCPProductGenerateMetadata(CreateWCPProductFromPI(productEntry.product, pi, menuModifiers), productEntry, menuModifiers, menuProductInstanceFunctions, service_time)
+      md[pi.id] = WCPProductGenerateMetadata(CreateWCPProductFromPI(productEntry.product, pi, menuModifiers), productEntry, menuModifiers, menuProductInstanceFunctions, service_time)
     });
   });
   return md;
@@ -179,7 +179,7 @@ export function GenerateMenu(catalog: ICatalog, service_time: Date) {
   const modifiers = ComputeModifiers(catalog);
   const product_classes = ComputeProducts(catalog);
   const categories = ComputeCategories(catalog, product_classes);
-  const product_instance_functions = catalog.product_instance_functions.reduce((acc, x) => { return { ...acc, [String(x._id)]: x }; }, {});
+  const product_instance_functions = catalog.product_instance_functions.reduce((acc, x) => { return { ...acc, [x.id]: x }; }, {});
   const product_instance_metadata = ComputeProductInstanceMetadata(product_classes, modifiers, product_instance_functions, service_time);
   const menu: IMenu = { modifiers, product_classes, product_instance_metadata, categories, product_instance_functions, version: catalog.version };
   return menu;
