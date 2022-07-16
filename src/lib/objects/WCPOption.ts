@@ -1,6 +1,6 @@
 import { GetPlacementFromMIDOID } from "../common";
 import {
-  MenuProductInstanceFunctions,
+  RecordProductInstanceFunctions,
   OptionPlacement,
   PRODUCT_LOCATION,
   WCPOption,
@@ -21,7 +21,7 @@ const DELTA_MATRIX = [
 const LEFT_SIDE = PRODUCT_LOCATION.LEFT;
 const RIGHT_SIDE = PRODUCT_LOCATION.RIGHT;
 
-export function IsOptionEnabled(option: WCPOption, product: WCPProduct, bake_count: readonly [number, number], flavor_count: readonly [number, number], location: OptionPlacement, productInstanceFunctions: MenuProductInstanceFunctions) {
+export function IsOptionEnabled(option: WCPOption, product: WCPProduct, bake_count: readonly [number, number], flavor_count: readonly [number, number], location: OptionPlacement, productInstanceFunctions: RecordProductInstanceFunctions) {
   // TODO: needs to factor in disable data for time based disable
   // TODO: needs to return false if we would exceed the limit for this modifier, IF that limit is > 1, because if it's === 1
   // we would handle the limitation by using smarts at the wcpmodifierdir level

@@ -1,6 +1,6 @@
 import { DisableDataCheck, PRODUCT_NAME_MODIFIER_TEMPLATE_REGEX } from "../common";
 import { WFunctional } from "./WFunctional";
-import { IProduct, IProductInstance, OptionPlacement, ModifiersMap, MODIFIER_MATCH, PRODUCT_LOCATION, WCPProduct, WProductMetadata, MTID_MOID, ModifierEntry, WCPOption, MenuModifiers, IWModifiersInstance, IOptionInstance, OptionQualifier, MetadataModifierMap, ModifierDisplayListByLocation, ProductEntry, MenuProductInstanceFunctions, DISPLAY_AS, IMenu, MetadataModifierOptionMapEntry, WProduct } from '../types';
+import { IProduct, IProductInstance, OptionPlacement, ModifiersMap, MODIFIER_MATCH, PRODUCT_LOCATION, WCPProduct, WProductMetadata, MTID_MOID, ModifierEntry, WCPOption, MenuModifiers, IWModifiersInstance, IOptionInstance, OptionQualifier, MetadataModifierMap, ModifierDisplayListByLocation, ProductEntry, RecordProductInstanceFunctions, DISPLAY_AS, IMenu, MetadataModifierOptionMapEntry, WProduct } from '../types';
 import { IsOptionEnabled } from './WCPOption';
 // import { memoize } from 'lodash';qqq
 
@@ -326,7 +326,7 @@ const RunTemplating = (product: IProduct, menuModifiers: MenuModifiers, metadata
 
 interface IMatchInfo { product: [IProductInstance | null, IProductInstance | null], comparison: LR_MODIFIER_MATCH_MATRIX; comparison_value: [MODIFIER_MATCH, MODIFIER_MATCH] };
 
-export function WCPProductGenerateMetadata(a: WCPProduct, productClassMenu: ProductEntry, menuModifiers: MenuModifiers, productInstanceFunctions: MenuProductInstanceFunctions, service_time: Date) {
+export function WCPProductGenerateMetadata(a: WCPProduct, productClassMenu: ProductEntry, menuModifiers: MenuModifiers, productInstanceFunctions: RecordProductInstanceFunctions, service_time: Date) {
   const PRODUCT_CLASS = a.PRODUCT_CLASS;
   const BASE_PRODUCT_INSTANCE = productClassMenu.instances[productClassMenu.base_id];
 

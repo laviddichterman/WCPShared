@@ -20,3 +20,7 @@ export const GetPlacementFromMIDOID = (pi: WCPProduct, mid: string, oid: string)
 export function DisableDataCheck(disable_data: IWInterval | null, order_time: Date) {
   return !disable_data || (!(disable_data.start > disable_data.end) && (disable_data.start > order_time.valueOf() || disable_data.end < order_time.valueOf()));
 }
+
+export function RoundToTwoDecimalPlaces(number: number) {
+  return Math.round((number + Number.EPSILON) * 100) / 100;
+}

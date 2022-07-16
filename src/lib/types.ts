@@ -153,9 +153,9 @@ export interface ICategory {
   name: string;
   description: string | null;
   ordinal: number;
-  parent_id?: string;
-  subheading?: string,
-  footnotes?: string,
+  parent_id: string | null;
+  subheading: string | null,
+  footnotes: string | null,
   display_flags: {
     call_line_name: string;
     call_line_display: CALL_LINE_DISPLAY;
@@ -279,7 +279,7 @@ export interface IProduct {
   category_ids: string[];
 };
 
-export interface ModifiersMap { [index: string]: IOptionInstance[] };
+export type ModifiersMap = Record<string, IOptionInstance[]>;
 
 export interface IWModifiersInstance {
   modifier_type_id: string;
@@ -303,21 +303,22 @@ export interface IProductInstance {
   item: ICatalogItem;
 };
 
-export interface ICatalogModifiers { [index: string]: { options: IOption[]; modifier_type: IOptionType; }; };
-export interface ICatalogCategories { [index: string]: { category: ICategory; children: string[]; products: string[]; }; };
-export interface ICatalogProducts { [index: string]: { product: IProduct, instances: IProductInstance[] } };
+export type ICatalogModifiers = Record<string, { options: IOption[]; modifier_type: IOptionType; }>;
+export type ICatalogCategories = Record<string, { category: ICategory; children: string[]; products: string[]; }>;
+export type ICatalogProducts = Record<string, { product: IProduct; instances: IProductInstance[]; }>;
+export type RecordProductInstanceFunctions = Record<string, IProductInstanceFunction>;
 export interface ICatalog {
   modifiers: ICatalogModifiers;
   categories: ICatalogCategories;
   products: ICatalogProducts;
-  product_instance_functions: IProductInstanceFunction[]
+  product_instance_functions: RecordProductInstanceFunctions;
   version: string;
   api: SEMVER;
 };
 
 export interface MetadataModifierOptionMapEntry extends IOptionState { enable_left: boolean; enable_right: boolean; enable_whole: boolean };
-export interface MetadataModifierMapEntry { has_selectable: boolean, meets_minimum: boolean, options: { [MOID: string]: MetadataModifierOptionMapEntry } };
-export interface MetadataModifierMap { [mtid: string]: MetadataModifierMapEntry };
+export interface MetadataModifierMapEntry { has_selectable: boolean, meets_minimum: boolean, options: Record<string, MetadataModifierOptionMapEntry>; };
+export type MetadataModifierMap = Record<string, MetadataModifierMapEntry>;
 export type MTID_MOID = [string, string];
 export interface ModifierDisplayListByLocation { left: MTID_MOID[]; right: MTID_MOID[]; whole: MTID_MOID[]; };
 export interface WProductMetadata {
@@ -354,18 +355,17 @@ export interface WCPOption {
 };
 
 export interface CategoryEntry { menu: IProductInstance[]; children: string[]; menu_name: string; subtitle: string | null, footer: string | null; };
-export interface MenuCategories { [index: string]: CategoryEntry };
-export interface ProductEntry { product: IProduct; base_id: string, instances_list: IProductInstance[]; instances: { [index: string]: IProductInstance } };
-export interface MenuProducts { [index: string]: ProductEntry };
-export interface MenuProductInstanceMetadata { [index: string]: WProductMetadata };
-export interface ModifierEntry { modifier_type: IOptionType; options_list: WCPOption[]; options: { [index: string]: WCPOption } };
-export interface MenuModifiers { [index: string]: ModifierEntry };
-export interface MenuProductInstanceFunctions { [index: string]: IProductInstanceFunction };
+export type MenuCategories = Record<string, CategoryEntry>;
+export interface ProductEntry { product: IProduct; base_id: string, instances_list: IProductInstance[]; instances: Record<string, IProductInstance>; };
+export type MenuProducts = Record<string, ProductEntry>;
+export type MenuProductInstanceMetadata = Record<string, WProductMetadata>;
+export interface ModifierEntry { modifier_type: IOptionType; options_list: WCPOption[]; options: Record<string, WCPOption>; };
+export type MenuModifiers = Record<string, ModifierEntry>;
 export interface IMenu {
   readonly modifiers: MenuModifiers;
   readonly product_classes: MenuProducts;
   readonly categories: MenuCategories;
-  readonly product_instance_functions: MenuProductInstanceFunctions;
+  readonly product_instance_functions: RecordProductInstanceFunctions;
   readonly product_instance_metadata: MenuProductInstanceMetadata;
   readonly version: string;
 

@@ -1,5 +1,5 @@
 import { DisableDataCheck } from "../common";
-import { CategoryEntry, ICatalog, IMenu, IProductInstance, MenuCategories, MenuModifiers, MenuProductInstanceFunctions, MenuProductInstanceMetadata, MenuProducts, ModifierEntry, ProductEntry, WCPOption } from "../types";
+import { CategoryEntry, ICatalog, IMenu, IProductInstance, MenuCategories, MenuModifiers, RecordProductInstanceFunctions, MenuProductInstanceMetadata, MenuProducts, ModifierEntry, ProductEntry, WCPOption } from "../types";
 
 import { CreateWCPProductFromPI, WCPProductGenerateMetadata } from "./WCPProduct";
 
@@ -165,7 +165,7 @@ function ComputeCategories(cat: ICatalog, product_classes: MenuProducts) {
   return cats;
 }
 
-function ComputeProductInstanceMetadata(menuProducts: MenuProducts, menuModifiers: MenuModifiers, menuProductInstanceFunctions: MenuProductInstanceFunctions, service_time: Date) {
+function ComputeProductInstanceMetadata(menuProducts: MenuProducts, menuModifiers: MenuModifiers, menuProductInstanceFunctions: RecordProductInstanceFunctions, service_time: Date) {
   const md: MenuProductInstanceMetadata = {};
   Object.values(menuProducts).forEach(productEntry => {
     productEntry.instances_list.forEach(pi => {
@@ -179,8 +179,8 @@ export function GenerateMenu(catalog: ICatalog, service_time: Date) {
   const modifiers = ComputeModifiers(catalog);
   const product_classes = ComputeProducts(catalog);
   const categories = ComputeCategories(catalog, product_classes);
-  const product_instance_functions = catalog.product_instance_functions.reduce((acc, x) => { return { ...acc, [x.id]: x }; }, {});
-  const product_instance_metadata = ComputeProductInstanceMetadata(product_classes, modifiers, product_instance_functions, service_time);
+  const product_instance_metadata = ComputeProductInstanceMetadata(product_classes, modifiers, catalog.product_instance_functions, service_time);
+  const product_instance_functions = { ...catalog.product_instance_functions };
   const menu: IMenu = { modifiers, product_classes, product_instance_metadata, categories, product_instance_functions, version: catalog.version };
   return menu;
 }
