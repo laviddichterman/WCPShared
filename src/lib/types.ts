@@ -132,26 +132,26 @@ export interface IHasAnyOfModifierExpression {
   mtid: string;
 };
 
-type AbstractExpressionConstLiteral = {
+export type AbstractExpressionConstLiteral = {
   expr: IConstLiteralExpression;
   discriminator: ProductInstanceFunctionType.ConstLiteral;
-}
-type AbstractExpressionIfElseExpression = {
+};
+export type AbstractExpressionIfElseExpression = {
   expr: IIfElseExpression;
   discriminator: ProductInstanceFunctionType.IfElse;
-}
-type AbstractExpressionLogicalExpression = {
+};
+export type AbstractExpressionLogicalExpression = {
   expr: ILogicalExpression;
   discriminator: ProductInstanceFunctionType.Logical;
-}
-type AbstractExpressionModifierPlacementExpression = {
+};
+export type AbstractExpressionModifierPlacementExpression = {
   expr: IModifierPlacementExpression;
   discriminator: ProductInstanceFunctionType.ModifierPlacement;
-}
-type AbstractExpressionHasAnyOfModifierExpression = {
+};
+export type AbstractExpressionHasAnyOfModifierExpression = {
   expr: IHasAnyOfModifierExpression;
   discriminator: ProductInstanceFunctionType.HasAnyOfModifierType;
-}
+};
 
 export type IAbstractExpression = AbstractExpressionConstLiteral |
   AbstractExpressionIfElseExpression |

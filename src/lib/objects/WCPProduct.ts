@@ -120,7 +120,7 @@ interface WCPProductJsFeDto {
   pid: string;
   modifiers: { [index: string]: [OptionPlacement, string][] };
 };
-export function CreateProductWithMetadataFromJsFeDto(dto: WCPProductJsFeDto, menu: IMenu, service_time: number): WProduct {
+export function CreateProductWithMetadataFromJsFeDto(dto: WCPProductJsFeDto, menu: IMenu, service_time: Date | number): WProduct {
   //[<quantity, {pid, modifiers: {MID: [<placement, OID>]}}]}
   const productEntry = menu.product_classes[dto.pid];
   const modifiers = Object.entries(dto.modifiers).reduce((acc, [mtId, placements]) => ({ ...acc, [mtId]: placements.map(([placement, moId]) => ({ option_id: moId, placement: placement, qualifier: OptionQualifier.REGULAR })) }), {} as ModifiersMap);
