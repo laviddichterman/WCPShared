@@ -59,15 +59,15 @@ export class WFunctional {
   static ProcessAbstractExpressionStatement(prod: WCPProduct, stmt: IAbstractExpression): any {
     switch (stmt.discriminator) {
       case ProductInstanceFunctionType.ConstLiteral:
-        return WFunctional.ProcessConstLiteralStatement(<IConstLiteralExpression>stmt.const_literal);
+        return WFunctional.ProcessConstLiteralStatement(stmt.expr);
       case ProductInstanceFunctionType.IfElse:
-        return WFunctional.ProcessIfElseStatement(prod, <IIfElseExpression>stmt.if_else);
+        return WFunctional.ProcessIfElseStatement(prod, stmt.expr);
       case ProductInstanceFunctionType.Logical:
-        return WFunctional.ProcessLogicalOperatorStatement(prod, <ILogicalExpression>stmt.logical);
+        return WFunctional.ProcessLogicalOperatorStatement(prod, stmt.expr);
       case ProductInstanceFunctionType.ModifierPlacement:
-        return WFunctional.ProcessModifierPlacementExtractionOperatorStatement(prod, <IModifierPlacementExpression>stmt.modifier_placement);
+        return WFunctional.ProcessModifierPlacementExtractionOperatorStatement(prod, stmt.expr);
       case ProductInstanceFunctionType.HasAnyOfModifierType:
-        return WFunctional.ProcessHasAnyOfModifierTypeExtractionOperatorStatement(prod, <IHasAnyOfModifierExpression>stmt.has_any_of_modifier);
+        return WFunctional.ProcessHasAnyOfModifierTypeExtractionOperatorStatement(prod, stmt.expr);
       default:
         throw ("bad abstract expression");
     }
@@ -79,31 +79,29 @@ export class WFunctional {
   }
 
   static AbstractExpressionStatementToString(stmt: IAbstractExpression, mods: ICatalogModifiers): string {
-    const logical = () => {
-      const logicalExpr = <ILogicalExpression>stmt.logical;
-      const operandAString = WFunctional.AbstractExpressionStatementToString(logicalExpr.operandA, mods);
-      return logicalExpr.operator === ProductInstanceFunctionOperator.NOT || !logicalExpr.operandB ? `NOT (${operandAString})` : `(${operandAString} ${logicalExpr.operator} ${WFunctional.AbstractExpressionStatementToString(logicalExpr.operandB, mods)})`;
+    function logical(expr: ILogicalExpression) {
+      const operandAString = WFunctional.AbstractExpressionStatementToString(expr.operandA, mods);
+      return expr.operator === ProductInstanceFunctionOperator.NOT || !expr.operandB ? `NOT (${operandAString})` : `(${operandAString} ${expr.operator} ${WFunctional.AbstractExpressionStatementToString(expr.operandB, mods)})`;
     }
-    const modifierPlacement = () => {
-      const mps = stmt.modifier_placement as unknown as IModifierPlacementExpression;
-      if (!Object.hasOwn(mods, mps.mtid)) {
+    function modifierPlacement(expr: IModifierPlacementExpression) {
+      if (!Object.hasOwn(mods, expr.mtid)) {
         return "";
       }
-      const val = mods[mps.mtid];
-      const opt = val.options.find(x => x.id === mps.moid) as unknown as IOption;
+      const val = mods[expr.mtid];
+      const opt = val.options.find(x => x.id === expr.moid) as unknown as IOption;
       return `${val.modifier_type.name}.${opt.item.display_name}`;
     }
     switch (stmt.discriminator) {
-      case "ConstLiteral":
-        return (<IConstLiteralExpression>stmt.const_literal).value;
-      case "IfElse":
-        return `IF(${WFunctional.AbstractExpressionStatementToString((<IIfElseExpression>stmt.if_else).test, mods)}) { ${WFunctional.AbstractExpressionStatementToString((<IIfElseExpression>stmt.if_else).true_branch, mods)} } ELSE { ${WFunctional.AbstractExpressionStatementToString((<IIfElseExpression>stmt.if_else).false_branch, mods)} }`;
-      case "Logical":
-        return logical();
-      case "ModifierPlacement":
-        return modifierPlacement();
-      case "HasAnyOfModifierType":
-        return `ANY ${mods[(<IHasAnyOfModifierExpression>stmt.has_any_of_modifier).mtid].modifier_type.name}`;
+      case ProductInstanceFunctionType.ConstLiteral:
+        return String(stmt.expr.value);
+      case ProductInstanceFunctionType.IfElse:
+        return `IF(${WFunctional.AbstractExpressionStatementToString(stmt.expr.test, mods)}) { ${WFunctional.AbstractExpressionStatementToString(stmt.expr.true_branch, mods)} } ELSE { ${WFunctional.AbstractExpressionStatementToString(stmt.expr.false_branch, mods)} }`;
+      case ProductInstanceFunctionType.Logical:
+        return logical(stmt.expr);
+      case ProductInstanceFunctionType.ModifierPlacement:
+        return modifierPlacement(stmt.expr);
+      case ProductInstanceFunctionType.HasAnyOfModifierType:
+        return `ANY ${mods[(stmt.expr).mtid].modifier_type.name}`;
       default:
         throw ("bad abstract expression");
     }

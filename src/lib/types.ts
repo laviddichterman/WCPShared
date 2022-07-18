@@ -109,7 +109,7 @@ export interface IMoney {
 
 
 export interface IConstLiteralExpression {
-  value: any;
+  value: number | boolean | string;
 };
 export interface IIfElseExpression {
   true_branch: IAbstractExpression;
@@ -132,14 +132,32 @@ export interface IHasAnyOfModifierExpression {
   mtid: string;
 };
 
-export interface IAbstractExpression {
-  const_literal?: IConstLiteralExpression;
-  if_else?: IIfElseExpression;
-  logical?: ILogicalExpression;
-  modifier_placement?: IModifierPlacementExpression;
-  has_any_of_modifier?: IHasAnyOfModifierExpression;
-  discriminator: keyof typeof ProductInstanceFunctionType;
-};
+type AbstractExpressionConstLiteral = {
+  expr: IConstLiteralExpression;
+  discriminator: ProductInstanceFunctionType.ConstLiteral;
+}
+type AbstractExpressionIfElseExpression = {
+  expr: IIfElseExpression;
+  discriminator: ProductInstanceFunctionType.IfElse;
+}
+type AbstractExpressionLogicalExpression = {
+  expr: ILogicalExpression;
+  discriminator: ProductInstanceFunctionType.Logical;
+}
+type AbstractExpressionModifierPlacementExpression = {
+  expr: IModifierPlacementExpression;
+  discriminator: ProductInstanceFunctionType.ModifierPlacement;
+}
+type AbstractExpressionHasAnyOfModifierExpression = {
+  expr: IHasAnyOfModifierExpression;
+  discriminator: ProductInstanceFunctionType.HasAnyOfModifierType;
+}
+
+export type IAbstractExpression = AbstractExpressionConstLiteral |
+  AbstractExpressionIfElseExpression |
+  AbstractExpressionLogicalExpression |
+  AbstractExpressionModifierPlacementExpression |
+  AbstractExpressionHasAnyOfModifierExpression;
 
 export interface IProductInstanceFunction {
   id: string;
@@ -179,7 +197,7 @@ export interface IOptionType {
   externalIDs?: IExternalIDs;
   ordinal: number;
   min_selected: number;
-  max_selected: number;
+  max_selected: number | null;
   display_flags: {
     omit_section_if_no_available_options: boolean;
     omit_options_if_not_available: boolean;
@@ -197,7 +215,7 @@ export interface IOption {
   id: string;
   item: ICatalogItem;
   ordinal: number;
-  option_type_id: string; //{ type: Schema.Types.ObjectId, ref: 'WOptionTypeSchema', required: true }, 
+  option_type_id: string;
   metadata: {
     flavor_factor: number;
     bake_factor: number;
