@@ -122,7 +122,7 @@ export enum ProductInstanceFunctionOperator { 'AND' = "AND", 'OR' = "OR", 'NOT' 
 export interface ILogicalExpression {
   operandA: IAbstractExpression;
   operandB?: IAbstractExpression;
-  operator: keyof typeof ProductInstanceFunctionOperator;
+  operator: ProductInstanceFunctionOperator;
 };
 export interface IModifierPlacementExpression {
   mtid: string;
@@ -203,8 +203,8 @@ export interface IOptionType {
     omit_options_if_not_available: boolean;
     use_toggle_if_only_two_options: boolean;
     hidden: boolean;
-    empty_display_as: keyof typeof DISPLAY_AS;
-    modifier_class: keyof typeof MODIFIER_CLASS;
+    empty_display_as: DISPLAY_AS;
+    modifier_class: MODIFIER_CLASS;
     template_string: string;
     multiple_item_separator: string;
     non_empty_group_prefix: string;
@@ -321,9 +321,12 @@ export interface IProductInstance {
   item: ICatalogItem;
 };
 
-export type ICatalogModifiers = Record<string, { options: IOption[]; modifier_type: IOptionType; }>;
-export type ICatalogCategories = Record<string, { category: ICategory; children: string[]; products: string[]; }>;
-export type ICatalogProducts = Record<string, { product: IProduct; instances: IProductInstance[]; }>;
+export interface CatalogModifierEntry { options: IOption[]; modifier_type: IOptionType; };
+export type ICatalogModifiers = Record<string, CatalogModifierEntry>;
+export interface CatalogCategoryEntry { category: ICategory; children: string[]; products: string[]; };
+export type ICatalogCategories = Record<string, CatalogCategoryEntry>;
+export interface CatalogProductEntry { product: IProduct; instances: IProductInstance[]; };
+export type ICatalogProducts = Record<string, CatalogProductEntry>;
 export type RecordProductInstanceFunctions = Record<string, IProductInstanceFunction>;
 export interface ICatalog {
   modifiers: ICatalogModifiers;

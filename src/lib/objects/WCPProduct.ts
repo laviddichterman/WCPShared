@@ -120,7 +120,7 @@ interface WCPProductJsFeDto {
   pid: string;
   modifiers: { [index: string]: [OptionPlacement, string][] };
 };
-export function CreateProductWithMetadataFromJsFeDto(dto: WCPProductJsFeDto, menu: IMenu, service_time: Date): WProduct {
+export function CreateProductWithMetadataFromJsFeDto(dto: WCPProductJsFeDto, menu: IMenu, service_time: number): WProduct {
   //[<quantity, {pid, modifiers: {MID: [<placement, OID>]}}]}
   const productEntry = menu.product_classes[dto.pid];
   const modifiers = Object.entries(dto.modifiers).reduce((acc, [mtId, placements]) => ({ ...acc, [mtId]: placements.map(([placement, moId]) => ({ option_id: moId, placement: placement, qualifier: OptionQualifier.REGULAR })) }), {} as ModifiersMap);
@@ -326,7 +326,7 @@ const RunTemplating = (product: IProduct, menuModifiers: MenuModifiers, metadata
 
 interface IMatchInfo { product: [IProductInstance | null, IProductInstance | null], comparison: LR_MODIFIER_MATCH_MATRIX; comparison_value: [MODIFIER_MATCH, MODIFIER_MATCH] };
 
-export function WCPProductGenerateMetadata(a: WCPProduct, productClassMenu: ProductEntry, menuModifiers: MenuModifiers, productInstanceFunctions: RecordProductInstanceFunctions, service_time: Date) {
+export function WCPProductGenerateMetadata(a: WCPProduct, productClassMenu: ProductEntry, menuModifiers: MenuModifiers, productInstanceFunctions: RecordProductInstanceFunctions, service_time: Date | number) {
   const PRODUCT_CLASS = a.PRODUCT_CLASS;
   const BASE_PRODUCT_INSTANCE = productClassMenu.instances[productClassMenu.base_id];
 

@@ -9,10 +9,10 @@ type DisableFlagGetterType = (x: any) => boolean;
  * @param {IProductInstance} item - the product to check 
  * @param {IMenu} menu - the menu from which to pull catalog data
  * @param {function(Object): boolean} disable_from_menu_flag_getter - getter function to pull the proper display flag from the products
- * @param {Date} order_time - the time to use to check for disable/enable status
+ * @param {Date | number} order_time - from getTime or Date.valueOf() the time to use to check for disable/enable status
  * @returns {boolean} returns true if item is enabled and visible
  */
-export function FilterProduct(item: IProductInstance, menu: IMenu, disable_from_menu_flag_getter: DisableFlagGetterType, order_time: Date) {
+export function FilterProduct(item: IProductInstance, menu: IMenu, disable_from_menu_flag_getter: DisableFlagGetterType, order_time: Date | number) {
   let passes = !disable_from_menu_flag_getter(item.display_flags) && DisableDataCheck(menu.product_classes[item.product_id].product.disabled, order_time);
   // this is better as a forEach as it gives us the ability to skip out of the loop early
   item.modifiers.forEach(modifier => {
@@ -28,10 +28,10 @@ export function FilterProduct(item: IProductInstance, menu: IMenu, disable_from_
  * empty or disabled products
  * @param {IMenu} menu - the menu from which to pull catalog data
  * @param {function(Object): boolean} disable_from_menu_flag_getter - getter function to pull the proper display flag from the products
- * @param {Date} order_time - the time to use to check for disable/enable status
+ * @param {Date | number} order_time - the time to use to check for disable/enable status
  * @returns {function(String): boolean} function that takes a category ID and returns true if the category is not empty
  */
-export function FilterEmptyCategories(menu: IMenu, disable_from_menu_flag_getter: DisableFlagGetterType, order_time: Date) {
+export function FilterEmptyCategories(menu: IMenu, disable_from_menu_flag_getter: DisableFlagGetterType, order_time: Date | number) {
   return (CAT_ID: string) => {
     const cat_menu = menu.categories[CAT_ID].menu;
     for (let i = 0; i < cat_menu.length; ++i) {
@@ -165,7 +165,7 @@ function ComputeCategories(cat: ICatalog, product_classes: MenuProducts) {
   return cats;
 }
 
-function ComputeProductInstanceMetadata(menuProducts: MenuProducts, menuModifiers: MenuModifiers, menuProductInstanceFunctions: RecordProductInstanceFunctions, service_time: Date) {
+function ComputeProductInstanceMetadata(menuProducts: MenuProducts, menuModifiers: MenuModifiers, menuProductInstanceFunctions: RecordProductInstanceFunctions, service_time: Date | number) {
   const md: MenuProductInstanceMetadata = {};
   Object.values(menuProducts).forEach(productEntry => {
     productEntry.instances_list.forEach(pi => {
@@ -175,7 +175,7 @@ function ComputeProductInstanceMetadata(menuProducts: MenuProducts, menuModifier
   return md;
 }
 
-export function GenerateMenu(catalog: ICatalog, service_time: Date) {
+export function GenerateMenu(catalog: ICatalog, service_time: Date | number) {
   const modifiers = ComputeModifiers(catalog);
   const product_classes = ComputeProducts(catalog);
   const categories = ComputeCategories(catalog, product_classes);
