@@ -201,15 +201,14 @@ export class WDateUtils {
    * Computes a list of operating times available from the operating ranges
    */
   static GetOperatingTimesForDate(operating_ranges: IntervalTupleList, step: number, lead_time_min: number) {
-    const retval = [];
-    // eslint-disable-next-line no-restricted-syntax
-    for (const i in operating_ranges) {
-      let earliest = Math.max(lead_time_min, operating_ranges[i][0]);
-      while (earliest <= operating_ranges[i][1]) {
+    const retval: number[] = [];
+    operating_ranges.forEach((range) => {
+      let earliest = Math.max(lead_time_min, range[0]);
+      while (earliest <= range[1]) {
         retval.push(earliest);
         earliest += step;
       }
-    }
+    });
     return retval;
   }
 
@@ -351,7 +350,7 @@ export class WDateUtils {
   }
 
   static AddIntervalToService(service_index: number, parsed_date: string, interval: WIntervalTuple, new_interval_map: JSFEBlockedOff) {
-    for (var date_index in new_interval_map[service_index]) {
+    for (const [date_index, _] of new_interval_map[service_index].entries()) {
       if (parsed_date === new_interval_map[service_index][date_index][0]) {
         const new_interval_map_for_service_and_day = new_interval_map[service_index][date_index][1].slice();
         new_interval_map_for_service_and_day.push(interval);

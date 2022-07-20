@@ -17,7 +17,16 @@ export interface IWSettings {
     baking_pipeline: { slots: Number, time: Number }[];
     transfer_padding: number;
   };
-  operating_hours: OperatingHoursList[]
+  operating_hours: OperatingHoursList[];
+  config: Record<string, number | string | boolean>;
+  // {
+  //   SQUARE_LOCATION: string;
+  //   MENU_CATID: string;
+  //   PIZZAS_CATID: string;
+  //   TAX_RATE: number;
+  //   SQUARE_APPLICATION_ID: string
+  //   ALLOW_SLICING: boolean;
+  // };
 };
 export interface IWBlockedOff {
   blocked_off: {
