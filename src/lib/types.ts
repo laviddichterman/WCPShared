@@ -398,5 +398,85 @@ export interface IMenu {
   readonly product_instance_functions: RecordProductInstanceFunctions;
   readonly product_instance_metadata: MenuProductInstanceMetadata;
   readonly version: string;
+};
 
+export interface WCPProductJsFeDto {
+  pid: string;
+  modifiers: { [index: string]: [OptionPlacement, string][] };
+};
+
+export type JSFECartDto = { [cid: string]: [number, WCPProductJsFeDto][] };
+
+export interface ValidateAndLockCreditResponse {
+  enc: string;
+  iv: string;
+  auth: string;
+  validated: boolean;
+  amount: number;
+  credit_type: "MONEY" | "DISCOUNT"
+};
+
+export interface ValidateDeliveryResponse {
+  validated_delivery_address: string;
+  address1: string;
+  address2: string;
+  instructions: string;
+};
+
+export interface JSFETotals {
+  delivery_fee: number,
+  autograt: number; // sent as the percentage
+  subtotal: number;
+  tax: number; // state.computed_tax,
+  tip: number; //state.tip_value,
+  total: number;
+  balance: number;
+}
+
+export interface JSFEMetrics {
+  load_time: string;
+  time_selection_time: string;
+  time_submit: string;
+  ip: string;
+  ua: string;
+};
+
+export interface JSFECredit {
+  code: string;
+  amount: number,
+  amount_used: number;
+  type: 'MONEY' | 'DISCOUNT';
+  encoded: {
+    enc: string;
+    iv: string;
+    auth: string;
+  };
+};
+
+export interface CreateOrderRequest {
+  nonce: string;
+  service_option: number;
+  service_date: string;
+  service_time: number;
+  customer_name: string;
+  phonenum: string;
+  delivery_info: ValidateDeliveryResponse | null;
+  user_email: string;
+  sliced: boolean;
+  number_guests: number;
+  products: JSFECartDto;
+  special_instructions: string;
+  totals: JSFETotals;
+  store_credit: JSFECredit;
+  referral: string;
+  load_time: string;
+  time_selection_time: string;
+  submittime: string;
+  useragent: string;
+};
+
+export interface CreateOrderResponse {
+  status: number;
+  success: boolean;
+  result: any;
 };

@@ -1,9 +1,8 @@
 import { DisableDataCheck, PRODUCT_NAME_MODIFIER_TEMPLATE_REGEX } from "../common";
 import { WFunctional } from "./WFunctional";
-import { IProduct, IProductInstance, OptionPlacement, ModifiersMap, MODIFIER_MATCH, PRODUCT_LOCATION, WCPProduct, WProductMetadata, MTID_MOID, ModifierEntry, WCPOption, MenuModifiers, IWModifiersInstance, IOptionInstance, OptionQualifier, MetadataModifierMap, ModifierDisplayListByLocation, ProductEntry, RecordProductInstanceFunctions, DISPLAY_AS, IMenu, MetadataModifierOptionMapEntry, WProduct } from '../types';
+import { IProduct, IProductInstance, OptionPlacement, ModifiersMap, MODIFIER_MATCH, PRODUCT_LOCATION, WCPProduct, WProductMetadata, MTID_MOID, ModifierEntry, WCPOption, MenuModifiers, IWModifiersInstance, IOptionInstance, OptionQualifier, MetadataModifierMap, ModifierDisplayListByLocation, ProductEntry, RecordProductInstanceFunctions, DISPLAY_AS, IMenu, MetadataModifierOptionMapEntry, WProduct, WCPProductJsFeDto } from '../types';
 import { IsOptionEnabled } from './WCPOption';
-// import { memoize } from 'lodash';qqq
-
+// import { memoize } from 'lodash';
 
 /* TODO: we need to pull out the computations into memoizable functions
 this should remove the dependencies on the menu
@@ -11,7 +10,6 @@ we also need to remove the menu object itself because it's pre-cached stuff that
 catalog data as we get it.
 calls to GetModifierOptionFromMIdOId might be easy places to start looking to remove this dependency
 */
-
 
 const NO_MATCH = MODIFIER_MATCH.NO_MATCH;
 const AT_LEAST = MODIFIER_MATCH.AT_LEAST;
@@ -116,10 +114,6 @@ export function CreateWCPProduct(product_class: IProduct, modifiers: ModifiersMa
   return { PRODUCT_CLASS: product_class, modifiers } as WCPProduct;
 }
 
-interface WCPProductJsFeDto {
-  pid: string;
-  modifiers: { [index: string]: [OptionPlacement, string][] };
-};
 export function CreateProductWithMetadataFromJsFeDto(dto: WCPProductJsFeDto, menu: IMenu, service_time: Date | number): WProduct {
   //[<quantity, {pid, modifiers: {MID: [<placement, OID>]}}]}
   const productEntry = menu.product_classes[dto.pid];
@@ -128,7 +122,6 @@ export function CreateProductWithMetadataFromJsFeDto(dto: WCPProductJsFeDto, men
   const productMetadata = WCPProductGenerateMetadata(wcpProduct, productEntry, menu.modifiers, menu.product_instance_functions, service_time);
   return { p: wcpProduct, m: productMetadata };
 }
-
 
 export function CreateWCPProductFromPI(prod: IProduct, pi: IProductInstance, menuModifiers: MenuModifiers) {
   return CreateWCPProduct(

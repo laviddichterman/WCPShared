@@ -1,6 +1,6 @@
 {
   "name": "@wcp/wcpshared",
-  "version": "3.4.5",
+  "version": "3.4.6",
   "description": "Shared JS/TS modules for WARIO",
   "main": "build/main/index.js",
   "typings": "build/main/index.d.ts",
@@ -49,7 +49,7 @@
     "node": ">=10"
   },
   "dependencies": {
-    "date-fns": "^2.28.0",
+    "date-fns": "^2.29.1",
     "lodash": "^4.17.21"
   },
   "devDependencies": {
@@ -59,11 +59,11 @@
     "@typescript-eslint/parser": "^5.30.7",
     "ava": "^4.3.1",
     "codecov": "^3.8.2",
-    "cspell": "^6.4.0",
+    "cspell": "^6.4.1",
     "eslint": "^8.20.0",
     "eslint-config-prettier": "^8.5.0",
     "eslint-plugin-eslint-comments": "^3.2.0",
-    "eslint-plugin-functional": "^4.2.1",
+    "eslint-plugin-functional": "^4.2.2",
     "eslint-plugin-import": "^2.26.0",
     "gh-pages": "^4.0.0",
     "npm-run-all": "^4.1.5",
