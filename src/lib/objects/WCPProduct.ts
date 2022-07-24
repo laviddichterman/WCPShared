@@ -1,6 +1,6 @@
 import { DisableDataCheck, PRODUCT_NAME_MODIFIER_TEMPLATE_REGEX } from "../common";
 import { WFunctional } from "./WFunctional";
-import { IProduct, IProductInstance, OptionPlacement, ModifiersMap, MODIFIER_MATCH, PRODUCT_LOCATION, WCPProduct, WProductMetadata, MTID_MOID, ModifierEntry, WCPOption, MenuModifiers, IWModifiersInstance, IOptionInstance, OptionQualifier, MetadataModifierMap, ModifierDisplayListByLocation, ProductEntry, RecordProductInstanceFunctions, DISPLAY_AS, IMenu, MetadataModifierOptionMapEntry, WProduct, WCPProductJsFeDto } from '../types';
+import { IProduct, IProductInstance, OptionPlacement, ModifiersMap, MODIFIER_MATCH, PRODUCT_LOCATION, WCPProduct, WProductMetadata, MTID_MOID, ModifierEntry, WCPOption, MenuModifiers, IWModifiersInstance, IOptionInstance, OptionQualifier, MetadataModifierMap, ModifierDisplayListByLocation, ProductEntry, RecordProductInstanceFunctions, DISPLAY_AS, IMenu, MetadataModifierOptionMapEntry, WProduct, WCPProductJsFeDto, WCPProductV2Dto } from '../types';
 import { IsOptionEnabled } from './WCPOption';
 // import { memoize } from 'lodash';
 
@@ -63,10 +63,6 @@ const HandleOptionCurry = (menuModifiers: MenuModifiers, getterFxn: (menuModifie
   }
 };
 
-export const CopyWCPProduct = (pi: WCPProduct) => { return { ...pi }; }
-
-//export const WCPProductFromDTO = (dto, MENU) => new WCPProduct(MENU.product_classes[dto.pid].product, "", "", "", 0, dto.modifiers, "", 0, false, {});
-
 /**
  * returns an ordered list of potential prices for a product.
  * Product must be missing some number of INDEPENDENT, SINGLE SELECT modifier types.
@@ -119,6 +115,14 @@ export function CreateProductWithMetadataFromJsFeDto(dto: WCPProductJsFeDto, men
   const productEntry = menu.product_classes[dto.pid];
   const modifiers = Object.entries(dto.modifiers).reduce((acc, [mtId, placements]) => ({ ...acc, [mtId]: placements.map(([placement, moId]) => ({ option_id: moId, placement: placement, qualifier: OptionQualifier.REGULAR })) }), {} as ModifiersMap);
   const wcpProduct = CreateWCPProduct(productEntry.product, modifiers);
+  const productMetadata = WCPProductGenerateMetadata(wcpProduct, productEntry, menu.modifiers, menu.product_instance_functions, service_time);
+  return { p: wcpProduct, m: productMetadata };
+}
+
+export function CreateProductWithMetadataFromV2Dto(dto: WCPProductV2Dto, menu: IMenu, service_time: Date | number): WProduct {
+  //[<quantity, {pid, modifiers: {MID: [<placement, OID>]}}]}
+  const productEntry = menu.product_classes[dto.pid];
+  const wcpProduct = CreateWCPProduct(productEntry.product, dto.modifiers);
   const productMetadata = WCPProductGenerateMetadata(wcpProduct, productEntry, menu.modifiers, menu.product_instance_functions, service_time);
   return { p: wcpProduct, m: productMetadata };
 }
@@ -320,7 +324,7 @@ const RunTemplating = (product: IProduct, menuModifiers: MenuModifiers, metadata
 interface IMatchInfo { product: [IProductInstance | null, IProductInstance | null], comparison: LR_MODIFIER_MATCH_MATRIX; comparison_value: [MODIFIER_MATCH, MODIFIER_MATCH] };
 
 export function WCPProductGenerateMetadata(a: WCPProduct, productClassMenu: ProductEntry, menuModifiers: MenuModifiers, productInstanceFunctions: RecordProductInstanceFunctions, service_time: Date | number) {
-  const PRODUCT_CLASS = a.PRODUCT_CLASS;
+  const PRODUCT_CLASS = productClassMenu.product;
   const BASE_PRODUCT_INSTANCE = productClassMenu.instances[productClassMenu.base_id];
 
   const bake_count: [number, number] = [0, 0];

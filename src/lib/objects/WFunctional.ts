@@ -48,7 +48,7 @@ export class WFunctional {
   }
 
   static ProcessModifierPlacementExtractionOperatorStatement(prod: WCPProduct, stmt: IModifierPlacementExpression) {
-    return GetPlacementFromMIDOID(prod, stmt.mtid, stmt.moid).placement;
+    return GetPlacementFromMIDOID(prod.modifiers, stmt.mtid, stmt.moid).placement;
   }
 
   static ProcessHasAnyOfModifierTypeExtractionOperatorStatement(prod: WCPProduct, stmt: IHasAnyOfModifierExpression) {

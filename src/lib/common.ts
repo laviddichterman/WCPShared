@@ -1,5 +1,5 @@
 import { getTime } from "date-fns";
-import { IWInterval, OptionPlacement, OptionQualifier, WCPProduct } from "./types";
+import { IWInterval, ModifiersMap, OptionPlacement, OptionQualifier } from "./types";
 
 export const EMAIL_REGEX = new RegExp(/^[_A-Za-z0-9\-+]+(\.[_A-Za-z0-9\-+]+)*@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*(\.[A-Za-z]{2,})$/);
 
@@ -7,9 +7,11 @@ export const CREDIT_REGEX = /[A-Za-z0-9]{3}-[A-Za-z0-9]{2}-[A-Za-z0-9]{3}-[A-Z0-
 
 export const PRODUCT_NAME_MODIFIER_TEMPLATE_REGEX = /(\{[A-Za-z0-9]+\})/g;
 
-export const GetPlacementFromMIDOID = (pi: WCPProduct, mid: string, oid: string) => {
+export const SERVICE_DATE_DISPLAY_FORMAT = 'EEEE, MMMM dd, yyyy';
+
+export const GetPlacementFromMIDOID = (modifiers: ModifiersMap, mid: string, oid: string) => {
   const NOT_FOUND = { option_id: oid, placement: OptionPlacement.NONE, qualifier: OptionQualifier.REGULAR };
-  return Object.hasOwn(pi.modifiers, mid) ? (pi.modifiers[mid].find((x) => x.option_id === oid) || NOT_FOUND) : NOT_FOUND;
+  return Object.hasOwn(modifiers, mid) ? (modifiers[mid].find((x) => x.option_id === oid) || NOT_FOUND) : NOT_FOUND;
 };
 
 /**

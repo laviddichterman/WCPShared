@@ -1,5 +1,5 @@
 import { DisableDataCheck } from "../common";
-import { CategoryEntry, ICatalog, IMenu, IProductInstance, MenuCategories, MenuModifiers, RecordProductInstanceFunctions, MenuProductInstanceMetadata, MenuProducts, ModifierEntry, ProductEntry, WCPOption } from "../types";
+import { CategoryEntry, ICatalog, IMenu, IProductInstance, MenuCategories, MenuModifiers, RecordProductInstanceFunctions, MenuProductInstanceMetadata, MenuProducts, ModifierEntry, ProductEntry, WCPOption, WCPProduct, OptionPlacement } from "../types";
 
 import { CreateWCPProductFromPI, WCPProductGenerateMetadata } from "./WCPProduct";
 
@@ -22,6 +22,30 @@ export function FilterProduct(item: IProductInstance, menu: IMenu, disable_from_
   });
   return passes;
 }
+
+/**
+ * 
+ * @param item product, potentially customized, as would be purchased
+ * @param menu the current menu
+ * @param order_time the time the product would be ordered
+ * @returns true if the product passes filters for availability
+ */
+export function FilterWCPProduct(item: WCPProduct, menu: IMenu, order_time: Date | number) {
+  const productEntry = menu.product_classes[item.PRODUCT_CLASS.id];
+  const newMetadata = WCPProductGenerateMetadata(item, productEntry, menu.modifiers, menu.product_instance_functions, order_time);
+  return DisableDataCheck(productEntry.product.disabled, order_time) &&
+    !newMetadata.incomplete &&
+    Object.entries(item.modifiers).reduce((acc, modifier) => {
+      const menuModifier = menu.modifiers[modifier[0]];
+      const mdModifier = newMetadata.modifier_map[modifier[0]];
+      return acc && modifier[1].reduce((moAcc, mo) => moAcc &&
+        ((mo.placement === OptionPlacement.LEFT && mdModifier.options[mo.option_id].enable_left) ||
+          (mo.placement === OptionPlacement.RIGHT && mdModifier.options[mo.option_id].enable_right) ||
+          (mo.placement === OptionPlacement.WHOLE && mdModifier.options[mo.option_id].enable_whole)) &&
+        DisableDataCheck(menuModifier.options[mo.option_id].mo.item.disabled, order_time), true);
+    }, true);
+}
+
 
 /**
  * Returns a function used to filter out categories without products after having filtered out
@@ -49,9 +73,9 @@ export function FilterEmptyCategories(menu: IMenu, disable_from_menu_flag_getter
  * we need to do this inefficiently, 
  * @param {WMenu} menu 
  * @param {function(WCPProduct): boolean} filter_products 
- * @param {Date} order_time 
+ * @param {Date | number} order_time 
  */
-export function FilterWMenu(menu: IMenu, filter_products: (product: IProductInstance) => boolean, order_time: Date) {
+export function FilterWMenu(menu: IMenu, filter_products: (product: IProductInstance) => boolean, order_time: Date | number) {
   // prune categories via DFS
   {
     const catIdsToRemove: { [index: string]: boolean } = {};
@@ -183,4 +207,11 @@ export function GenerateMenu(catalog: ICatalog, service_time: Date | number) {
   const product_instance_functions = { ...catalog.product_instance_functions };
   const menu: IMenu = { modifiers, product_classes, product_instance_metadata, categories, product_instance_functions, version: catalog.version };
   return menu;
+}
+
+export function DoesProductExistInMenu(menu: IMenu, product: WCPProduct) {
+  return Object.hasOwn(menu.product_classes, product.PRODUCT_CLASS.id) &&
+    Object.entries(product.modifiers).reduce((acc, mod) => acc &&
+      Object.hasOwn(menu.modifiers, mod[0]) &&
+      mod[1].reduce((optAcc, o) => optAcc && Object.hasOwn(menu.modifiers[mod[0]].options, o.option_id), true), true);
 }

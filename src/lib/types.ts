@@ -1,3 +1,8 @@
+export type NullablePartial<T,
+  NK extends keyof T = { [K in keyof T]: null extends T[K] ? K : never }[keyof T],
+  NP = Partial<Pick<T, NK>> & Pick<T, Exclude<keyof T, NK>>
+  > = { [K in keyof NP]: NP[K] };
+
 export interface SEMVER { major: number; minor: number; patch: number; };
 
 export interface IWInterval {
@@ -405,13 +410,17 @@ export interface WCPProductJsFeDto {
   modifiers: { [index: string]: [OptionPlacement, string][] };
 };
 
-export type JSFECartDto = { [cid: string]: [number, WCPProductJsFeDto][] };
+export interface WCPProductV2Dto {
+  pid: string;
+  modifiers: ModifiersMap;
+}
+
+export type CartDto<T> = { [cid: string]: [number, T][] };
 
 export interface ValidateAndLockCreditResponse {
   enc: string;
   iv: string;
   auth: string;
-  validated: boolean;
   amount: number;
   credit_type: "MONEY" | "DISCOUNT"
 };
@@ -436,14 +445,14 @@ export interface DeliveryAddressValidateResponse {
   address_components: Array<AddressComponent>;
 };
 
-export interface ValidateDeliveryResponse {
+export interface ValidateDeliveryResponseV1 {
   validated_delivery_address: string;
   address1: string;
   address2: string;
   instructions: string;
 };
 
-export interface JSFETotals {
+export interface JSFETotalsV1 {
   delivery_fee: number,
   autograt: number; // sent as the percentage
   subtotal: number;
@@ -461,7 +470,7 @@ export interface JSFEMetrics {
   ua: string;
 };
 
-export interface JSFECredit {
+export interface JSFECreditV1 {
   code: string;
   amount: number,
   amount_used: number;
@@ -473,21 +482,27 @@ export interface JSFECredit {
   };
 };
 
-export interface CreateOrderRequest {
+export interface JSFECreditV2 {
+  validation: ValidateAndLockCreditResponse;
+  code: string;
+  amount_used: number;
+};
+
+export interface CreateOrderRequestV1 {
   nonce: string;
   service_option: number;
   service_date: string;
   service_time: number;
   customer_name: string;
   phonenum: string;
-  delivery_info: ValidateDeliveryResponse | null;
+  delivery_info: ValidateDeliveryResponseV1 | null;
   user_email: string;
   sliced: boolean;
   number_guests: number;
-  products: JSFECartDto;
+  products: CartDto<WCPProductJsFeDto>;
   special_instructions: string;
-  totals: JSFETotals;
-  store_credit: JSFECredit;
+  totals: JSFETotalsV1;
+  store_credit: JSFECreditV1;
   referral: string;
   load_time: string;
   time_selection_time: string;
@@ -499,4 +514,67 @@ export interface CreateOrderResponse {
   status: number;
   success: boolean;
   result: any;
+};
+
+export interface DeliveryInfoDto {
+  address: string;
+  address2: string;
+  zipcode: string;
+  deliveryInstructions: string;
+  validation: DeliveryAddressValidateResponse | null;
+};
+
+export interface DineInInfoDto {
+  partySize: number;
+};
+
+export interface FulfillmentDto {
+  selectedService: number;
+  selectedDate: number;
+  selectedTime: number;
+  dineInInfo: DineInInfoDto | null;
+  deliveryInfo: DeliveryInfoDto | null;
+}
+
+export interface CustomerInfoDto {
+  givenName: string;
+  familyName: string;
+  mobileNum: string;
+  email: string;
+  referral: string;
+}
+export type CartDtoV2 = CartDto<WCPProductV2Dto>;
+
+export interface MetricsDto {
+  pageLoadTime: number;
+  // max of difference between current time and load time and the previous value of this and the time we think it's been since we last updated it
+  roughTicksSinceLoad: number;
+  // current time, or the last time we checked the validity of our availability
+  currentTime: number;
+  // time to first product added to cart
+  timeToFirstProduct: number;
+  // time of selecting a service date
+  timeToServiceDate: number;
+  // time of selecting a service time
+  timeToServiceTime: number;
+  // completion time for various stages
+  timeToStage1: number;
+  timeToStage2: number;
+  timeToStage3: number;
+  timeToStage4: number;
+  timeToStage5: number;
+
+  useragent: string;
+}
+
+export interface CreateOrderRequestV2 {
+  nonce: string;
+  customerInfo: CustomerInfoDto;
+  fulfillmentDto: FulfillmentDto;
+  sliced: boolean;
+  cart: CartDtoV2;
+  special_instructions: string;
+  totals: JSFETotalsV1;
+  store_credit: JSFECreditV2;
+  metrics: MetricsDto;
 };

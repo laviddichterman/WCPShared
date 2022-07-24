@@ -25,7 +25,7 @@ export function IsOptionEnabled(option: WCPOption, product: WCPProduct, bake_cou
   // TODO: needs to factor in disable data for time based disable
   // TODO: needs to return false if we would exceed the limit for this modifier, IF that limit is > 1, because if it's === 1
   // we would handle the limitation by using smarts at the wcpmodifierdir level
-  const placement = GetPlacementFromMIDOID(product, String(option.mt.id), String(option.mo.id));
+  const placement = GetPlacementFromMIDOID(product.modifiers, String(option.mt.id), String(option.mo.id));
   // TODO: bake and flavor stuff should move into the enable_filter itself, the option itself should just hold generalized metadata the enable filter function can use/reference
   const { bake_max, flavor_max, bake_differential } = product.PRODUCT_CLASS.display_flags;
   const proposed_delta = DELTA_MATRIX[placement.placement][location];
