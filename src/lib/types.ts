@@ -416,6 +416,26 @@ export interface ValidateAndLockCreditResponse {
   credit_type: "MONEY" | "DISCOUNT"
 };
 
+export interface DeliveryAddressValidateRequest {
+  address: string;
+  zipcode: string;
+  city: string;
+  state: string;
+}
+
+export interface AddressComponent {
+  types: Array<string>;
+  long_name: string;
+  short_name: string;
+};
+
+export interface DeliveryAddressValidateResponse {
+  validated_address: string;
+  in_area: boolean;
+  found: boolean;
+  address_components: Array<AddressComponent>;
+};
+
 export interface ValidateDeliveryResponse {
   validated_delivery_address: string;
   address1: string;
