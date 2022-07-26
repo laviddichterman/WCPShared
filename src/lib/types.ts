@@ -1,7 +1,7 @@
 export type NullablePartial<T,
   NK extends keyof T = { [K in keyof T]: null extends T[K] ? K : never }[keyof T],
   NP = Partial<Pick<T, NK>> & Pick<T, Exclude<keyof T, NK>>
-  > = { [K in keyof NP]: NP[K] };
+  > = { [K in keyof NP]-?: NP[K] | null };
 
 export interface SEMVER { major: number; minor: number; patch: number; };
 
@@ -415,14 +415,43 @@ export interface WCPProductV2Dto {
   modifiers: ModifiersMap;
 }
 
-export type CartDto<T> = { [cid: string]: [number, T][] };
+// Mapping from CategoryID to tuple of quantity and product type T
+export type CartDto<T> = Record<string, [number, T][]>;
 
-export interface ValidateAndLockCreditResponse {
+export interface EncryptStringLock {
   enc: string;
   iv: string;
   auth: string;
+};
+
+export type ValidateAndLockCreditResponse = {
+  valid: true;
+  lock: EncryptStringLock;
   amount: number;
   credit_type: "MONEY" | "DISCOUNT"
+} | {
+  valid: false;
+  lock: null;
+  amount: 0;
+  credit_type: "MONEY"
+};
+
+export interface ValidateLockAndSpendRequest {
+  code: string;
+  amount: number;
+  lock: EncryptStringLock;
+  updatedBy: string;
+}
+
+export type SpendCreditResponse = {
+  success: true;
+  balance: number;
+} | { success: false };
+
+export interface TipSelection {
+  value: number;
+  isSuggestion: boolean;
+  isPercentage: boolean;
 };
 
 export interface DeliveryAddressValidateRequest {
@@ -461,6 +490,22 @@ export interface JSFETotalsV1 {
   total: number;
   balance: number;
 }
+
+export interface JSFETotalsV1 {
+  delivery_fee: number,
+  autograt: number; // sent as the percentage
+  subtotal: number;
+  tax: number; // state.computed_tax,
+  tip: number; //state.tip_value,
+  total: number;
+  balance: number;
+}
+
+export interface TotalsV2 {
+  tip: number;
+  balance: number;
+}
+
 
 export interface JSFEMetrics {
   load_time: string;
@@ -502,7 +547,7 @@ export interface CreateOrderRequestV1 {
   products: CartDto<WCPProductJsFeDto>;
   special_instructions: string;
   totals: JSFETotalsV1;
-  store_credit: JSFECreditV1;
+  store_credit: JSFECreditV1 | null;
   referral: string;
   load_time: string;
   time_selection_time: string;
@@ -543,10 +588,23 @@ export interface CustomerInfoDto {
   email: string;
   referral: string;
 }
-export type CartDtoV2 = CartDto<WCPProductV2Dto>;
+
+export interface CoreCartEntry<T> {
+  categoryId: string;
+  quantity: number;
+  product: T;
+};
+
+export interface CartEntry extends CoreCartEntry<WProduct> {
+  id: string;
+  isLocked: boolean;
+};
 
 export interface MetricsDto {
+  // the server time of page load
   pageLoadTime: number;
+  // the Date.now() on load
+  pageLoadTimeLocal: number;
   // max of difference between current time and load time and the previous value of this and the time we think it's been since we last updated it
   roughTicksSinceLoad: number;
   // current time, or the last time we checked the validity of our availability
@@ -558,12 +616,9 @@ export interface MetricsDto {
   // time of selecting a service time
   timeToServiceTime: number;
   // completion time for various stages
-  timeToStage1: number;
-  timeToStage2: number;
-  timeToStage3: number;
-  timeToStage4: number;
-  timeToStage5: number;
-
+  timeToStage: number[];
+  // time when the user hit submit to send the order
+  submitTime: number;
   useragent: string;
 }
 
@@ -572,9 +627,11 @@ export interface CreateOrderRequestV2 {
   customerInfo: CustomerInfoDto;
   fulfillmentDto: FulfillmentDto;
   sliced: boolean;
-  cart: CartDtoV2;
+  cart: CoreCartEntry<WCPProductV2Dto>[];
   special_instructions: string;
-  totals: JSFETotalsV1;
-  store_credit: JSFECreditV2;
+  totals: TotalsV2;
+  store_credit: JSFECreditV2 | null;
   metrics: MetricsDto;
 };
+
+export type CategorizedRebuiltCart = Record<string, CoreCartEntry<WProduct>[]>;
