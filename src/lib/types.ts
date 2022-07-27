@@ -1,3 +1,5 @@
+import type { CreatePaymentResponse } from 'square';
+
 export type NullablePartial<T,
   NK extends keyof T = { [K in keyof T]: null extends T[K] ? K : never }[keyof T],
   NP = Partial<Pick<T, NK>> & Pick<T, Exclude<keyof T, NK>>
@@ -489,12 +491,11 @@ export interface TotalsV2 {
 export interface JSFECreditV2 {
   validation: ValidateAndLockCreditResponse;
   code: string;
-  amount_used: number;
 };
 
 export interface CreateOrderResponse {
   success: boolean;
-  result: any;
+  result: CreatePaymentResponse | null;
 };
 
 export interface DeliveryInfoDto {
@@ -561,7 +562,7 @@ export interface MetricsDto {
 }
 
 export interface CreateOrderRequestV2 {
-  nonce: string;
+  nonce?: string;
   customerInfo: CustomerInfoDto;
   fulfillmentDto: FulfillmentDto;
   sliced: boolean;
