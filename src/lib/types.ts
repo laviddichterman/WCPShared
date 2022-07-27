@@ -493,7 +493,6 @@ export interface JSFECreditV2 {
 };
 
 export interface CreateOrderResponse {
-  status: number;
   success: boolean;
   result: any;
 };

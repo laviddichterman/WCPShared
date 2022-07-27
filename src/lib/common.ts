@@ -33,7 +33,7 @@ export function RoundToTwoDecimalPlaces(number: number) {
 }
 
 export function ComputeCartSubTotal(cart: CoreCartEntry<WProduct>[]) {
-  return cart.reduce((acc, entry) => acc + (entry.product.m.price * entry.quantity), 0);
+  return cart.reduce((acc, entry) => RoundToTwoDecimalPlaces(acc + (entry.product.m.price * entry.quantity)), 0);
 }
 
 export function ComputeDiscountApplied(subtotal: number, creditValidation: ValidateAndLockCreditResponse | null) {
@@ -54,7 +54,7 @@ export function ComputeTipValue(tip: TipSelection | null, basis: number) {
 }
 
 export function ComputeTotal(subtotalBeforeDiscount: number, discount: number, taxAmount: number, tipAmount: number) {
-  return subtotalBeforeDiscount - discount + taxAmount + tipAmount;
+  return RoundToTwoDecimalPlaces(subtotalBeforeDiscount - discount + taxAmount + tipAmount);
 }
 export function ComputeAutogratuityEnabled(mainProductCount: number, threshold: number, isDelivery: boolean) {
   return mainProductCount >= threshold || isDelivery;
@@ -65,5 +65,5 @@ export function ComputeGiftCardApplied(total: number, creditValidation: Validate
     Math.min(total, creditValidation.amount) : 0;
 }
 export function ComputeBalanceAfterCredits(total: number, giftCardApplied: number) {
-  return total - giftCardApplied;
+  return RoundToTwoDecimalPlaces(total - giftCardApplied);
 }
