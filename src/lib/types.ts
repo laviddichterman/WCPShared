@@ -491,6 +491,7 @@ export interface TotalsV2 {
 export interface JSFECreditV2 {
   validation: ValidateAndLockCreditResponse;
   code: string;
+  amount_used: number;
 };
 
 export interface CreateOrderResponse {
