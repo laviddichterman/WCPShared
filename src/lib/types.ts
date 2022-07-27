@@ -607,6 +607,8 @@ export interface MetricsDto {
   pageLoadTimeLocal: number;
   // max of difference between current time and load time and the previous value of this and the time we think it's been since we last updated it
   roughTicksSinceLoad: number;
+  // number of times the user got pushed to a new time
+  numTimeBumps: number;
   // current time, or the last time we checked the validity of our availability
   currentTime: number;
   // time to first product added to cart

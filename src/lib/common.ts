@@ -53,15 +53,15 @@ export function ComputeTipValue(tip: TipSelection | null, basis: number) {
   return tip !== null ? (tip.isPercentage ? RoundToTwoDecimalPlaces(tip.value * basis) : tip.value) : 0;
 }
 
-export function ComputeTotal(subtotal: number, discount: number, taxAmount: number, tipAmount: number) {
-  return subtotal - discount + taxAmount + tipAmount;
+export function ComputeTotal(subtotalBeforeDiscount: number, discount: number, taxAmount: number, tipAmount: number) {
+  return subtotalBeforeDiscount - discount + taxAmount + tipAmount;
 }
 export function ComputeAutogratuityEnabled(mainProductCount: number, threshold: number, isDelivery: boolean) {
   return mainProductCount >= threshold || isDelivery;
 }
 
 export function ComputeGiftCardApplied(total: number, creditValidation: ValidateAndLockCreditResponse | null) {
-  return creditValidation !== null && creditValidation.credit_type === "MONEY" ?
+  return creditValidation !== null && creditValidation.credit_type === "MONEY" && creditValidation.amount > 0 ?
     Math.min(total, creditValidation.amount) : 0;
 }
 export function ComputeBalanceAfterCredits(total: number, giftCardApplied: number) {
