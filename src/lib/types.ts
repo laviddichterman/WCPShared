@@ -481,78 +481,15 @@ export interface ValidateDeliveryResponseV1 {
   instructions: string;
 };
 
-export interface JSFETotalsV1 {
-  delivery_fee: number,
-  autograt: number; // sent as the percentage
-  subtotal: number;
-  tax: number; // state.computed_tax,
-  tip: number; //state.tip_value,
-  total: number;
-  balance: number;
-}
-
-export interface JSFETotalsV1 {
-  delivery_fee: number,
-  autograt: number; // sent as the percentage
-  subtotal: number;
-  tax: number; // state.computed_tax,
-  tip: number; //state.tip_value,
-  total: number;
-  balance: number;
-}
-
 export interface TotalsV2 {
   tip: number;
   balance: number;
 }
 
-
-export interface JSFEMetrics {
-  load_time: string;
-  time_selection_time: string;
-  time_submit: string;
-  ip: string;
-  ua: string;
-};
-
-export interface JSFECreditV1 {
-  code: string;
-  amount: number,
-  amount_used: number;
-  type: 'MONEY' | 'DISCOUNT';
-  encoded: {
-    enc: string;
-    iv: string;
-    auth: string;
-  };
-};
-
 export interface JSFECreditV2 {
   validation: ValidateAndLockCreditResponse;
   code: string;
   amount_used: number;
-};
-
-export interface CreateOrderRequestV1 {
-  nonce: string;
-  service_option: number;
-  service_date: string;
-  service_time: number;
-  customer_name: string;
-  phonenum: string;
-  delivery_info: ValidateDeliveryResponseV1 | null;
-  user_email: string;
-  sliced: boolean;
-  number_guests: number;
-  products: CartDto<WCPProductJsFeDto>;
-  special_instructions: string;
-  totals: JSFETotalsV1;
-  store_credit: JSFECreditV1 | null;
-  referral: string;
-  load_time: string;
-  time_selection_time: string;
-  submittime: string;
-  useragent: string;
 };
 
 export interface CreateOrderResponse {
