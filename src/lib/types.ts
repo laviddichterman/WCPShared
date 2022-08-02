@@ -86,7 +86,8 @@ export enum ProductInstanceFunctionType {
   'IfElse' = 'IfElse',
   'Logical' = 'Logical',
   'ModifierPlacement' = 'ModifierPlacement',
-  'HasAnyOfModifierType' = 'HasAnyOfModifierType'
+  'HasAnyOfModifierType' = 'HasAnyOfModifierType',
+  'ProductMetadata' = 'ProductMetadata'
 };
 
 export interface IExternalIDs {
@@ -118,22 +119,71 @@ export enum OptionQualifier {
   'REGULAR', 'LITE', 'HEAVY', 'OTS'
 };
 
+export interface IOptionState {
+  placement: OptionPlacement;
+  qualifier: OptionQualifier;
+}
+
 export interface IMoney {
   amount: number;
   currency: CURRENCY;
 };
 
-
-export interface IConstLiteralExpression {
-  value: number | boolean | string;
+export enum ConstLiteralDiscriminator {
+  NUMBER = "NUMBER",
+  BOOLEAN = "BOOLEAN",
+  STRING = "STRING",
+  MODIFIER_PLACEMENT = "MODIFIER_PLACEMENT",
+  MODIFIER_QUALIFIER = "MODIFIER_QUALIFIER"
 };
+
+export enum MetadataField { 'FLAVOR', 'WEIGHT' };
+
+export type ConstStringLiteralExpression = {
+  discriminator: ConstLiteralDiscriminator.STRING;
+  value: string;
+};
+export type ConstNumberLiteralExpression = {
+  discriminator: ConstLiteralDiscriminator.NUMBER;
+  value: number;
+}
+export type ConstBooleanLiteralExpression = {
+  discriminator: ConstLiteralDiscriminator.BOOLEAN;
+  value: boolean;
+}
+export type ConstModifierPlacementLiteralExpression = {
+  discriminator: ConstLiteralDiscriminator.MODIFIER_PLACEMENT;
+  value: OptionPlacement;
+};
+export type ConstModifierQualifierLiteralExpression = {
+  discriminator: ConstLiteralDiscriminator.MODIFIER_QUALIFIER;
+  value: OptionQualifier;
+};
+
+export type IConstLiteralExpression =
+  ConstStringLiteralExpression |
+  ConstNumberLiteralExpression |
+  ConstBooleanLiteralExpression |
+  ConstModifierPlacementLiteralExpression |
+  ConstModifierQualifierLiteralExpression;
+
 export interface IIfElseExpression {
   true_branch: IAbstractExpression;
   false_branch: IAbstractExpression;
   test: IAbstractExpression;
 };
 
-export enum ProductInstanceFunctionOperator { 'AND' = "AND", 'OR' = "OR", 'NOT' = "NOT", 'EQ' = "EQ", 'NE' = "NE", 'GT' = "GT", 'GE' = "GE", 'LT' = "LT", 'LE' = "LE" };
+export enum ProductInstanceFunctionOperator {
+  'AND' = "AND",
+  'OR' = "OR",
+  'NOT' = "NOT",
+  'EQ' = "EQ",
+  'NE' = "NE",
+  'GT' = "GT",
+  'GE' = "GE",
+  'LT' = "LT",
+  'LE' = "LE"
+};
 
 export interface ILogicalExpression {
   operandA: IAbstractExpression;
@@ -148,9 +198,18 @@ export interface IHasAnyOfModifierExpression {
   mtid: string;
 };
 
+export interface ProductMetadataExpression {
+  field: MetadataField;
+  location: PRODUCT_LOCATION;
+};
+
 export type AbstractExpressionConstLiteral = {
   expr: IConstLiteralExpression;
   discriminator: ProductInstanceFunctionType.ConstLiteral;
+};
+export type AbstractExpressionProductMetadata = {
+  expr: ProductMetadataExpression;
+  discriminator: ProductInstanceFunctionType.ProductMetadata;
 };
 export type AbstractExpressionIfElseExpression = {
   expr: IIfElseExpression;
@@ -170,6 +229,7 @@ export type AbstractExpressionHasAnyOfModifierExpression = {
 };
 
 export type IAbstractExpression = AbstractExpressionConstLiteral |
+  AbstractExpressionProductMetadata |
   AbstractExpressionIfElseExpression |
   AbstractExpressionLogicalExpression |
   AbstractExpressionModifierPlacementExpression |
@@ -244,11 +304,6 @@ export interface IOption {
   };
 };
 
-export interface IOptionState {
-  placement: OptionPlacement;
-  qualifier: OptionQualifier;
-}
-
 export interface IWOptionInstance {
   option_id: string;
   placement: keyof typeof OptionPlacement;
@@ -304,12 +359,17 @@ export interface IProduct {
     bake_differential: number;
     show_name_of_base_product: boolean;
     singular_noun: string;
+    // order guide is product instance functions that return a string if they should surface a warning or suggestion to the end user
+    order_guide: {
+      warnings: string[];
+      suggestions: string[];
+    }
   };
   timing?: {
     min_prep_time: number;
     additional_unit_prep_time: number;
   };
-  modifiers: { mtid: string, enable: string | null }[];
+  modifiers: { mtid: string, enable: string | null, service_disable: number[] }[];
   category_ids: string[];
 };
 
@@ -353,7 +413,31 @@ export interface ICatalog {
   api: SEMVER;
 };
 
-export interface MetadataModifierOptionMapEntry extends IOptionState { enable_left: boolean; enable_right: boolean; enable_whole: boolean };
+export const enum DISABLE_REASON {
+  ENABLED = 0,
+  DISABLED_BLANKET,
+  DISABLED_TIME,
+  DISABLED_WEIGHT,
+  DISABLED_FLAVORS,
+  DISABLED_MAXIMUM,
+  DISABLED_FUNCTION,
+  DISABLED_NO_SPLITTING,
+  DISABLED_SPLIT_DIFFERENTIAL,
+  DISABLED_FULFILLMENT_TYPE
+};
+export type OptionEnableState =
+  { enable: DISABLE_REASON.ENABLED } |
+  { enable: DISABLE_REASON.DISABLED_BLANKET } |
+  { enable: DISABLE_REASON.DISABLED_TIME, interval: IWInterval } |
+  { enable: DISABLE_REASON.DISABLED_WEIGHT } |
+  { enable: DISABLE_REASON.DISABLED_FLAVORS } |
+  { enable: DISABLE_REASON.DISABLED_NO_SPLITTING } |
+  { enable: DISABLE_REASON.DISABLED_SPLIT_DIFFERENTIAL } |
+  { enable: DISABLE_REASON.DISABLED_MAXIMUM } |
+  { enable: DISABLE_REASON.DISABLED_FULFILLMENT_TYPE, fulfillment: number } |
+  { enable: DISABLE_REASON.DISABLED_FUNCTION, functionId: string };
+
+export interface MetadataModifierOptionMapEntry extends IOptionState { enable_left: OptionEnableState; enable_right: OptionEnableState; enable_whole: OptionEnableState };
 export interface MetadataModifierMapEntry { has_selectable: boolean, meets_minimum: boolean, options: Record<string, MetadataModifierOptionMapEntry>; };
 export type MetadataModifierMap = Record<string, MetadataModifierMapEntry>;
 export type MTID_MOID = [string, string];

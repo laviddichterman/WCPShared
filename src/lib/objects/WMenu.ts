@@ -1,5 +1,5 @@
 import { DisableDataCheck } from "../common";
-import { CategoryEntry, ICatalog, IMenu, IProductInstance, MenuCategories, MenuModifiers, RecordProductInstanceFunctions, MenuProductInstanceMetadata, MenuProducts, ModifierEntry, ProductEntry, WCPOption, WCPProduct, OptionPlacement } from "../types";
+import { CategoryEntry, ICatalog, IMenu, IProductInstance, MenuCategories, MenuModifiers, MenuProductInstanceMetadata, MenuProducts, ModifierEntry, ProductEntry, WCPOption, WCPProduct, OptionPlacement, DISABLE_REASON } from "../types";
 
 import { CreateWCPProductFromPI, WCPProductGenerateMetadata } from "./WCPProduct";
 
@@ -13,12 +13,12 @@ type DisableFlagGetterType = (x: any) => boolean;
  * @returns {boolean} returns true if item is enabled and visible
  */
 export function FilterProduct(item: IProductInstance, menu: IMenu, disable_from_menu_flag_getter: DisableFlagGetterType, order_time: Date | number) {
-  let passes = !disable_from_menu_flag_getter(item.display_flags) && DisableDataCheck(menu.product_classes[item.product_id].product.disabled, order_time);
+  let passes = !disable_from_menu_flag_getter(item.display_flags) && DisableDataCheck(menu.product_classes[item.product_id].product.disabled, order_time).enable === DISABLE_REASON.ENABLED;
   // this is better as a forEach as it gives us the ability to skip out of the loop early
   item.modifiers.forEach(modifier => {
     // TODO: for incomplete product instances, this should check for a viable way to order the product
     const mtOptions = menu.modifiers[modifier.modifier_type_id].options;
-    passes &&= modifier.options.reduce((acc: boolean, x) => (acc && DisableDataCheck(mtOptions[x.option_id].mo.item.disabled, order_time)), true);
+    passes &&= modifier.options.reduce((acc: boolean, x) => (acc && DisableDataCheck(mtOptions[x.option_id].mo.item.disabled, order_time).enable === DISABLE_REASON.ENABLED), true);
   });
   return passes;
 }
@@ -30,19 +30,19 @@ export function FilterProduct(item: IProductInstance, menu: IMenu, disable_from_
  * @param order_time the time the product would be ordered
  * @returns true if the product passes filters for availability
  */
-export function FilterWCPProduct(item: WCPProduct, menu: IMenu, order_time: Date | number) {
+export function FilterWCPProduct(item: WCPProduct, catalog: ICatalog, menu: IMenu, order_time: Date | number, fulfillmentType: number) {
   const productEntry = menu.product_classes[item.PRODUCT_CLASS.id];
-  const newMetadata = WCPProductGenerateMetadata(item, productEntry, menu.modifiers, menu.product_instance_functions, order_time);
+  const newMetadata = WCPProductGenerateMetadata(item, productEntry, catalog, menu.modifiers, order_time, fulfillmentType);
   return DisableDataCheck(productEntry.product.disabled, order_time) &&
     !newMetadata.incomplete &&
     Object.entries(item.modifiers).reduce((acc, modifier) => {
       const menuModifier = menu.modifiers[modifier[0]];
       const mdModifier = newMetadata.modifier_map[modifier[0]];
       return acc && modifier[1].reduce((moAcc, mo) => moAcc &&
-        ((mo.placement === OptionPlacement.LEFT && mdModifier.options[mo.option_id].enable_left) ||
-          (mo.placement === OptionPlacement.RIGHT && mdModifier.options[mo.option_id].enable_right) ||
-          (mo.placement === OptionPlacement.WHOLE && mdModifier.options[mo.option_id].enable_whole)) &&
-        DisableDataCheck(menuModifier.options[mo.option_id].mo.item.disabled, order_time), true);
+        ((mo.placement === OptionPlacement.LEFT && mdModifier.options[mo.option_id].enable_left.enable === DISABLE_REASON.ENABLED) ||
+          (mo.placement === OptionPlacement.RIGHT && mdModifier.options[mo.option_id].enable_right.enable === DISABLE_REASON.ENABLED) ||
+          (mo.placement === OptionPlacement.WHOLE && mdModifier.options[mo.option_id].enable_whole.enable === DISABLE_REASON.ENABLED)) &&
+        DisableDataCheck(menuModifier.options[mo.option_id].mo.item.disabled, order_time).enable === DISABLE_REASON.ENABLED, true);
     }, true);
 }
 
@@ -189,21 +189,21 @@ function ComputeCategories(cat: ICatalog, product_classes: MenuProducts) {
   return cats;
 }
 
-function ComputeProductInstanceMetadata(menuProducts: MenuProducts, menuModifiers: MenuModifiers, menuProductInstanceFunctions: RecordProductInstanceFunctions, service_time: Date | number) {
+function ComputeProductInstanceMetadata(menuProducts: MenuProducts, catalog: ICatalog, menuModifiers: MenuModifiers, service_time: Date | number, fulfillmentType: number) {
   const md: MenuProductInstanceMetadata = {};
   Object.values(menuProducts).forEach(productEntry => {
     productEntry.instances_list.forEach(pi => {
-      md[pi.id] = WCPProductGenerateMetadata(CreateWCPProductFromPI(productEntry.product, pi, menuModifiers), productEntry, menuModifiers, menuProductInstanceFunctions, service_time)
+      md[pi.id] = WCPProductGenerateMetadata(CreateWCPProductFromPI(productEntry.product, pi, menuModifiers), productEntry, catalog, menuModifiers, service_time, fulfillmentType)
     });
   });
   return md;
 }
 
-export function GenerateMenu(catalog: ICatalog, service_time: Date | number) {
+export function GenerateMenu(catalog: ICatalog, service_time: Date | number, fulfillmentType: number) {
   const modifiers = ComputeModifiers(catalog);
   const product_classes = ComputeProducts(catalog);
   const categories = ComputeCategories(catalog, product_classes);
-  const product_instance_metadata = ComputeProductInstanceMetadata(product_classes, modifiers, catalog.product_instance_functions, service_time);
+  const product_instance_metadata = ComputeProductInstanceMetadata(product_classes, catalog, modifiers, service_time, fulfillmentType);
   const product_instance_functions = { ...catalog.product_instance_functions };
   const menu: IMenu = { modifiers, product_classes, product_instance_metadata, categories, product_instance_functions, version: catalog.version };
   return menu;

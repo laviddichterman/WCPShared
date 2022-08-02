@@ -1,6 +1,6 @@
 import { DisableDataCheck, PRODUCT_NAME_MODIFIER_TEMPLATE_REGEX } from "../common";
 import { WFunctional } from "./WFunctional";
-import { IProduct, IProductInstance, OptionPlacement, ModifiersMap, MODIFIER_MATCH, PRODUCT_LOCATION, WCPProduct, WProductMetadata, MTID_MOID, ModifierEntry, WCPOption, MenuModifiers, IWModifiersInstance, IOptionInstance, OptionQualifier, MetadataModifierMap, ModifierDisplayListByLocation, ProductEntry, RecordProductInstanceFunctions, DISPLAY_AS, IMenu, MetadataModifierOptionMapEntry, WProduct, WCPProductJsFeDto, WCPProductV2Dto } from '../types';
+import { IProduct, IProductInstance, OptionPlacement, ModifiersMap, MODIFIER_MATCH, PRODUCT_LOCATION, WCPProduct, WProductMetadata, MTID_MOID, ModifierEntry, WCPOption, MenuModifiers, IWModifiersInstance, IOptionInstance, OptionQualifier, MetadataModifierMap, ModifierDisplayListByLocation, ProductEntry, DISPLAY_AS, IMenu, MetadataModifierOptionMapEntry, WProduct, WCPProductJsFeDto, WCPProductV2Dto, ICatalog, DISABLE_REASON } from '../types';
 import { IsOptionEnabled } from './WCPOption';
 // import { memoize } from 'lodash';
 
@@ -76,7 +76,7 @@ export function ComputePotentialPrices(metadata: WProductMetadata, menuModifiers
   const prices: number[][] = [];
   Object.keys(metadata.modifier_map).forEach(mtid => {
     if (!metadata.modifier_map[mtid].meets_minimum) {
-      const whole_enabled_modifier_options = menuModifiers[mtid].options_list.filter(x => metadata.modifier_map[mtid].options[String(x.mo.id)].enable_whole);
+      const whole_enabled_modifier_options = menuModifiers[mtid].options_list.filter(x => metadata.modifier_map[mtid].options[String(x.mo.id)].enable_whole.enable === DISABLE_REASON.ENABLED);
       const enabled_prices = whole_enabled_modifier_options.map(x => x.mo.item.price.amount);
       const deduped_prices = [...new Set(enabled_prices)];
       prices.push(deduped_prices);
@@ -110,20 +110,20 @@ export function CreateWCPProduct(product_class: IProduct, modifiers: ModifiersMa
   return { PRODUCT_CLASS: product_class, modifiers } as WCPProduct;
 }
 
-export function CreateProductWithMetadataFromJsFeDto(dto: WCPProductJsFeDto, menu: IMenu, service_time: Date | number): WProduct {
+export function CreateProductWithMetadataFromJsFeDto(dto: WCPProductJsFeDto, catalog: ICatalog, menu: IMenu, service_time: Date | number, fulfillmentType: number): WProduct {
   //[<quantity, {pid, modifiers: {MID: [<placement, OID>]}}]}
   const productEntry = menu.product_classes[dto.pid];
   const modifiers = Object.entries(dto.modifiers).reduce((acc, [mtId, placements]) => ({ ...acc, [mtId]: placements.map(([placement, moId]) => ({ option_id: moId, placement: placement, qualifier: OptionQualifier.REGULAR })) }), {} as ModifiersMap);
   const wcpProduct = CreateWCPProduct(productEntry.product, modifiers);
-  const productMetadata = WCPProductGenerateMetadata(wcpProduct, productEntry, menu.modifiers, menu.product_instance_functions, service_time);
+  const productMetadata = WCPProductGenerateMetadata(wcpProduct, productEntry, catalog, menu.modifiers, service_time, fulfillmentType);
   return { p: wcpProduct, m: productMetadata };
 }
 
-export function CreateProductWithMetadataFromV2Dto(dto: WCPProductV2Dto, menu: IMenu, service_time: Date | number): WProduct {
+export function CreateProductWithMetadataFromV2Dto(dto: WCPProductV2Dto, catalog: ICatalog, menu: IMenu, service_time: Date | number, fulfillmentType: number): WProduct {
   //[<quantity, {pid, modifiers: {MID: [<placement, OID>]}}]}
   const productEntry = menu.product_classes[dto.pid];
   const wcpProduct = CreateWCPProduct(productEntry.product, dto.modifiers);
-  const productMetadata = WCPProductGenerateMetadata(wcpProduct, productEntry, menu.modifiers, menu.product_instance_functions, service_time);
+  const productMetadata = WCPProductGenerateMetadata(wcpProduct, productEntry, catalog, menu.modifiers, service_time, fulfillmentType);
   return { p: wcpProduct, m: productMetadata };
 }
 
@@ -323,7 +323,7 @@ const RunTemplating = (product: IProduct, menuModifiers: MenuModifiers, metadata
 
 interface IMatchInfo { product: [IProductInstance | null, IProductInstance | null], comparison: LR_MODIFIER_MATCH_MATRIX; comparison_value: [MODIFIER_MATCH, MODIFIER_MATCH] };
 
-export function WCPProductGenerateMetadata(a: WCPProduct, productClassMenu: ProductEntry, menuModifiers: MenuModifiers, productInstanceFunctions: RecordProductInstanceFunctions, service_time: Date | number) {
+export function WCPProductGenerateMetadata(a: WCPProduct, productClassMenu: ProductEntry, catalog: ICatalog, menuModifiers: MenuModifiers, service_time: Date | number, fulfillmentType: number) {
   const PRODUCT_CLASS = productClassMenu.product;
   const BASE_PRODUCT_INSTANCE = productClassMenu.instances[productClassMenu.base_id];
 
@@ -427,22 +427,29 @@ export function WCPProductGenerateMetadata(a: WCPProduct, productClassMenu: Prod
     const is_single_select = CATALOG_MODIFIER_INFO.modifier_type.min_selected === 1 && CATALOG_MODIFIER_INFO.modifier_type.max_selected === 1;
     const is_base_product_edge_case = is_single_select && !PRODUCT_CLASS.display_flags.show_name_of_base_product;
     metadata.modifier_map[mtid] = { has_selectable: false, meets_minimum: false, options: {} };
-    const enable_modifier_type = modifier_type_enable_function === null || WFunctional.ProcessProductInstanceFunction(a, productInstanceFunctions[String(modifier_type_enable_function)]);
+    const enable_modifier_type: ({ enable: DISABLE_REASON.ENABLED } |
+    { enable: DISABLE_REASON.DISABLED_FUNCTION, functionId: string } |
+    { enable: DISABLE_REASON.DISABLED_FULFILLMENT_TYPE, fulfillment: number }) =
+      pc_modifier.service_disable.indexOf(fulfillmentType) !== -1 ? { enable: DISABLE_REASON.DISABLED_FULFILLMENT_TYPE, fulfillment: fulfillmentType } :
+        (modifier_type_enable_function === null || WFunctional.ProcessProductInstanceFunction(a, catalog.product_instance_functions[modifier_type_enable_function], catalog) ?
+          { enable: DISABLE_REASON.ENABLED } :
+          { enable: DISABLE_REASON.DISABLED_FUNCTION, functionId: modifier_type_enable_function });
     for (let moIdX = 0; moIdX < CATALOG_MODIFIER_INFO.options_list.length; ++moIdX) {
       const option_object = CATALOG_MODIFIER_INFO.options_list[moIdX];
-      const is_enabled = enable_modifier_type && DisableDataCheck(option_object.mo.item.disabled, service_time)
+      const can_split = option_object.mo.metadata.can_split ? { enable: DISABLE_REASON.ENABLED } : { enable: DISABLE_REASON.DISABLED_NO_SPLITTING };
+      const is_enabled = enable_modifier_type.enable === DISABLE_REASON.ENABLED ? DisableDataCheck(option_object.mo.item.disabled, service_time) : enable_modifier_type;
       const option_info = {
         placement: OptionPlacement.NONE,
         qualifier: OptionQualifier.REGULAR,
         // do we need to figure out if we can de-select? answer: probably
-        enable_left: is_enabled && option_object.mo.metadata.can_split && IsOptionEnabled(option_object, a, metadata.bake_count, metadata.flavor_count, OptionPlacement.LEFT, productInstanceFunctions),
-        enable_right: is_enabled && option_object.mo.metadata.can_split && IsOptionEnabled(option_object, a, metadata.bake_count, metadata.flavor_count, OptionPlacement.RIGHT, productInstanceFunctions),
-        enable_whole: is_enabled && IsOptionEnabled(option_object, a, metadata.bake_count, metadata.flavor_count, OptionPlacement.WHOLE, productInstanceFunctions),
+        enable_left: can_split.enable !== DISABLE_REASON.ENABLED ? can_split : (is_enabled.enable !== DISABLE_REASON.ENABLED ? is_enabled : IsOptionEnabled(option_object, a, metadata.bake_count, metadata.flavor_count, OptionPlacement.LEFT, catalog)),
+        enable_right: can_split.enable !== DISABLE_REASON.ENABLED ? can_split : (is_enabled.enable !== DISABLE_REASON.ENABLED ? is_enabled : IsOptionEnabled(option_object, a, metadata.bake_count, metadata.flavor_count, OptionPlacement.RIGHT, catalog)),
+        enable_whole: is_enabled.enable !== DISABLE_REASON.ENABLED ? is_enabled : IsOptionEnabled(option_object, a, metadata.bake_count, metadata.flavor_count, OptionPlacement.WHOLE, catalog),
       } as MetadataModifierOptionMapEntry;
-      const enable_left_or_right = option_info.enable_left || option_info.enable_right;
+      const enable_left_or_right = option_info.enable_left.enable === DISABLE_REASON.ENABLED || option_info.enable_right.enable === DISABLE_REASON.ENABLED;
       metadata.advanced_option_eligible ||= enable_left_or_right;
       metadata.modifier_map[mtid].options[String(option_object.mo.id)] = option_info;
-      metadata.modifier_map[mtid].has_selectable ||= enable_left_or_right || option_info.enable_whole;
+      metadata.modifier_map[mtid].has_selectable ||= enable_left_or_right || option_info.enable_whole.enable === DISABLE_REASON.ENABLED;
     }
 
     const num_selected = [0, 0];
