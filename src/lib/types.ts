@@ -346,6 +346,12 @@ export interface IProductDisplayFlags {
   };
 };
 
+export interface IProductModifier {
+  mtid: string;
+  enable: string | null;
+  service_disable: number[];
+};
+
 export interface IProduct {
   id: string;
   item?: ICatalogItem;
@@ -369,7 +375,7 @@ export interface IProduct {
     min_prep_time: number;
     additional_unit_prep_time: number;
   };
-  modifiers: { mtid: string, enable: string | null, service_disable: number[] }[];
+  modifiers: IProductModifier[];
   category_ids: string[];
 };
 
