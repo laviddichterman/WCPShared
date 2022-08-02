@@ -1,5 +1,23 @@
 import { GetPlacementFromMIDOID } from "../common";
-import { IAbstractExpression, ICatalog, ICatalogModifiers, IConstLiteralExpression, IHasAnyOfModifierExpression, IIfElseExpression, ILogicalExpression, IModifierPlacementExpression, IOption, IProductInstanceFunction, MetadataField, OptionPlacement, ProductInstanceFunctionOperator, ProductInstanceFunctionType, ProductMetadataExpression, PRODUCT_LOCATION, WCPProduct } from '../types';
+import {
+  IAbstractExpression,
+  ICatalog,
+  ICatalogModifiers,
+  IConstLiteralExpression,
+  IHasAnyOfModifierExpression,
+  IIfElseExpression,
+  ILogicalExpression,
+  IModifierPlacementExpression,
+  IOption,
+  IProductInstanceFunction,
+  MetadataField,
+  OptionPlacement,
+  ProductInstanceFunctionOperator,
+  ProductInstanceFunctionType,
+  ProductMetadataExpression,
+  PRODUCT_LOCATION,
+  WCPProduct
+} from '../types';
 export class WFunctional {
   static ProcessIfElseStatement(prod: WCPProduct, stmt: IIfElseExpression, cat: ICatalog) {
     const branch_test = WFunctional.ProcessAbstractExpressionStatement(prod, stmt.test, cat);
@@ -120,6 +138,8 @@ export class WFunctional {
         return modifierPlacement(stmt.expr);
       case ProductInstanceFunctionType.HasAnyOfModifierType:
         return `ANY ${mods[(stmt.expr).mtid].modifier_type.name}`;
+      case ProductInstanceFunctionType.ProductMetadata:
+        return `:${MetadataField[stmt.expr.field]}@${PRODUCT_LOCATION[stmt.expr.location]}`;
       default:
         throw ("bad abstract expression");
     }
