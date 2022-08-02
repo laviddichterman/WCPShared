@@ -1,5 +1,5 @@
 import { getTime } from "date-fns";
-import { CoreCartEntry, IWInterval, ModifiersMap, OptionPlacement, OptionQualifier, TipSelection, ValidateAndLockCreditResponse, WProduct } from "./types";
+import { CoreCartEntry, DISABLE_REASON, IWInterval, ModifiersMap, OptionPlacement, OptionQualifier, TipSelection, ValidateAndLockCreditResponse, WProduct } from "./types";
 
 export const EMAIL_REGEX = new RegExp(/^[_A-Za-z0-9\-+]+(\.[_A-Za-z0-9\-+]+)*@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*(\.[A-Za-z]{2,})$/);
 
@@ -18,10 +18,20 @@ export const GetPlacementFromMIDOID = (modifiers: ModifiersMap, mid: string, oid
  * Function to check if something is disabled
  * @param {IWInterval} disable_data - catalog sourced info as to if/when the product is enabled or disabled
  * @param {Date | number} order_time - the time to use to check for disabling
- * @returns {boolean} true if the product is enabled, false otherwise
+ * @returns {{ enable: DISABLE_REASON.ENABLED } |
+  { enable: DISABLE_REASON.DISABLED_BLANKET } |
+  { enable: DISABLE_REASON.DISABLED_TIME, interval: IWInterval }}
  */
-export function DisableDataCheck(disable_data: IWInterval | null, order_time: Date | number) {
-  return !disable_data || (!(disable_data.start > disable_data.end) && (disable_data.start > getTime(order_time) || disable_data.end < getTime(order_time)));
+export function DisableDataCheck(disable_data: IWInterval | null, order_time: Date | number): ({ enable: DISABLE_REASON.ENABLED } |
+{ enable: DISABLE_REASON.DISABLED_BLANKET } |
+{ enable: DISABLE_REASON.DISABLED_TIME, interval: IWInterval }) {
+  return !disable_data ? ({ enable: DISABLE_REASON.ENABLED }) :
+    (disable_data.start > disable_data.end ? ({ enable: DISABLE_REASON.DISABLED_BLANKET }) : (
+      (disable_data.start <= getTime(order_time) && disable_data.end >= getTime(order_time)) ?
+        { enable: DISABLE_REASON.DISABLED_TIME, interval: disable_data } :
+        { enable: DISABLE_REASON.ENABLED }));
+  // ))
+  // return !disable_data || (!(disable_data.start > disable_data.end) && (disable_data.start > getTime(order_time) || disable_data.end < getTime(order_time)));
 }
 
 export function ComputeMainProductCategoryCount(MAIN_CATID: string, cart: CoreCartEntry<any>[]) {
