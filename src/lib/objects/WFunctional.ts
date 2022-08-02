@@ -1,5 +1,6 @@
 import { GetPlacementFromMIDOID } from "../common";
 import {
+  ConstLiteralDiscriminator,
   IAbstractExpression,
   ICatalog,
   ICatalogModifiers,
@@ -12,6 +13,7 @@ import {
   IProductInstanceFunction,
   MetadataField,
   OptionPlacement,
+  OptionQualifier,
   ProductInstanceFunctionOperator,
   ProductInstanceFunctionType,
   ProductMetadataExpression,
@@ -129,7 +131,18 @@ export class WFunctional {
     }
     switch (stmt.discriminator) {
       case ProductInstanceFunctionType.ConstLiteral:
-        return String(stmt.expr.value);
+        switch (stmt.expr.discriminator) {
+          case ConstLiteralDiscriminator.BOOLEAN:
+            return stmt.expr.value === true ? "True" : "False";
+          case ConstLiteralDiscriminator.NUMBER:
+            return Number(stmt.expr.value).toString();
+          case ConstLiteralDiscriminator.STRING:
+            return String(stmt.expr.value);
+          case ConstLiteralDiscriminator.MODIFIER_PLACEMENT:
+            return String(OptionPlacement[stmt.expr.value]);
+          case ConstLiteralDiscriminator.MODIFIER_QUALIFIER:
+            return String(OptionQualifier[stmt.expr.value]);
+        }
       case ProductInstanceFunctionType.IfElse:
         return `IF(${WFunctional.AbstractExpressionStatementToString(stmt.expr.test, mods)}) { ${WFunctional.AbstractExpressionStatementToString(stmt.expr.true_branch, mods)} } ELSE { ${WFunctional.AbstractExpressionStatementToString(stmt.expr.false_branch, mods)} }`;
       case ProductInstanceFunctionType.Logical:
