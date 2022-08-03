@@ -419,7 +419,7 @@ export interface ICatalog {
   api: SEMVER;
 };
 
-export const enum DISABLE_REASON {
+export enum DISABLE_REASON {
   ENABLED = 0,
   DISABLED_BLANKET,
   DISABLED_TIME,
