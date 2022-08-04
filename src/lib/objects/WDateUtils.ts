@@ -1,4 +1,5 @@
 import {
+  addDays,
   addMinutes,
   compareAsc,
   getDay,
@@ -8,7 +9,8 @@ import {
   isSameDay,
   lightFormat,
   parse,
-  startOfDay
+  startOfDay,
+  subMinutes
 } from 'date-fns';
 
 import { AvailabilityInfoMap, DayIndex, IntervalTupleList, IWSettings, JSFEBlockedOff, OperatingHoursList, ServicesEnableMap, WIntervalTuple } from '../types';
@@ -18,6 +20,8 @@ export class WDateUtils {
   static get DATE_STRING_INTERNAL_FORMAT() {
     return "yyyyMMdd";
   }
+
+  static ComputeServiceDateTime(selectedDate: Date | number, selectedTime: number) { return subMinutes(addDays(selectedDate, 1), 1440 - selectedTime); };
 
   static MinutesToPrintTime(minutes: number) {
     if (Number.isNaN(minutes) || minutes < 0) {
@@ -377,6 +381,53 @@ export class WDateUtils {
     new_interval_map[service_index] = new_interval_map_for_service;
     return new_interval_map;
   }
+
+  /**
+   * Determines if there's any hours for a particular service
+   */
+  static HasOperatingHoursForService(SERVICES: Record<string, string>, OPERATING_HOURS: OperatingHoursList[], serviceNumber: number) {
+    return Object.hasOwn(SERVICES, String(serviceNumber)) &&
+      serviceNumber < OPERATING_HOURS.length &&
+      OPERATING_HOURS[serviceNumber].reduce((acc, dayIntervals) => acc || dayIntervals.some(v => v[0] < v[1] && v[0] >= 0 && v[1] <= 1440), false)
+  }
+
+  // // TODO: move to WCPShared
+  // static ComputeNextAvailableServiceDateTimeForService(serviceHasAnyOperatingHours: boolean, (testDate: Date | number) => {
+  //   value: number;
+  //   disabled: boolean;
+  // }[]) = createSelector(
+  //   (s: RootState, service: number, _: Date | number) => SelectHasOperatingHoursForService(s, service),
+  //   (s: RootState, service: number, _: Date | number) => (testDate: Date | number) => SelectOptionsForServicesAndDate(s, testDate, { [service]: true }).filter(x => x.disabled),
+  //   (_: RootState, __: number, now: Date | number) => now,
+  //   (operatingHoursForService, selectOptionsFunction, now) => {
+  //     const today = startOfDay(now);
+  //     if (operatingHoursForService) {
+  //       for (let i = 0; i < 7; ++i) {
+  //         const dateAttempted = addDays(today, i);
+  //         const options = selectOptionsFunction(addDays(today, i));
+  //         if (options.length > 0) {
+  //           return ComputeServiceDateTime(dateAttempted, options[0].value);
+  //         }
+  //       }
+  //     }
+  //     return null;
+  //   })
+
+  // // TODO: move to WCPShared
+  // // Note: this falls back to now if there's really nothing for the selected service or for dine-in
+  // static GetNextAvailableServiceDateTime = createSelector(
+  //     (s: RootState, now: Date | number) => (service: number) => GetNextAvailableServiceDateTimeForService(s, service, now),
+  //     (s: RootState, _: Date | number) => s.fulfillment.selectedService,
+  //     (_: RootState, now: Date | number) => now,
+  //     (nextAvailableForServiceFunction, selectedService, now) => {
+  //       if (selectedService !== null) {
+  //         const nextAvailableForSelectedService = nextAvailableForServiceFunction(selectedService);
+  //         if (nextAvailableForSelectedService) {
+  //           return nextAvailableForSelectedService;
+  //         }
+  //       }
+  //       return nextAvailableForServiceFunction(1) ?? now
+  //     });
 
 }
 

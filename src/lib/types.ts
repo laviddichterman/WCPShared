@@ -12,6 +12,13 @@ export interface IWInterval {
   end: number;
 };
 
+// begin to make the fulfillment configuraton based
+export enum FulfillmentType {
+  PICKUP,
+  DINEIN,
+  DELIVERY,
+}
+
 export type WIntervalTuple = [number, number];
 export type IntervalTupleList = WIntervalTuple[];
 export type OperatingHoursList = [IntervalTupleList, IntervalTupleList, IntervalTupleList, IntervalTupleList, IntervalTupleList, IntervalTupleList, IntervalTupleList];

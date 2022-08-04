@@ -46,26 +46,35 @@ export function ComputeCartSubTotal(cart: CoreCartEntry<WProduct>[]) {
   return cart.reduce((acc, entry) => RoundToTwoDecimalPlaces(acc + (entry.product.m.price * entry.quantity)), 0);
 }
 
-export function ComputeDiscountApplied(subtotal: number, creditValidation: ValidateAndLockCreditResponse | null) {
+export function ComputeDiscountApplied(subtotalPreDiscount: number, creditValidation: ValidateAndLockCreditResponse | null) {
   return creditValidation !== null && creditValidation.valid && creditValidation.credit_type === "DISCOUNT" ?
-    Math.min(subtotal, creditValidation.amount) : 0;
+    Math.min(subtotalPreDiscount, creditValidation.amount) : 0;
 }
 
-export function ComputeTaxAmount(subtotal: number, taxRate: number, discount: number) {
-  return RoundToTwoDecimalPlaces((subtotal - discount) * taxRate);
+export function ComputeTaxAmount(subtotalAfterDiscount: number, taxRate: number) {
+  return RoundToTwoDecimalPlaces(subtotalAfterDiscount * taxRate);
 }
 
-export function ComputeTipBasis(subtotal: number, taxAmount: number) {
-  return RoundToTwoDecimalPlaces(subtotal + taxAmount);
+export function ComputeTipBasis(subtotalPreDiscount: number, taxAmount: number) {
+  return RoundToTwoDecimalPlaces(subtotalPreDiscount + taxAmount);
 }
 
 export function ComputeTipValue(tip: TipSelection | null, basis: number) {
   return tip !== null ? (tip.isPercentage ? RoundToTwoDecimalPlaces(tip.value * basis) : tip.value) : 0;
 }
 
-export function ComputeTotal(subtotalBeforeDiscount: number, discount: number, taxAmount: number, tipAmount: number) {
-  return RoundToTwoDecimalPlaces(subtotalBeforeDiscount - discount + taxAmount + tipAmount);
+export function ComputeSubtotalPreDiscount(cartTotal: number, serviceFees: number) {
+  return RoundToTwoDecimalPlaces(cartTotal + serviceFees);
 }
+
+export function ComputeSubtotalAfterDiscount(subtotalPreDiscount: number, discountApplied: number) {
+  return RoundToTwoDecimalPlaces(subtotalPreDiscount - discountApplied);
+}
+
+export function ComputeTotal(subtotalAfterDiscount: number, taxAmount: number, tipAmount: number) {
+  return RoundToTwoDecimalPlaces(subtotalAfterDiscount + taxAmount + tipAmount);
+}
+
 export function ComputeAutogratuityEnabled(mainProductCount: number, threshold: number, isDelivery: boolean) {
   return mainProductCount >= threshold || isDelivery;
 }
