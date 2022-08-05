@@ -236,3 +236,7 @@ export function DoesProductExistInMenu(menu: IMenu, product: WCPProduct) {
       Object.hasOwn(menu.modifiers, mod[0]) &&
       mod[1].reduce((optAcc, o) => optAcc && Object.hasOwn(menu.modifiers[mod[0]].options, o.option_id), true), true);
 }
+
+export function CanThisBeOrderedAtThisTimeAndFulfillment(product: WCPProduct, menu: IMenu, catalog: ICatalog, serviceTime: Date | number, fulfillment: number) {
+  return DoesProductExistInMenu(menu, product) && FilterWCPProduct(product, catalog, menu, serviceTime, fulfillment);
+}
