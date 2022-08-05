@@ -1,5 +1,20 @@
 import { DisableDataCheck } from "../common";
-import { CategoryEntry, ICatalog, IMenu, IProductInstance, MenuCategories, MenuModifiers, MenuProductInstanceMetadata, MenuProducts, ModifierEntry, ProductEntry, WCPOption, WCPProduct, OptionPlacement, DISABLE_REASON } from "../types";
+import {
+  CategoryEntry,
+  ICatalog,
+  IMenu,
+  IProductInstance,
+  MenuCategories,
+  MenuModifiers,
+  MenuProductInstanceMetadata,
+  MenuProducts,
+  ModifierEntry,
+  ProductEntry,
+  WCPOption,
+  WCPProduct,
+  OptionPlacement,
+  DISABLE_REASON
+} from "../types";
 
 import { CreateWCPProductFromPI, WCPProductGenerateMetadata } from "./WCPProduct";
 
@@ -10,14 +25,20 @@ type DisableFlagGetterType = (x: any) => boolean;
  * @param {IMenu} menu - the menu from which to pull catalog data
  * @param {function(Object): boolean} disable_from_menu_flag_getter - getter function to pull the proper display flag from the products
  * @param {Date | number} order_time - from getTime or Date.valueOf() the time to use to check for disable/enable status
+ * @param {number} fulfillmentType - the service selected
  * @returns {boolean} returns true if item is enabled and visible
  */
-export function FilterProduct(item: IProductInstance, menu: IMenu, disable_from_menu_flag_getter: DisableFlagGetterType, order_time: Date | number) {
-  let passes = !disable_from_menu_flag_getter(item.display_flags) && DisableDataCheck(menu.product_classes[item.product_id].product.disabled, order_time).enable === DISABLE_REASON.ENABLED;
+export function FilterProduct(item: IProductInstance, menu: IMenu, disable_from_menu_flag_getter: DisableFlagGetterType, order_time: Date | number, fulfillmentType: number) {
+  const menuModifiers = menu.modifiers;
+  const productClass = menu.product_classes[item.product_id];
+  let passes = productClass !== undefined &&
+    productClass.product.service_disable.indexOf(fulfillmentType) === -1 &&
+    !disable_from_menu_flag_getter(item.display_flags) &&
+    DisableDataCheck(productClass.product.disabled, order_time).enable === DISABLE_REASON.ENABLED;
   // this is better as a forEach as it gives us the ability to skip out of the loop early
   item.modifiers.forEach(modifier => {
     // TODO: for incomplete product instances, this should check for a viable way to order the product
-    const mtOptions = menu.modifiers[modifier.modifier_type_id].options;
+    const mtOptions = menuModifiers[modifier.modifier_type_id].options;
     passes &&= modifier.options.reduce((acc: boolean, x) => (acc && DisableDataCheck(mtOptions[x.option_id].mo.item.disabled, order_time).enable === DISABLE_REASON.ENABLED), true);
   });
   return passes;
@@ -55,11 +76,11 @@ export function FilterWCPProduct(item: WCPProduct, catalog: ICatalog, menu: IMen
  * @param {Date | number} order_time - the time to use to check for disable/enable status
  * @returns {function(String): boolean} function that takes a category ID and returns true if the category is not empty
  */
-export function FilterEmptyCategories(menu: IMenu, disable_from_menu_flag_getter: DisableFlagGetterType, order_time: Date | number) {
+export function FilterEmptyCategories(menu: IMenu, disable_from_menu_flag_getter: DisableFlagGetterType, order_time: Date | number, fulfillmentType: number) {
   return (CAT_ID: string) => {
     const cat_menu = menu.categories[CAT_ID].menu;
     for (let i = 0; i < cat_menu.length; ++i) {
-      if (FilterProduct(cat_menu[i], menu, disable_from_menu_flag_getter, order_time)) {
+      if (FilterProduct(cat_menu[i], menu, disable_from_menu_flag_getter, order_time, fulfillmentType)) {
         return true;
       }
     }

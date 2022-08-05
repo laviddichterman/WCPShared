@@ -1,4 +1,5 @@
 import type { CreatePaymentResponse } from 'square';
+import type { Polygon } from 'geojson';
 
 export type NullablePartial<T,
   NK extends keyof T = { [K in keyof T]: null extends T[K] ? K : never }[keyof T],
@@ -7,22 +8,52 @@ export type NullablePartial<T,
 
 export interface SEMVER { major: number; minor: number; patch: number; };
 
+export enum DayOfTheWeek {
+  SUNDAY,
+  MONDAY,
+  TUESDAY,
+  WEDNESDAY,
+  THURSDAY,
+  FRIDAY,
+  SATURDAY
+};
+
 export interface IWInterval {
   start: number;
   end: number;
 };
 
-// begin to make the fulfillment configuraton based
 export enum FulfillmentType {
   PICKUP,
   DINEIN,
   DELIVERY,
+  SHIPPING,
 }
+
+export interface FulfillmentConfig {
+  id: string;
+  service: FulfillmentType;
+  terms: string[];
+  // autograt function is a to-be-defined type reference
+  autograt: boolean | string;
+  // serviceCharge function is a to-be-defined type reference, same as autograt function
+  serviceCharge: number | string;
+  leadTime: number;
+  operatingHours: Record<DayOfTheWeek, IntervalTupleList>;
+  specialHours: Record<string /* in yyyyMMdd format */, IntervalTupleList>;
+  blockedOff: IWInterval[];
+  minDuration: number;
+  maxDuration: number;
+  timeStep: number;
+  maxGuests?: number;
+  // maybe this is a ServiceArea object with data about conditions for validity within a service area.
+  // definitely deferring that work for now.
+  serviceArea?: Polygon;
+};
 
 export type WIntervalTuple = [number, number];
 export type IntervalTupleList = WIntervalTuple[];
 export type OperatingHoursList = [IntervalTupleList, IntervalTupleList, IntervalTupleList, IntervalTupleList, IntervalTupleList, IntervalTupleList, IntervalTupleList];
-// TODO: convert { [index:number]: boolean } => boolean[];
 export interface ServicesEnableMap { [index: number]: boolean };
 export interface IWSettings {
   additional_pizza_lead_time: number;
@@ -34,12 +65,21 @@ export interface IWSettings {
   operating_hours: OperatingHoursList[];
   config: Record<string, number | string | boolean>;
   // {
-  //   SQUARE_LOCATION: string;
-  //   MENU_CATID: string;
-  //   PIZZAS_CATID: string;
-  //   TAX_RATE: number;
-  //   SQUARE_APPLICATION_ID: string
-  //   ALLOW_SLICING: boolean;
+  // SQUARE_APPLICATION_ID: String,
+  // SQUARE_LOCATION: String,
+  // MENU_CATID: String,
+  // MAIN_CATID: String,
+  // SUPP_CATID: String,
+  // TAX_RATE: Number,
+  // ALLOW_ADVANCED: Boolean,
+  // MAX_PARTY_SIZE: Number,
+  // DELIVERY_LINK: String,
+  // DELIVERY_FEE: Number,
+  // AUTOGRAT_THRESHOLD: Number,
+  // MESSAGE_REQUEST_VEGAN: String,
+  // MESSAGE_REQUEST_HALF: String,
+  // MESSAGE_REQUEST_WELLDONE: String,
+  // MESSAGE_REQUEST_SLICING: String
   // };
 };
 export interface IWBlockedOff {
