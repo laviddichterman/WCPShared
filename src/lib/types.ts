@@ -34,6 +34,8 @@ export interface FulfillmentConfig {
   id: string;
   service: FulfillmentType;
   terms: string[];
+  menuBaseCategoryId: string;
+  orderBaseCategoryId: string;
   // autograt function is a to-be-defined type reference
   autograt: boolean | string;
   // serviceCharge function is a to-be-defined type reference, same as autograt function
@@ -288,6 +290,7 @@ export interface IProductInstanceFunction {
   name: string;
 };
 
+export type CategoryDisplay = 'TAB' | 'TAB_IMMEDIATE' | 'ACCORDION' | 'TABLE';
 
 export interface ICategory {
   id: string;
@@ -300,6 +303,7 @@ export interface ICategory {
   display_flags: {
     call_line_name: string;
     call_line_display: CALL_LINE_DISPLAY;
+    nesting: CategoryDisplay;
   };
   serviceDisable: number[];
 };
