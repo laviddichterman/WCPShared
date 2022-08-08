@@ -290,7 +290,12 @@ export interface IProductInstanceFunction {
   name: string;
 };
 
-export type CategoryDisplay = 'TAB' | 'TAB_IMMEDIATE' | 'ACCORDION' | 'TABLE';
+export enum CategoryDisplay {
+  'TAB' = 'TAB',
+  'TAB_IMMEDIATE' = 'TAB_IMMEDIATE',
+  'ACCORDION' = 'ACCORDION',
+  'TABLE' = 'TABLE'
+};
 
 export interface ICategory {
   id: string;
