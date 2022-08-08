@@ -295,12 +295,13 @@ export interface ICategory {
   description: string | null;
   ordinal: number;
   parent_id: string | null;
-  subheading: string | null,
-  footnotes: string | null,
+  subheading: string | null;
+  footnotes: string | null;
   display_flags: {
     call_line_name: string;
     call_line_display: CALL_LINE_DISPLAY;
   };
+  serviceDisable: number[];
 };
 
 export interface ICatalogItem {
