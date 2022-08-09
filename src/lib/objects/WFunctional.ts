@@ -1,6 +1,8 @@
+import { startCase, snakeCase } from "lodash";
 import { GetPlacementFromMIDOID } from "../common";
 import {
   ConstLiteralDiscriminator,
+  ConstModifierPlacementLiteralExpression,
   IAbstractExpression,
   ICatalog,
   ICatalogModifiers,
@@ -20,6 +22,31 @@ import {
   PRODUCT_LOCATION,
   WCPProduct
 } from '../types';
+
+
+const ProductInstanceFunctionOperatorToHumanString = function (op: ProductInstanceFunctionOperator) {
+  switch (op) {
+    case ProductInstanceFunctionOperator.AND: return 'and';
+    case ProductInstanceFunctionOperator.EQ: return 'equals';
+    case ProductInstanceFunctionOperator.GE: return 'is greater than or equal to';
+    case ProductInstanceFunctionOperator.GT: return 'is greater than';
+    case ProductInstanceFunctionOperator.LE: return 'is less than or equal to';
+    case ProductInstanceFunctionOperator.LT: return 'is less than';
+    case ProductInstanceFunctionOperator.NE: return 'does not equal';
+    case ProductInstanceFunctionOperator.NOT: return 'is not';
+    case ProductInstanceFunctionOperator.OR: return 'or';
+  }
+}
+
+const ModifierPlacementCompareToPlacementHumanReadable = function (placementExtraction: string, placementLiteral: ConstModifierPlacementLiteralExpression, required: boolean) {
+  switch (placementLiteral.value) {
+    case OptionPlacement.LEFT: return `${placementExtraction} is ${required ? "not " : ""} on the left`;
+    case OptionPlacement.RIGHT: return `${placementExtraction} is ${required ? "not " : ""} on the right`;
+    case OptionPlacement.NONE: return `${placementExtraction} is ${required ? "not " : ""} selected`;
+    case OptionPlacement.WHOLE: return `${placementExtraction} is ${required ? "" : "not "} selected`;
+  }
+}
+
 export class WFunctional {
   static ProcessIfElseStatement(prod: WCPProduct, stmt: IIfElseExpression, cat: ICatalog) {
     const branch_test = WFunctional.ProcessAbstractExpressionStatement(prod, stmt.test, cat);
@@ -231,6 +258,70 @@ export class WFunctional {
         return modifierPlacement(stmt.expr);
       case ProductInstanceFunctionType.HasAnyOfModifierType:
         return `ANY ${mods[(stmt.expr).mtid].modifier_type.name}`;
+      case ProductInstanceFunctionType.ProductMetadata:
+        return `:${MetadataField[stmt.expr.field]}@${PRODUCT_LOCATION[stmt.expr.location]}`;
+    }
+  }
+
+  static AbstractExpressionStatementToHumanReadableString(stmt: IAbstractExpression, mods: ICatalogModifiers): string {
+    function logical(expr: ILogicalExpression) {
+      const operandAString = WFunctional.AbstractExpressionStatementToHumanReadableString(expr.operandA, mods);
+      if (expr.operator === ProductInstanceFunctionOperator.NOT || !expr.operandB) {
+        if (expr.operandA.discriminator === ProductInstanceFunctionType.HasAnyOfModifierType) {
+          return `no ${mods[expr.operandA.expr.mtid].modifier_type.name} modifiers are selected`
+        }
+        return `not ${operandAString}`;
+      }
+      const operandBString = WFunctional.AbstractExpressionStatementToHumanReadableString(expr.operandB, mods);
+      if (expr.operandA.discriminator === ProductInstanceFunctionType.ModifierPlacement &&
+        expr.operandB.discriminator === ProductInstanceFunctionType.ConstLiteral &&
+        expr.operandB.expr.discriminator === ConstLiteralDiscriminator.MODIFIER_PLACEMENT) {
+        if (expr.operator === ProductInstanceFunctionOperator.EQ) {
+          return ModifierPlacementCompareToPlacementHumanReadable(operandAString, expr.operandB.expr, true);
+        } else if (expr.operator === ProductInstanceFunctionOperator.NE) {
+          return ModifierPlacementCompareToPlacementHumanReadable(operandAString, expr.operandB.expr, false);
+        }
+      } else if (expr.operandB.discriminator === ProductInstanceFunctionType.ModifierPlacement &&
+        expr.operandA.discriminator === ProductInstanceFunctionType.ConstLiteral &&
+        expr.operandA.expr.discriminator === ConstLiteralDiscriminator.MODIFIER_PLACEMENT) {
+        if (expr.operator === ProductInstanceFunctionOperator.EQ) {
+          return ModifierPlacementCompareToPlacementHumanReadable(operandBString, expr.operandA.expr, true);
+        } else if (expr.operator === ProductInstanceFunctionOperator.NE) {
+          return ModifierPlacementCompareToPlacementHumanReadable(operandBString, expr.operandA.expr, false);
+        }
+      }
+      return `${operandAString} ${ProductInstanceFunctionOperatorToHumanString(expr.operator)} ${operandBString}`;
+    }
+    function modifierPlacement(expr: IModifierPlacementExpression) {
+      if (!Object.hasOwn(mods, expr.mtid)) {
+        return "";
+      }
+      const val = mods[expr.mtid];
+      const opt = val.options.find(x => x.id === expr.moid)!;
+      return `${opt.item.display_name}`;
+    }
+    switch (stmt.discriminator) {
+      case ProductInstanceFunctionType.ConstLiteral:
+        switch (stmt.expr.discriminator) {
+          case ConstLiteralDiscriminator.BOOLEAN:
+            return stmt.expr.value === true ? "True" : "False";
+          case ConstLiteralDiscriminator.NUMBER:
+            return Number(stmt.expr.value).toString();
+          case ConstLiteralDiscriminator.STRING:
+            return String(stmt.expr.value);
+          case ConstLiteralDiscriminator.MODIFIER_PLACEMENT:
+            return startCase(snakeCase((OptionPlacement[stmt.expr.value])));
+          case ConstLiteralDiscriminator.MODIFIER_QUALIFIER:
+            return startCase(snakeCase((OptionQualifier[stmt.expr.value])));
+        }
+      case ProductInstanceFunctionType.IfElse:
+        return `if ${WFunctional.AbstractExpressionStatementToHumanReadableString(stmt.expr.test, mods)} then ${WFunctional.AbstractExpressionStatementToHumanReadableString(stmt.expr.true_branch, mods)}, otherwise ${WFunctional.AbstractExpressionStatementToString(stmt.expr.false_branch, mods)}`;
+      case ProductInstanceFunctionType.Logical:
+        return logical(stmt.expr);
+      case ProductInstanceFunctionType.ModifierPlacement:
+        return modifierPlacement(stmt.expr);
+      case ProductInstanceFunctionType.HasAnyOfModifierType:
+        return `any ${mods[(stmt.expr).mtid].modifier_type.name} modifiers selected`;
       case ProductInstanceFunctionType.ProductMetadata:
         return `:${MetadataField[stmt.expr.field]}@${PRODUCT_LOCATION[stmt.expr.location]}`;
     }
