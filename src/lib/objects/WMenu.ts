@@ -38,8 +38,12 @@ export function FilterProduct(item: IProductInstance, menu: IMenu, disable_from_
   // this is better as a forEach as it gives us the ability to skip out of the loop early
   item.modifiers.forEach(modifier => {
     // TODO: for incomplete product instances, this should check for a viable way to order the product
-    const mtOptions = menuModifiers[modifier.modifier_type_id].options;
-    passes &&= modifier.options.reduce((acc: boolean, x) => (acc && DisableDataCheck(mtOptions[x.option_id].mo.item.disabled, order_time).enable === DISABLE_REASON.ENABLED), true);
+    const menuModifierType = menuModifiers[modifier.modifier_type_id];
+    const mtOptions = menuModifierType.options;
+    const productModifierDefinition = productClass.product.modifiers.find(x => x.mtid === modifier.modifier_type_id)!;
+    passes &&= productModifierDefinition.service_disable.indexOf(fulfillmentType) === -1 &&
+      modifier.options.reduce((acc: boolean, x) =>
+        (acc && DisableDataCheck(mtOptions[x.option_id].mo.item.disabled, order_time).enable === DISABLE_REASON.ENABLED), true);
   });
   return passes;
 }
@@ -54,7 +58,8 @@ export function FilterProduct(item: IProductInstance, menu: IMenu, disable_from_
 export function FilterWCPProduct(item: WCPProduct, catalog: ICatalog, menu: IMenu, order_time: Date | number, fulfillmentType: number) {
   const productEntry = menu.product_classes[item.PRODUCT_CLASS.id];
   const newMetadata = WCPProductGenerateMetadata(item, productEntry, catalog, menu.modifiers, order_time, fulfillmentType);
-  return DisableDataCheck(productEntry.product.disabled, order_time) &&
+  return productEntry.product.service_disable.indexOf(fulfillmentType) === -1 &&
+    DisableDataCheck(productEntry.product.disabled, order_time) &&
     !newMetadata.incomplete &&
     Object.entries(item.modifiers).reduce((acc, modifier) => {
       const menuModifier = menu.modifiers[modifier[0]];
@@ -78,7 +83,11 @@ export function FilterWCPProduct(item: WCPProduct, catalog: ICatalog, menu: IMen
  */
 export function FilterEmptyCategories(menu: IMenu, disable_from_menu_flag_getter: DisableFlagGetterType, order_time: Date | number, fulfillmentType: number) {
   return (CAT_ID: string) => {
-    const cat_menu = menu.categories[CAT_ID].menu;
+    const cat = menu.categories[CAT_ID];
+    if (cat.serviceDisable.indexOf(fulfillmentType) !== -1) {
+      return false;
+    }
+    const cat_menu = cat.menu;
     for (let i = 0; i < cat_menu.length; ++i) {
       if (FilterProduct(cat_menu[i], menu, disable_from_menu_flag_getter, order_time, fulfillmentType)) {
         return true;
@@ -99,8 +108,8 @@ export function FilterEmptyCategories(menu: IMenu, disable_from_menu_flag_getter
 export function FilterWMenu(menu: IMenu, filter_products: (product: IProductInstance) => boolean, order_time: Date | number) {
   // prune categories via DFS
   {
-    const catIdsToRemove: { [index: string]: boolean } = {};
-    const catIdsVisited: { [index: string]: boolean } = {};
+    const catIdsToRemove: Record<string, boolean> = {};
+    const catIdsVisited: Record<string, boolean> = {};
     const VisitCategory = (cat_id: string) => {
       if (!Object.hasOwn(catIdsVisited, cat_id)) {
         catIdsVisited[cat_id] = true;
@@ -151,12 +160,14 @@ function ComputeModifiers(cat: ICatalog) {
     const mod = cat.modifiers[mtid].modifier_type;
     let opt_index = 0;
     const modifier_entry: ModifierEntry = { modifier_type: mod, options_list: [], options: {} };
-    cat.modifiers[mtid].options.slice().sort((a, b) => a.ordinal - b.ordinal).forEach((opt) => {
-      const option: WCPOption = { index: opt_index, mo: opt, mt: mod };
-      modifier_entry.options_list.push(option);
-      modifier_entry.options[option.mo.id] = option;
-      opt_index += 1;
-    });
+    cat.modifiers[mtid].options.slice()
+      .sort((a, b) => a.ordinal - b.ordinal)
+      .forEach((opt) => {
+        const option: WCPOption = { index: opt_index, mo: opt, mt: mod };
+        modifier_entry.options_list.push(option);
+        modifier_entry.options[option.mo.id] = option;
+        opt_index += 1;
+      });
     mods[mtid] = modifier_entry;
   });
   return mods;
@@ -192,14 +203,17 @@ function ComputeProducts(cat: ICatalog) {
 function ComputeCategories(cat: ICatalog, product_classes: MenuProducts) {
   const cats: MenuCategories = {};
   Object.keys(cat.categories).forEach(catId => {
+    const catalogCategory = cat.categories[catId];
     const category_entry: CategoryEntry = {
       menu: [],
-      children: [...cat.categories[catId].children].sort((a, b) => cat.categories[a].category.ordinal - cat.categories[b].category.ordinal),
-      menu_name: cat.categories[catId].category.description || cat.categories[catId].category.name,
-      subtitle: cat.categories[catId].category?.subheading || null,
-      footer: cat.categories[catId].category?.footnotes || null
+      children: [...catalogCategory.children].sort((a, b) => cat.categories[a].category.ordinal - cat.categories[b].category.ordinal),
+      menu_name: catalogCategory.category.description || catalogCategory.category.name,
+      subtitle: catalogCategory.category?.subheading || null,
+      footer: catalogCategory.category?.footnotes || null,
+      serviceDisable: [...catalogCategory.category.serviceDisable],
+      nesting: catalogCategory.category.display_flags.nesting
     }
-    cat.categories[catId].products.forEach((product_class) => {
+    catalogCategory.products.forEach((product_class) => {
       if (Object.hasOwn(product_classes, product_class)) {
         category_entry.menu = category_entry.menu.concat(product_classes[product_class].instances_list);
       }

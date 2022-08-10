@@ -538,7 +538,15 @@ export interface WCPOption {
   index: number;
 };
 
-export interface CategoryEntry { menu: IProductInstance[]; children: string[]; menu_name: string; subtitle: string | null, footer: string | null; };
+export interface CategoryEntry {
+  menu: IProductInstance[];
+  children: string[];
+  menu_name: string;
+  subtitle: string | null;
+  footer: string | null;
+  nesting: CategoryDisplay;
+  serviceDisable: number[];
+};
 export type MenuCategories = Record<string, CategoryEntry>;
 export interface ProductEntry { product: IProduct; base_id: string, instances_list: IProductInstance[]; instances: Record<string, IProductInstance>; };
 export type MenuProducts = Record<string, ProductEntry>;
