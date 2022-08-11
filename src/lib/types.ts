@@ -668,7 +668,8 @@ export interface DineInInfoDto {
 
 export interface FulfillmentDto {
   selectedService: number;
-  selectedDate: number;
+  // as toISODate
+  selectedDate: string;
   selectedTime: number;
   dineInInfo: DineInInfoDto | null;
   deliveryInfo: DeliveryInfoDto | null;
@@ -694,11 +695,11 @@ export interface CartEntry extends CoreCartEntry<WProduct> {
 };
 
 export interface MetricsDto {
-  // the server time of page load
+  // ISO string of the server time given during page load
   pageLoadTime: number;
   // the Date.now() on load
   pageLoadTimeLocal: number;
-  // max of difference between current time and load time and the previous value of this and the time we think it's been since we last updated it
+  // roughTicksSinceLoad + max(TIMING_POLLING_INTERVAL, (currentTime - Previous value of currentTime)
   roughTicksSinceLoad: number;
   // number of times the user got pushed to a new time
   numTimeBumps: number;
@@ -721,7 +722,6 @@ export interface CreateOrderRequestV2 {
   nonce?: string;
   customerInfo: CustomerInfoDto;
   fulfillmentDto: FulfillmentDto;
-  sliced: boolean;
   cart: CoreCartEntry<WCPProductV2Dto>[];
   special_instructions: string;
   totals: TotalsV2;

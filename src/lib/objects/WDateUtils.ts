@@ -42,7 +42,7 @@ export class WDateUtils {
 
   static ExtractCompareDate(a: [string, IntervalTupleList], b: [string, IntervalTupleList]) {
     // compares the starting time of two intervals
-    const reference = new Date();
+    const reference = Date.now();
     return compareAsc(parse(a[0], WDateUtils.DATE_STRING_INTERNAL_FORMAT, reference), parse(b[0], WDateUtils.DATE_STRING_INTERNAL_FORMAT, reference));
   };
 
