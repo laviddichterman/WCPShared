@@ -9,6 +9,7 @@ import {
   isSameDay,
   lightFormat,
   parse,
+  parseISO,
   startOfDay,
   subMinutes
 } from 'date-fns';
@@ -21,7 +22,7 @@ export class WDateUtils {
     return "yyyyMMdd";
   }
 
-  static ComputeServiceDateTime(selectedDate: Date | number, selectedTime: number) { return subMinutes(addDays(selectedDate, 1), 1440 - selectedTime); };
+  static ComputeServiceDateTime(selectedDate: string, selectedTime: number) { return subMinutes(addDays(parseISO(selectedDate), 1), 1440 - selectedTime); };
 
   static MinutesToPrintTime(minutes: number) {
     if (Number.isNaN(minutes) || minutes < 0) {
@@ -53,14 +54,14 @@ export class WDateUtils {
    * @param {String} day - the date, in DATE_STRING_INTERNAL_FORMAT
    * @returns the union of blocked off times for all specified services
    */
-  static BlockedOffIntervalsForServicesAndDay(BLOCKED_OFF: JSFEBlockedOff, services: ServicesEnableMap, day: string) {
+  static BlockedOffIntervalsForServicesAndDay(BLOCKED_OFF: JSFEBlockedOff, services: ServicesEnableMap, yyyyMMdd: string) {
     let intervals: IntervalTupleList = [];
     Object.keys(services).forEach((i: PropertyKey) => {
       if (services[Number(i)]) {
         const blockedOffForService = BLOCKED_OFF[Number(i)];
         // eslint-disable-next-line no-restricted-syntax
         for (let j = 0; j < blockedOffForService.length; ++j) {
-          if (blockedOffForService[j][0] === day) {
+          if (blockedOffForService[j][0] === yyyyMMdd) {
             intervals = intervals.concat(blockedOffForService[j][1]);
             break;
           }
@@ -185,7 +186,7 @@ export class WDateUtils {
    * gets the union of operating hours for a given day and the provided services
    * @param {OperatingHoursList[]} operating_hours - the operating hour intervals from the settings
    * @param {{Number: boolean}} services - map from service index to enabled state
-   * @param {Number} day_index - the day of the week, 0 = sunday
+   * @param {Number} day_index - the day of the week, 0 = sunday // consider using something like differenceInDays(previousSunday(now), now)
    * @returns 
    */
   static GetOperatingHoursForServicesAndDay(operating_hours: OperatingHoursList[], services: ServicesEnableMap, day_index: DayIndex) {
@@ -239,10 +240,11 @@ export class WDateUtils {
     return pushed_time > operating_intervals[operating_intervals.length - 1][1] ? -1 : pushed_time;
   }
 
-  static GetInfoMapForAvailabilityComputation(BLOCKED_OFF: JSFEBlockedOff, SETTINGS: IWSettings, LEAD_TIMES: number[], date: Date | number, services: ServicesEnableMap, stuff_to_depreciate_map: { cart_based_lead_time: number; size: number; }) {
-    const internal_formatted_date = lightFormat(date, WDateUtils.DATE_STRING_INTERNAL_FORMAT);
+  static GetInfoMapForAvailabilityComputation(BLOCKED_OFF: JSFEBlockedOff, SETTINGS: IWSettings, LEAD_TIMES: number[], date: string, services: ServicesEnableMap, stuff_to_depreciate_map: { cart_based_lead_time: number; size: number; }) {
+    const jsDate = parseISO(date);
+    const internal_formatted_date = lightFormat(jsDate, WDateUtils.DATE_STRING_INTERNAL_FORMAT);
     const blocked_off_union = WDateUtils.BlockedOffIntervalsForServicesAndDay(BLOCKED_OFF, services, internal_formatted_date);
-    const operating_intervals = WDateUtils.GetOperatingHoursForServicesAndDay(SETTINGS.operating_hours, services, getDay(date));
+    const operating_intervals = WDateUtils.GetOperatingHoursForServicesAndDay(SETTINGS.operating_hours, services, getDay(jsDate));
     const min_time_step = Math.min(...SETTINGS.time_step.filter((_, i) => Object.hasOwn(services, i) && services[i]));
     const min_lead_time = Math.min(...LEAD_TIMES.filter((_: any, i: PropertyKey) => Object.hasOwn(services, i) && services[Number(i)]));
     const order_size = Object.hasOwn(stuff_to_depreciate_map, "size") ? stuff_to_depreciate_map.size : 1;
@@ -256,11 +258,11 @@ export class WDateUtils {
    * Gets an array of Objects containing information for WCPReactConfig's blocked off
    * select widget
    * @param INFO - as computed by GetInfoMapForAvailabilityComputation
-   * @param date - date to find the first available time for
-   * @param currently - the current date and time according to dog (the server, whatever)
+   * @param date - ISO string of date to find the first available time for
+   * @param currently - ISO string of the current date and time according to dog (the server, whatever)
    * @returns {[{value: Number, disabled: Boolean}]}
    */
-  static GetOptionsForDate(INFO: AvailabilityInfoMap, date: Date | number, currently: Date | number) {
+  static GetOptionsForDate(INFO: AvailabilityInfoMap, date: string, currently: string) {
     let earliest_time = WDateUtils.ComputeFirstAvailableTimeForDate(INFO, date, currently);
     if (earliest_time === -1) {
       return [];
@@ -280,15 +282,16 @@ export class WDateUtils {
   /**
    * @param {AvailabilityInfoMap} INFO - as computed by GetInfoMapForAvailabilityComputation  
    * @param date - date to find the first available time for
-   * @param current_moment - the current date and time according to dog (the server, whatever)
+   * @param currently - ISO string of the current date and time according to dog (the server, whatever)
    * @returns the first available time in minutes from the start of the day (not taking into account DST), or -1 if no time is available
    */
-  static ComputeFirstAvailableTimeForDate(INFO: AvailabilityInfoMap, date: Date | number, currently: Date | number) {
+  static ComputeFirstAvailableTimeForDate(INFO: AvailabilityInfoMap, date: string, currently: string) {
     if (INFO.operating_intervals.length === 0) {
       return -1;
     }
-    const currentTimePlusLeadTime = addMinutes(currently, INFO.leadTime);
-    if (isSameDay(date, currentTimePlusLeadTime)) {
+    const jsDate = parseISO(date);
+    const currentTimePlusLeadTime = addMinutes(parseISO(currently), INFO.leadTime);
+    if (isSameDay(jsDate, currentTimePlusLeadTime)) {
       // NOTE: this doesn't work if we have active hours during a DST change
       const currentTimePlusLeadTimeMinsFromStartOfDay = getHours(currentTimePlusLeadTime) * 60 + getMinutes(currentTimePlusLeadTime);
       if (currentTimePlusLeadTimeMinsFromStartOfDay > INFO.operating_intervals[0][0]) {
@@ -297,7 +300,7 @@ export class WDateUtils {
       }
     }
 
-    if (isBefore(date, startOfDay(currentTimePlusLeadTime))) {
+    if (isBefore(jsDate, startOfDay(currentTimePlusLeadTime))) {
       // if we don't have any operating hours for the day or
       // if by adding the lead time we've passed the date we're looking for
       return -1;

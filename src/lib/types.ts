@@ -703,8 +703,14 @@ export interface MetricsDto {
   roughTicksSinceLoad: number;
   // number of times the user got pushed to a new time
   numTimeBumps: number;
-  // current time, or the last time we checked the validity of our availability
+  // times the tip was adjusted
+  numTipAdjusts: number;
+  // times the tip got reset due to being under minimum
+  numTipFixed: number;
+  // current time, or the last time we checked the validity of our availability, this tracks the server time
   currentTime: number;
+  // current local time, compared to the pageLoadTimeLocal to determine how long since load
+  currentLocalTime: number;
   // time to first product added to cart
   timeToFirstProduct: number;
   // time of selecting a service date
