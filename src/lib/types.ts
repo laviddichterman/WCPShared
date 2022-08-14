@@ -34,6 +34,9 @@ export interface FulfillmentConfig {
   id: string;
   service: FulfillmentType;
   terms: string[];
+  messages: {
+    CONFIRMATION: string;
+  };
   menuBaseCategoryId: string;
   orderBaseCategoryId: string;
   // autograt function is a to-be-defined type reference
@@ -41,9 +44,11 @@ export interface FulfillmentConfig {
   // serviceCharge function is a to-be-defined type reference, same as autograt function
   serviceCharge: number | string;
   leadTime: number;
-  operatingHours: Record<DayOfTheWeek, IntervalTupleList>;
-  specialHours: Record<string /* in yyyyMMdd format */, IntervalTupleList>;
-  blockedOff: IWInterval[];
+  operatingHours: Record<DayOfTheWeek, IWInterval[]>;
+  // string in formatISO(d, {format: 'basic', representation: 'date'}) format */
+  specialHours: Record<string, IWInterval[]>;
+  // string in formatISO(d, {format: 'basic', representation: 'date'}) format */
+  blockedOff: Record<string, IWInterval[]>;
   minDuration: number;
   maxDuration: number;
   timeStep: number;
