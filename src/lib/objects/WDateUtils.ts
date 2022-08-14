@@ -7,8 +7,7 @@ import {
   getMinutes,
   isBefore,
   isSameDay,
-  lightFormat,
-  parse,
+  formatISO,
   parseISO,
   startOfDay,
   subMinutes
@@ -18,8 +17,20 @@ import { AvailabilityInfoMap, DayIndex, IntervalTupleList, IWSettings, JSFEBlock
 
 export class WDateUtils {
 
-  static get DATE_STRING_INTERNAL_FORMAT() {
-    return "yyyyMMdd";
+  static get ISODateTimeNoOffset() {
+    return "yyyy-MM-dd'T'HH:mm:ss";
+  }
+
+  static get ServiceDateDisplayFormat() {
+    return 'EEEE, MMMM dd, yyyy';
+  }
+
+  static get DisplayTimeFormat() {
+    return "h:mma";
+  }
+
+  static formatISODate(d: Date | number) {
+    return formatISO(d, { format: 'basic', representation: 'date' });
   }
 
   static ComputeServiceDateTime(selectedDate: string, selectedTime: number) { return subMinutes(addDays(parseISO(selectedDate), 1), 1440 - selectedTime); };
@@ -42,26 +53,24 @@ export class WDateUtils {
   };
 
   static ExtractCompareDate(a: [string, IntervalTupleList], b: [string, IntervalTupleList]) {
-    // compares the starting time of two intervals
-    const reference = Date.now();
-    return compareAsc(parse(a[0], WDateUtils.DATE_STRING_INTERNAL_FORMAT, reference), parse(b[0], WDateUtils.DATE_STRING_INTERNAL_FORMAT, reference));
+    return compareAsc(parseISO(a[0]), parseISO(b[0]));
   };
 
   /**
    * gets the union of blocked off hours for a given date and the provided services
    * @param {JSFEBlockedOff} BLOCKED_OFF 
    * @param {ServicesEnableMap} services - map from service index to enabled state
-   * @param {String} day - the date, in DATE_STRING_INTERNAL_FORMAT
+   * @param {String} dateString - the date, in formatISODate
    * @returns the union of blocked off times for all specified services
    */
-  static BlockedOffIntervalsForServicesAndDay(BLOCKED_OFF: JSFEBlockedOff, services: ServicesEnableMap, yyyyMMdd: string) {
+  static BlockedOffIntervalsForServicesAndDay(BLOCKED_OFF: JSFEBlockedOff, services: ServicesEnableMap, dateString: string) {
     let intervals: IntervalTupleList = [];
     Object.keys(services).forEach((i: PropertyKey) => {
       if (services[Number(i)]) {
         const blockedOffForService = BLOCKED_OFF[Number(i)];
         // eslint-disable-next-line no-restricted-syntax
         for (let j = 0; j < blockedOffForService.length; ++j) {
-          if (blockedOffForService[j][0] === yyyyMMdd) {
+          if (blockedOffForService[j][0] === dateString) {
             intervals = intervals.concat(blockedOffForService[j][1]);
             break;
           }
@@ -242,7 +251,7 @@ export class WDateUtils {
 
   static GetInfoMapForAvailabilityComputation(BLOCKED_OFF: JSFEBlockedOff, SETTINGS: IWSettings, LEAD_TIMES: number[], date: string, services: ServicesEnableMap, stuff_to_depreciate_map: { cart_based_lead_time: number; size: number; }) {
     const jsDate = parseISO(date);
-    const internal_formatted_date = lightFormat(jsDate, WDateUtils.DATE_STRING_INTERNAL_FORMAT);
+    const internal_formatted_date = WDateUtils.formatISODate(jsDate);
     const blocked_off_union = WDateUtils.BlockedOffIntervalsForServicesAndDay(BLOCKED_OFF, services, internal_formatted_date);
     const operating_intervals = WDateUtils.GetOperatingHoursForServicesAndDay(SETTINGS.operating_hours, services, getDay(jsDate));
     const min_time_step = Math.min(...SETTINGS.time_step.filter((_, i) => Object.hasOwn(services, i) && services[i]));

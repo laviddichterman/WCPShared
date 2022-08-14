@@ -16,7 +16,7 @@ import {
   MetadataField,
   OptionPlacement,
   OptionQualifier,
-  ProductInstanceFunctionOperator,
+  LogicalFunctionOperator,
   ProductInstanceFunctionType,
   ProductMetadataExpression,
   PRODUCT_LOCATION,
@@ -24,17 +24,55 @@ import {
 } from '../types';
 
 
-const ProductInstanceFunctionOperatorToHumanString = function (op: ProductInstanceFunctionOperator) {
+export const LogicalFunctionOperatorToHumanString = function (op: LogicalFunctionOperator) {
   switch (op) {
-    case ProductInstanceFunctionOperator.AND: return 'and';
-    case ProductInstanceFunctionOperator.EQ: return 'equals';
-    case ProductInstanceFunctionOperator.GE: return 'is greater than or equal to';
-    case ProductInstanceFunctionOperator.GT: return 'is greater than';
-    case ProductInstanceFunctionOperator.LE: return 'is less than or equal to';
-    case ProductInstanceFunctionOperator.LT: return 'is less than';
-    case ProductInstanceFunctionOperator.NE: return 'does not equal';
-    case ProductInstanceFunctionOperator.NOT: return 'is not';
-    case ProductInstanceFunctionOperator.OR: return 'or';
+    case LogicalFunctionOperator.AND: return 'and';
+    case LogicalFunctionOperator.EQ: return 'equals';
+    case LogicalFunctionOperator.GE: return 'is greater than or equal to';
+    case LogicalFunctionOperator.GT: return 'is greater than';
+    case LogicalFunctionOperator.LE: return 'is less than or equal to';
+    case LogicalFunctionOperator.LT: return 'is less than';
+    case LogicalFunctionOperator.NE: return 'does not equal';
+    case LogicalFunctionOperator.NOT: return 'is not';
+    case LogicalFunctionOperator.OR: return 'or';
+  }
+}
+
+export const FindModifierPlacementExpressionsForMTID = function (expr: IAbstractExpression, mtid: string): IAbstractExpression[] {
+  switch (expr.discriminator) {
+    case ProductInstanceFunctionType.IfElse:
+      return FindModifierPlacementExpressionsForMTID(expr.expr.true_branch, mtid).concat(
+        FindModifierPlacementExpressionsForMTID(expr.expr.false_branch, mtid)).concat(
+          FindModifierPlacementExpressionsForMTID(expr.expr.test, mtid));
+    case ProductInstanceFunctionType.Logical:
+      const operandA_expressions = FindModifierPlacementExpressionsForMTID(expr.expr.operandA, mtid);
+      const operandB_expressions = expr.expr.operandB !== undefined ? FindModifierPlacementExpressionsForMTID(expr.expr.operandB, mtid) : [];
+      return operandA_expressions.concat(operandB_expressions);
+    case ProductInstanceFunctionType.ModifierPlacement:
+      return expr.expr.mtid === mtid ? [expr] : [];
+    case ProductInstanceFunctionType.HasAnyOfModifierType:
+    case ProductInstanceFunctionType.ConstLiteral:
+    case ProductInstanceFunctionType.ProductMetadata:
+      return [];
+  }
+}
+
+export const FindHasAnyModifierExpressionsForMTID = function (expr: IAbstractExpression, mtid: string): IAbstractExpression[] {
+  switch (expr.discriminator) {
+    case ProductInstanceFunctionType.IfElse:
+      return FindHasAnyModifierExpressionsForMTID(expr.expr.true_branch, mtid).concat(
+        FindHasAnyModifierExpressionsForMTID(expr.expr.false_branch, mtid)).concat(
+          FindHasAnyModifierExpressionsForMTID(expr.expr.test, mtid));
+    case ProductInstanceFunctionType.Logical:
+      const operandA_expressions = FindHasAnyModifierExpressionsForMTID(expr.expr.operandA, mtid);
+      const operandB_expressions = expr.expr.operandB !== undefined ? FindHasAnyModifierExpressionsForMTID(expr.expr.operandB, mtid) : [];
+      return operandA_expressions.concat(operandB_expressions);
+    case ProductInstanceFunctionType.HasAnyOfModifierType:
+      return expr.expr.mtid === mtid ? [expr] : [];
+    case ProductInstanceFunctionType.ModifierPlacement:
+    case ProductInstanceFunctionType.ConstLiteral:
+    case ProductInstanceFunctionType.ProductMetadata:
+      return [];
   }
 }
 
@@ -48,7 +86,7 @@ const ModifierPlacementCompareToPlacementHumanReadable = function (placementExtr
 }
 
 export class WFunctional {
-  static ProcessIfElseStatement(prod: WCPProduct, stmt: IIfElseExpression, cat: ICatalog) {
+  static ProcessIfElseStatement(prod: WCPProduct, stmt: IIfElseExpression<IAbstractExpression>, cat: ICatalog) {
     const branch_test = WFunctional.ProcessAbstractExpressionStatement(prod, stmt.test, cat);
     if (branch_test) {
       return WFunctional.ProcessAbstractExpressionStatement(prod, stmt.true_branch, cat);
@@ -56,7 +94,7 @@ export class WFunctional {
     return WFunctional.ProcessAbstractExpressionStatement(prod, stmt.false_branch, cat);
   }
 
-  static ProcessIfElseStatementWithTracking(prod: WCPProduct, stmt: IIfElseExpression, cat: ICatalog): [string | number | boolean | OptionPlacement, IAbstractExpression[]] {
+  static ProcessIfElseStatementWithTracking(prod: WCPProduct, stmt: IIfElseExpression<IAbstractExpression>, cat: ICatalog): [string | number | boolean | OptionPlacement, IAbstractExpression[]] {
     const branchTestResult = WFunctional.ProcessAbstractExpressionStatementWithTracking(prod, stmt.test, cat);
     const branchResult = branchTestResult[0] ?
       WFunctional.ProcessAbstractExpressionStatementWithTracking(prod, stmt.true_branch, cat) :
@@ -64,7 +102,7 @@ export class WFunctional {
     return branchResult[0] === true ? branchResult : [false, [<IAbstractExpression>{
       discriminator: ProductInstanceFunctionType.Logical,
       expr: {
-        operator: ProductInstanceFunctionOperator.AND,
+        operator: LogicalFunctionOperator.AND,
         operandA: branchTestResult[1][0],
         operandB: branchResult[1][0]
       }
@@ -75,76 +113,76 @@ export class WFunctional {
     return stmt.value;
   }
 
-  static ProcessLogicalOperatorStatement(prod: WCPProduct, stmt: ILogicalExpression, cat: ICatalog): boolean {
+  static ProcessLogicalOperatorStatement(prod: WCPProduct, stmt: ILogicalExpression<IAbstractExpression>, cat: ICatalog): boolean {
     switch (stmt.operator) {
-      case ProductInstanceFunctionOperator.AND:
+      case LogicalFunctionOperator.AND:
         return Boolean(WFunctional.ProcessAbstractExpressionStatement(prod, stmt.operandA, cat)) &&
           Boolean(WFunctional.ProcessAbstractExpressionStatement(prod, stmt.operandB!, cat));
-      case ProductInstanceFunctionOperator.OR:
+      case LogicalFunctionOperator.OR:
         return Boolean(WFunctional.ProcessAbstractExpressionStatement(prod, stmt.operandA, cat)) ||
           Boolean(WFunctional.ProcessAbstractExpressionStatement(prod, stmt.operandB!, cat));
-      case ProductInstanceFunctionOperator.NOT:
+      case LogicalFunctionOperator.NOT:
         return !WFunctional.ProcessAbstractExpressionStatement(prod, stmt.operandA, cat);
-      case ProductInstanceFunctionOperator.EQ:
+      case LogicalFunctionOperator.EQ:
         return WFunctional.ProcessAbstractExpressionStatement(prod, stmt.operandA, cat) ===
           WFunctional.ProcessAbstractExpressionStatement(prod, stmt.operandB!, cat);
-      case ProductInstanceFunctionOperator.NE:
+      case LogicalFunctionOperator.NE:
         return WFunctional.ProcessAbstractExpressionStatement(prod, stmt.operandA, cat) !==
           WFunctional.ProcessAbstractExpressionStatement(prod, stmt.operandB!, cat);
-      case ProductInstanceFunctionOperator.GT:
+      case LogicalFunctionOperator.GT:
         return WFunctional.ProcessAbstractExpressionStatement(prod, stmt.operandA, cat) >
           WFunctional.ProcessAbstractExpressionStatement(prod, stmt.operandB!, cat);
-      case ProductInstanceFunctionOperator.GE:
+      case LogicalFunctionOperator.GE:
         return WFunctional.ProcessAbstractExpressionStatement(prod, stmt.operandA, cat) >=
           WFunctional.ProcessAbstractExpressionStatement(prod, stmt.operandB!, cat);
-      case ProductInstanceFunctionOperator.LT:
+      case LogicalFunctionOperator.LT:
         return WFunctional.ProcessAbstractExpressionStatement(prod, stmt.operandA, cat) <
           WFunctional.ProcessAbstractExpressionStatement(prod, stmt.operandB!, cat);
-      case ProductInstanceFunctionOperator.LE:
+      case LogicalFunctionOperator.LE:
         return WFunctional.ProcessAbstractExpressionStatement(prod, stmt.operandA, cat) <=
           WFunctional.ProcessAbstractExpressionStatement(prod, stmt.operandB!, cat);
     }
   }
 
-  static ProcessLogicalOperatorStatementWithTracking(prod: WCPProduct, stmt: ILogicalExpression, cat: ICatalog): [boolean, IAbstractExpression[]] {
+  static ProcessLogicalOperatorStatementWithTracking(prod: WCPProduct, stmt: ILogicalExpression<IAbstractExpression>, cat: ICatalog): [boolean, IAbstractExpression[]] {
     switch (stmt.operator) {
-      case ProductInstanceFunctionOperator.AND:
+      case LogicalFunctionOperator.AND:
         const andResultA = <[boolean, IAbstractExpression[]]>WFunctional.ProcessAbstractExpressionStatementWithTracking(prod, stmt.operandA, cat);
         if (andResultA[0]) {
           return <[boolean, IAbstractExpression[]]>WFunctional.ProcessAbstractExpressionStatementWithTracking(prod, stmt.operandB!, cat);
         }
         return andResultA;
-      case ProductInstanceFunctionOperator.OR:
+      case LogicalFunctionOperator.OR:
         const orResultA = <[boolean, IAbstractExpression[]]>WFunctional.ProcessAbstractExpressionStatementWithTracking(prod, stmt.operandA, cat);
         if (orResultA[0]) {
           return orResultA;
         }
         const orResultB = <[boolean, IAbstractExpression[]]>WFunctional.ProcessAbstractExpressionStatementWithTracking(prod, stmt.operandB!, cat);
         return orResultB[0] == orResultB[0] ? [true, []] : [false, [<IAbstractExpression>{ discriminator: ProductInstanceFunctionType.Logical, expr: stmt }]];
-      case ProductInstanceFunctionOperator.NOT:
+      case LogicalFunctionOperator.NOT:
         const notResult = WFunctional.ProcessAbstractExpressionStatementWithTracking(prod, stmt.operandA, cat);
         return !notResult[0] ? [true, []] : [false, [<IAbstractExpression>{ discriminator: ProductInstanceFunctionType.Logical, expr: stmt }]];
-      case ProductInstanceFunctionOperator.EQ:
+      case LogicalFunctionOperator.EQ:
         const eqResultA = WFunctional.ProcessAbstractExpressionStatementWithTracking(prod, stmt.operandA, cat);
         const eqResultB = WFunctional.ProcessAbstractExpressionStatementWithTracking(prod, stmt.operandB!, cat);
         return eqResultA[0] == eqResultB[0] ? [true, []] : [false, [<IAbstractExpression>{ discriminator: ProductInstanceFunctionType.Logical, expr: stmt }]];
-      case ProductInstanceFunctionOperator.NE:
+      case LogicalFunctionOperator.NE:
         const neqResultA = WFunctional.ProcessAbstractExpressionStatementWithTracking(prod, stmt.operandA, cat);
         const neqResultB = WFunctional.ProcessAbstractExpressionStatementWithTracking(prod, stmt.operandB!, cat);
         return neqResultA[0] != neqResultB[0] ? [true, []] : [false, [<IAbstractExpression>{ discriminator: ProductInstanceFunctionType.Logical, expr: stmt }]];
-      case ProductInstanceFunctionOperator.GT:
+      case LogicalFunctionOperator.GT:
         const gtResultA = WFunctional.ProcessAbstractExpressionStatementWithTracking(prod, stmt.operandA, cat);
         const gtResultB = WFunctional.ProcessAbstractExpressionStatementWithTracking(prod, stmt.operandB!, cat);
         return gtResultA[0] > gtResultB[0] ? [true, []] : [false, [<IAbstractExpression>{ discriminator: ProductInstanceFunctionType.Logical, expr: stmt }]];
-      case ProductInstanceFunctionOperator.GE:
+      case LogicalFunctionOperator.GE:
         const geResultA = WFunctional.ProcessAbstractExpressionStatementWithTracking(prod, stmt.operandA, cat);
         const geResultB = WFunctional.ProcessAbstractExpressionStatementWithTracking(prod, stmt.operandB!, cat);
         return geResultA[0] >= geResultB[0] ? [true, []] : [false, [<IAbstractExpression>{ discriminator: ProductInstanceFunctionType.Logical, expr: stmt }]];
-      case ProductInstanceFunctionOperator.LT:
+      case LogicalFunctionOperator.LT:
         const ltResultA = WFunctional.ProcessAbstractExpressionStatementWithTracking(prod, stmt.operandA, cat);
         const ltResultB = WFunctional.ProcessAbstractExpressionStatementWithTracking(prod, stmt.operandB!, cat);
         return ltResultA[0] < ltResultB[0] ? [true, []] : [false, [<IAbstractExpression>{ discriminator: ProductInstanceFunctionType.Logical, expr: stmt }]];
-      case ProductInstanceFunctionOperator.LE:
+      case LogicalFunctionOperator.LE:
         const leResultA = WFunctional.ProcessAbstractExpressionStatementWithTracking(prod, stmt.operandA, cat);
         const leResultB = WFunctional.ProcessAbstractExpressionStatementWithTracking(prod, stmt.operandB!, cat);
         return leResultA[0] <= leResultB[0] ? [true, []] : [false, [<IAbstractExpression>{ discriminator: ProductInstanceFunctionType.Logical, expr: stmt }]];
@@ -224,9 +262,9 @@ export class WFunctional {
   }
 
   static AbstractExpressionStatementToString(stmt: IAbstractExpression, mods: ICatalogModifiers): string {
-    function logical(expr: ILogicalExpression) {
+    function logical(expr: ILogicalExpression<IAbstractExpression>) {
       const operandAString = WFunctional.AbstractExpressionStatementToString(expr.operandA, mods);
-      return expr.operator === ProductInstanceFunctionOperator.NOT || !expr.operandB ? `NOT (${operandAString})` : `(${operandAString} ${expr.operator} ${WFunctional.AbstractExpressionStatementToString(expr.operandB, mods)})`;
+      return expr.operator === LogicalFunctionOperator.NOT || !expr.operandB ? `NOT (${operandAString})` : `(${operandAString} ${expr.operator} ${WFunctional.AbstractExpressionStatementToString(expr.operandB, mods)})`;
     }
     function modifierPlacement(expr: IModifierPlacementExpression) {
       if (!Object.hasOwn(mods, expr.mtid)) {
@@ -234,7 +272,7 @@ export class WFunctional {
       }
       const val = mods[expr.mtid];
       const opt = val.options.find(x => x.id === expr.moid) as unknown as IOption;
-      return `${val.modifier_type.name}.${opt.item.display_name}`;
+      return `${val.modifier_type.name}.${opt.display_name}`;
     }
     switch (stmt.discriminator) {
       case ProductInstanceFunctionType.ConstLiteral:
@@ -264,9 +302,9 @@ export class WFunctional {
   }
 
   static AbstractExpressionStatementToHumanReadableString(stmt: IAbstractExpression, mods: ICatalogModifiers): string {
-    function logical(expr: ILogicalExpression) {
+    function logical(expr: ILogicalExpression<IAbstractExpression>) {
       const operandAString = WFunctional.AbstractExpressionStatementToHumanReadableString(expr.operandA, mods);
-      if (expr.operator === ProductInstanceFunctionOperator.NOT || !expr.operandB) {
+      if (expr.operator === LogicalFunctionOperator.NOT || !expr.operandB) {
         if (expr.operandA.discriminator === ProductInstanceFunctionType.HasAnyOfModifierType) {
           return `no ${mods[expr.operandA.expr.mtid].modifier_type.name} modifiers are selected`
         }
@@ -276,21 +314,21 @@ export class WFunctional {
       if (expr.operandA.discriminator === ProductInstanceFunctionType.ModifierPlacement &&
         expr.operandB.discriminator === ProductInstanceFunctionType.ConstLiteral &&
         expr.operandB.expr.discriminator === ConstLiteralDiscriminator.MODIFIER_PLACEMENT) {
-        if (expr.operator === ProductInstanceFunctionOperator.EQ) {
+        if (expr.operator === LogicalFunctionOperator.EQ) {
           return ModifierPlacementCompareToPlacementHumanReadable(operandAString, expr.operandB.expr, true);
-        } else if (expr.operator === ProductInstanceFunctionOperator.NE) {
+        } else if (expr.operator === LogicalFunctionOperator.NE) {
           return ModifierPlacementCompareToPlacementHumanReadable(operandAString, expr.operandB.expr, false);
         }
       } else if (expr.operandB.discriminator === ProductInstanceFunctionType.ModifierPlacement &&
         expr.operandA.discriminator === ProductInstanceFunctionType.ConstLiteral &&
         expr.operandA.expr.discriminator === ConstLiteralDiscriminator.MODIFIER_PLACEMENT) {
-        if (expr.operator === ProductInstanceFunctionOperator.EQ) {
+        if (expr.operator === LogicalFunctionOperator.EQ) {
           return ModifierPlacementCompareToPlacementHumanReadable(operandBString, expr.operandA.expr, true);
-        } else if (expr.operator === ProductInstanceFunctionOperator.NE) {
+        } else if (expr.operator === LogicalFunctionOperator.NE) {
           return ModifierPlacementCompareToPlacementHumanReadable(operandBString, expr.operandA.expr, false);
         }
       }
-      return `${operandAString} ${ProductInstanceFunctionOperatorToHumanString(expr.operator)} ${operandBString}`;
+      return `${operandAString} ${LogicalFunctionOperatorToHumanString(expr.operator)} ${operandBString}`;
     }
     function modifierPlacement(expr: IModifierPlacementExpression) {
       if (!Object.hasOwn(mods, expr.mtid)) {
@@ -298,7 +336,7 @@ export class WFunctional {
       }
       const val = mods[expr.mtid];
       const opt = val.options.find(x => x.id === expr.moid)!;
-      return `${opt.item.display_name}`;
+      return `${opt.display_name}`;
     }
     switch (stmt.discriminator) {
       case ProductInstanceFunctionType.ConstLiteral:
@@ -326,6 +364,7 @@ export class WFunctional {
         return `:${MetadataField[stmt.expr.field]}@${PRODUCT_LOCATION[stmt.expr.location]}`;
     }
   }
+
 
   // TODO: add function to test an AbstractExpression for completeness see https://app.asana.com/0/1184794277483753/1200242818246330
   // maybe this is recursive or just looks at the current level for the UI and requires the caller to recurse the tree, or maybe we provide both

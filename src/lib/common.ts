@@ -1,13 +1,9 @@
 import { getTime } from "date-fns";
 import { CoreCartEntry, DISABLE_REASON, IWInterval, ModifiersMap, OptionPlacement, OptionQualifier, TipSelection, ValidateAndLockCreditResponse, WProduct } from "./types";
 
-export const EMAIL_REGEX = new RegExp(/^[_A-Za-z0-9\-+]+(\.[_A-Za-z0-9\-+]+)*@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*(\.[A-Za-z]{2,})$/);
-
 export const CREDIT_REGEX = /[A-Za-z0-9]{3}-[A-Za-z0-9]{2}-[A-Za-z0-9]{3}-[A-Z0-9]{8}$/;
 
 export const PRODUCT_NAME_MODIFIER_TEMPLATE_REGEX = /(\{[A-Za-z0-9]+\})/g;
-
-export const SERVICE_DATE_DISPLAY_FORMAT = 'EEEE, MMMM dd, yyyy';
 
 export const GetPlacementFromMIDOID = (modifiers: ModifiersMap, mid: string, oid: string) => {
   const NOT_FOUND = { option_id: oid, placement: OptionPlacement.NONE, qualifier: OptionQualifier.REGULAR };

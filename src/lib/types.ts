@@ -32,30 +32,58 @@ export enum FulfillmentType {
 
 export interface FulfillmentConfig {
   id: string;
+  // the user visible name of the fulfillment
+  displayName: string;
+  // display order of the fulfillment
+  ordinal: number;
+  // what "type" of service is this?
   service: FulfillmentType;
+  // terms that must be agreed to for this fulfillment
   terms: string[];
+  // UI messaging strings
   messages: {
     CONFIRMATION: string;
   };
+  // menu page categoryId
   menuBaseCategoryId: string;
+  // order page categoryId
   orderBaseCategoryId: string;
-  // autograt function is a to-be-defined type reference
-  autograt: boolean | string;
-  // serviceCharge function is a to-be-defined type reference, same as autograt function
-  serviceCharge: number | string;
+  // if pre-payment is required
+  requirePrepayment: boolean;
+  // if pre-payment is allowed
+  allowPrepayment: boolean;
+  // OrderFunction and value of autogratuity 
+  autograt: {
+    // autograt refers to OrderInstanceFunction
+    function: string;
+    percentage: number;
+  } | null;
+  // serviceCharge refers to OrderInstanceFunction, currently not consumed
+  serviceCharge: string | null;
+  // minimum time to place an order of this type
   leadTime: number;
+  // operating hours for this service type
   operatingHours: Record<DayOfTheWeek, IWInterval[]>;
-  // string in formatISO(d, {format: 'basic', representation: 'date'}) format */
+  // special hours for this service
+  // string in formatISODate format */
   specialHours: Record<string, IWInterval[]>;
-  // string in formatISO(d, {format: 'basic', representation: 'date'}) format */
+  // blocked off times for this service
+  // string in formatISODate format */
   blockedOff: Record<string, IWInterval[]>;
+  // minimum "length" of the service. Pickup could be over a period of time, or it could be just one moment
   minDuration: number;
+  // maximum duration of the service. For time-limited dine-ins this would be the length of their reservation
   maxDuration: number;
+  // allow service time start selection every {timeStep} minutes
   timeStep: number;
+  // maximum party size
   maxGuests?: number;
   // maybe this is a ServiceArea object with data about conditions for validity within a service area.
+  // Perhaps it's a list of serviceAreas and their cost
   // definitely deferring that work for now.
   serviceArea?: Polygon;
+  // we might need some printer and KDS setting in here too... 
+  // maybe split that to another interface and have socketio only surface the public stuff?
 };
 
 export type WIntervalTuple = [number, number];
@@ -144,9 +172,10 @@ export enum ProductInstanceFunctionType {
   'ProductMetadata' = 'ProductMetadata'
 };
 
-export interface IExternalIDs {
-  revelID: string;
-  squareID: string;
+export enum OrderInstanceFunctionType {
+  'ConstLiteral' = "ConstLiteral",
+  'IfElse' = 'IfElse',
+  'Logical' = 'Logical'
 };
 
 export enum MODIFIER_CLASS {
@@ -221,13 +250,13 @@ export type IConstLiteralExpression =
   ConstModifierPlacementLiteralExpression |
   ConstModifierQualifierLiteralExpression;
 
-export interface IIfElseExpression {
-  true_branch: IAbstractExpression;
-  false_branch: IAbstractExpression;
-  test: IAbstractExpression;
+export interface IIfElseExpression<T> {
+  true_branch: T;
+  false_branch: T;
+  test: T;
 };
 
-export enum ProductInstanceFunctionOperator {
+export enum LogicalFunctionOperator {
   'AND' = "AND",
   'OR' = "OR",
   'NOT' = "NOT",
@@ -239,10 +268,10 @@ export enum ProductInstanceFunctionOperator {
   'LE' = "LE"
 };
 
-export interface ILogicalExpression {
-  operandA: IAbstractExpression;
-  operandB?: IAbstractExpression;
-  operator: ProductInstanceFunctionOperator;
+export interface ILogicalExpression<T> {
+  operandA: T;
+  operandB?: T;
+  operator: LogicalFunctionOperator;
 };
 export interface IModifierPlacementExpression {
   mtid: string;
@@ -266,11 +295,11 @@ export type AbstractExpressionProductMetadata = {
   discriminator: ProductInstanceFunctionType.ProductMetadata;
 };
 export type AbstractExpressionIfElseExpression = {
-  expr: IIfElseExpression;
+  expr: IIfElseExpression<IAbstractExpression>;
   discriminator: ProductInstanceFunctionType.IfElse;
 };
 export type AbstractExpressionLogicalExpression = {
-  expr: ILogicalExpression;
+  expr: ILogicalExpression<IAbstractExpression>;
   discriminator: ProductInstanceFunctionType.Logical;
 };
 export type AbstractExpressionModifierPlacementExpression = {
@@ -295,6 +324,30 @@ export interface IProductInstanceFunction {
   name: string;
 };
 
+export type AbstractOrderExpressionConstLiteral = {
+  expr: IConstLiteralExpression;
+  discriminator: OrderInstanceFunctionType.ConstLiteral;
+};
+
+export type AbstractOrderExpressionIfElseExpression = {
+  expr: IIfElseExpression<AbstractOrderExpression>;
+  discriminator: OrderInstanceFunctionType.IfElse;
+};
+export type AbstractOrderExpressionLogicalExpression = {
+  expr: ILogicalExpression<AbstractOrderExpression>;
+  discriminator: OrderInstanceFunctionType.Logical;
+};
+
+export type AbstractOrderExpression = AbstractOrderExpressionConstLiteral |
+  AbstractOrderExpressionIfElseExpression |
+  AbstractOrderExpressionLogicalExpression;
+
+export interface OrderInstanceFunction {
+  id: string;
+  expression: AbstractOrderExpression;
+  name: string;
+};
+
 export enum CategoryDisplay {
   'TAB' = 'TAB',
   'TAB_IMMEDIATE' = 'TAB_IMMEDIATE',
@@ -315,24 +368,14 @@ export interface ICategory {
     call_line_display: CALL_LINE_DISPLAY;
     nesting: CategoryDisplay;
   };
-  serviceDisable: number[];
-};
-
-export interface ICatalogItem {
-  display_name: string;
-  description: string;
-  shortcode: string;
-  price: IMoney;
-  externalIDs?: IExternalIDs;
-  disabled: IWInterval | null;
-  permanent_disable?: boolean;
+  serviceDisable: string[];
 };
 
 export interface IOptionType {
   id: string;
   name: string;
   display_name: string;
-  externalIDs?: IExternalIDs;
+  externalIDs: Record<string, string>;
   ordinal: number;
   min_selected: number;
   max_selected: number | null;
@@ -351,7 +394,12 @@ export interface IOptionType {
 };
 export interface IOption {
   id: string;
-  item: ICatalogItem;
+  display_name: string;
+  description: string;
+  shortcode: string;
+  price: IMoney;
+  externalIDs: Record<string, string>;
+  disabled: IWInterval | null;
   ordinal: number;
   option_type_id: string;
   metadata: {
@@ -411,15 +459,15 @@ export interface IProductDisplayFlags {
 export interface IProductModifier {
   mtid: string;
   enable: string | null;
-  service_disable: number[];
+  service_disable: string[];
 };
 
 export interface IProduct {
   id: string;
-  item?: ICatalogItem;
   price: IMoney;
   disabled: IWInterval | null;
-  service_disable: number[];
+  service_disable: string[];
+  externalIDs: Record<string, string>;
 
   display_flags: {
     flavor_max: number;
@@ -447,6 +495,7 @@ export interface IWModifiersInstance {
   modifier_type_id: string;
   options: IWOptionInstance[];
 };
+
 export interface IProductInstance {
   id: string;
   // reference to the WProductSchema ID for this class of item
@@ -462,7 +511,14 @@ export interface IProductInstance {
   is_base: boolean;
 
   display_flags: IProductDisplayFlags,
-  item: ICatalogItem;
+
+  externalIDs: Record<string, string>;
+
+  description: string;
+
+  display_name: string;
+
+  shortcode: string;
 };
 
 export interface CatalogModifierEntry { options: IOption[]; modifier_type: IOptionType; };
@@ -502,7 +558,7 @@ export type OptionEnableState =
   { enable: DISABLE_REASON.DISABLED_NO_SPLITTING } |
   { enable: DISABLE_REASON.DISABLED_SPLIT_DIFFERENTIAL } |
   { enable: DISABLE_REASON.DISABLED_MAXIMUM } |
-  { enable: DISABLE_REASON.DISABLED_FULFILLMENT_TYPE, fulfillment: number } |
+  { enable: DISABLE_REASON.DISABLED_FULFILLMENT_TYPE, fulfillment: string } |
   { enable: DISABLE_REASON.DISABLED_FUNCTION, functionId: string };
 
 export interface MetadataModifierOptionMapEntry extends IOptionState { enable_left: OptionEnableState; enable_right: OptionEnableState; enable_whole: OptionEnableState };
@@ -550,7 +606,7 @@ export interface CategoryEntry {
   subtitle: string | null;
   footer: string | null;
   nesting: CategoryDisplay;
-  serviceDisable: number[];
+  serviceDisable: string[];
 };
 export type MenuCategories = Record<string, CategoryEntry>;
 export interface ProductEntry { product: IProduct; base_id: string, instances_list: IProductInstance[]; instances: Record<string, IProductInstance>; };
@@ -672,7 +728,7 @@ export interface DineInInfoDto {
 };
 
 export interface FulfillmentDto {
-  selectedService: number;
+  selectedService: string;
   // as toISODate
   selectedDate: string;
   selectedTime: number;
@@ -728,16 +784,21 @@ export interface MetricsDto {
   submitTime: number;
   useragent: string;
 }
-
-export interface CreateOrderRequestV2 {
-  nonce?: string;
+export interface WOrderInstance {
   customerInfo: CustomerInfoDto;
-  fulfillmentDto: FulfillmentDto;
+  //fulfillment: FulfillmentDto;
   cart: CoreCartEntry<WCPProductV2Dto>[];
+  //payments: WPayment[];
+  metrics: MetricsDto;
+}
+
+export type CreateOrderRequestV2 = {
+  nonce?: string;
+  fulfillmentDto: FulfillmentDto;
   special_instructions: string;
   totals: TotalsV2;
   store_credit: JSFECreditV2 | null;
-  metrics: MetricsDto;
-};
+} & WOrderInstance;
 
 export type CategorizedRebuiltCart = Record<string, CoreCartEntry<WProduct>[]>;
+
