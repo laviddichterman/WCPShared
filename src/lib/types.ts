@@ -32,6 +32,8 @@ export enum FulfillmentType {
 
 export interface FulfillmentConfig {
   id: string;
+  // shorthand for the fulfillment
+  shortcode: string;
   // the user visible name of the fulfillment
   displayName: string;
   // display order of the fulfillment
@@ -43,6 +45,7 @@ export interface FulfillmentConfig {
   // UI messaging strings
   messages: {
     CONFIRMATION: string;
+    INSTRUCTIONS: string;
   };
   // menu page categoryId
   menuBaseCategoryId: string;
@@ -209,7 +212,7 @@ export interface IOptionState {
 
 export interface IMoney {
   amount: number;
-  currency: CURRENCY;
+  currency: string; // CURRENCY
 };
 
 export enum ConstLiteralDiscriminator {
@@ -528,11 +531,13 @@ export type ICatalogCategories = Record<string, CatalogCategoryEntry>;
 export interface CatalogProductEntry { product: IProduct; instances: IProductInstance[]; };
 export type ICatalogProducts = Record<string, CatalogProductEntry>;
 export type RecordProductInstanceFunctions = Record<string, IProductInstanceFunction>;
+export type RecordOrderInstanceFunctions = Record<string, OrderInstanceFunction>;
 export interface ICatalog {
   modifiers: ICatalogModifiers;
   categories: ICatalogCategories;
   products: ICatalogProducts;
   product_instance_functions: RecordProductInstanceFunctions;
+  orderInstanceFunctions: RecordOrderInstanceFunctions;
   version: string;
   api: SEMVER;
 };
@@ -618,7 +623,6 @@ export interface IMenu {
   readonly modifiers: MenuModifiers;
   readonly product_classes: MenuProducts;
   readonly categories: MenuCategories;
-  readonly product_instance_functions: RecordProductInstanceFunctions;
   readonly product_instance_metadata: MenuProductInstanceMetadata;
   readonly version: string;
 };
@@ -637,29 +641,35 @@ export interface WCPProductV2Dto {
 export type CartDto<T> = Record<string, [number, T][]>;
 
 export interface EncryptStringLock {
-  enc: string;
-  iv: string;
-  auth: string;
+  readonly enc: string;
+  readonly iv: string;
+  readonly auth: string;
 };
 
 export type ValidateAndLockCreditResponse = {
-  valid: true;
-  lock: EncryptStringLock;
-  amount: number;
-  credit_type: "MONEY" | "DISCOUNT"
+  readonly valid: true;
+  readonly lock: EncryptStringLock;
+  readonly amount: number;
+  readonly credit_type: "MONEY" | "DISCOUNT"
 } | {
-  valid: false;
-  lock: null;
-  amount: 0;
-  credit_type: "MONEY"
+  readonly valid: false;
+  readonly lock: null;
+  readonly amount: 0;
+  readonly credit_type: "MONEY"
 };
 
 export interface ValidateLockAndSpendRequest {
-  code: string;
-  amount: number;
-  lock: EncryptStringLock;
-  updatedBy: string;
+  readonly code: string;
+  readonly amount: number;
+  readonly lock: EncryptStringLock;
+  readonly updatedBy: string;
 }
+
+export interface ValidateLockAndSpendSuccess {
+  success: true;
+  entry: any[];
+  index: number;
+};
 
 export type SpendCreditResponse = {
   success: true;
@@ -686,10 +696,10 @@ export interface AddressComponent {
 };
 
 export interface DeliveryAddressValidateResponse {
-  validated_address: string;
-  in_area: boolean;
-  found: boolean;
-  address_components: Array<AddressComponent>;
+  readonly validated_address: string;
+  readonly in_area: boolean;
+  readonly found: boolean;
+  readonly address_components: Array<AddressComponent>;
 };
 
 export interface ValidateDeliveryResponseV1 {
@@ -705,14 +715,14 @@ export interface TotalsV2 {
 }
 
 export interface JSFECreditV2 {
-  validation: ValidateAndLockCreditResponse;
-  code: string;
-  amount_used: number;
+  readonly validation: ValidateAndLockCreditResponse;
+  readonly code: string;
+  readonly amount_used: number;
 };
 
 export interface CreateOrderResponse {
-  success: boolean;
-  result: CreatePaymentResponse | null;
+  readonly success: boolean;
+  readonly result: CreatePaymentResponse | null;
 };
 
 export interface DeliveryInfoDto {
@@ -725,11 +735,13 @@ export interface DeliveryInfoDto {
 
 export interface DineInInfoDto {
   partySize: number;
+  //tableId: string | null;
 };
 
 export interface FulfillmentDto {
+  //status: 'PROPOSED' | 'RESERVED' | 'PREPARED' | 'COMPLETED' | 'CANCELED' | 'FAILED';
   selectedService: string;
-  // as toISODate
+  // as formatISODate
   selectedDate: string;
   selectedTime: number;
   dineInInfo: DineInInfoDto | null;
@@ -784,21 +796,82 @@ export interface MetricsDto {
   submitTime: number;
   useragent: string;
 }
-export interface WOrderInstance {
-  customerInfo: CustomerInfoDto;
-  //fulfillment: FulfillmentDto;
-  cart: CoreCartEntry<WCPProductV2Dto>[];
-  //payments: WPayment[];
-  metrics: MetricsDto;
+
+export enum PaymentMethod {
+  Cash = "Cash",
+  CreditCard = "CreditCard",
+  StoreCredit = "StoreCredit",
+  //  External
 }
+export interface TenderBase {
+  readonly createdAt: number; // millisecond ticks
+  readonly status: 'AUTHORIZED' | 'COMPLETED' | 'CANCELED';
+}
+
+export interface PaymentBase extends TenderBase {
+  readonly t: PaymentMethod;
+  readonly amount: IMoney;
+};
+
+export interface StoreCreditPayment extends PaymentBase {
+  readonly t: PaymentMethod.StoreCredit;
+  readonly code: string;
+  readonly lock: EncryptStringLock;
+};
+
+export interface CashPayment extends PaymentBase {
+  readonly t: PaymentMethod.Cash;
+  readonly amountTendered: IMoney;
+  readonly change: IMoney;
+};
+
+export interface CreditPayment extends PaymentBase {
+  readonly t: PaymentMethod.CreditCard;
+  readonly processor: "SQUARE";// | "STRIPE";
+  readonly processorId: string;
+  readonly receiptUrl: string;
+  readonly last4: string;
+  readonly cardBrand: string;
+  readonly expYear: string;
+  readonly cardholderName: string;
+  readonly billingZip: string;
+};
+
+export type OrderPayment = CashPayment | CreditPayment | StoreCreditPayment; // ExternalPayment;
+
+export enum DiscountMethod {
+  CreditCodeAmount = "CreditCodeAmount"
+};
+
+export interface OrderLineDiscountCodeAmount extends TenderBase {
+  readonly t: DiscountMethod.CreditCodeAmount;
+  readonly amount: IMoney;
+  readonly code: string;
+  readonly lock: EncryptStringLock;
+}
+
+export type OrderLineDiscount = OrderLineDiscountCodeAmount;
+
+export interface WOrderInstance {
+  readonly id: string;
+  readonly status: 'OPEN' | 'COMPLETED' | 'CANCELED';
+  readonly customerInfo: CustomerInfoDto;
+  readonly fulfillment: FulfillmentDto;
+  readonly cart: CoreCartEntry<WCPProductV2Dto>[];
+  readonly discounts: OrderLineDiscount[];
+  readonly payments: OrderPayment[];
+  readonly refunds: OrderPayment[];
+  readonly metrics: MetricsDto;
+};
+
+export type WOrderInstanceNoId = Omit<WOrderInstance, 'id'>;
 
 export type CreateOrderRequestV2 = {
   nonce?: string;
-  fulfillmentDto: FulfillmentDto;
-  special_instructions: string;
+  specialInstructions: string;
   totals: TotalsV2;
-  store_credit: JSFECreditV2 | null;
-} & WOrderInstance;
+  creditValidations: JSFECreditV2[];
+} & Omit<WOrderInstanceNoId, 'payments' | 'refunds' | 'status'>;
 
 export type CategorizedRebuiltCart = Record<string, CoreCartEntry<WProduct>[]>;
 

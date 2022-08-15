@@ -42,9 +42,8 @@ export function ComputeCartSubTotal(cart: CoreCartEntry<WProduct>[]) {
   return cart.reduce((acc, entry) => RoundToTwoDecimalPlaces(acc + (entry.product.m.price * entry.quantity)), 0);
 }
 
-export function ComputeDiscountApplied(subtotalPreDiscount: number, creditValidation: ValidateAndLockCreditResponse | null) {
-  return creditValidation !== null && creditValidation.valid && creditValidation.credit_type === "DISCOUNT" ?
-    Math.min(subtotalPreDiscount, creditValidation.amount) : 0;
+export function ComputeDiscountApplied(subtotalPreDiscount: number, creditValidations: ValidateAndLockCreditResponse[]) {
+  return Math.min(subtotalPreDiscount, creditValidations.reduce((acc, x) => acc + (x.valid && x.credit_type === "DISCOUNT" ? x.amount : 0), 0));
 }
 
 export function ComputeTaxAmount(subtotalAfterDiscount: number, taxRate: number) {
@@ -75,9 +74,8 @@ export function ComputeAutogratuityEnabled(mainProductCount: number, threshold: 
   return mainProductCount >= threshold || isDelivery;
 }
 
-export function ComputeGiftCardApplied(total: number, creditValidation: ValidateAndLockCreditResponse | null) {
-  return creditValidation !== null && creditValidation.credit_type === "MONEY" && creditValidation.amount > 0 ?
-    Math.min(total, creditValidation.amount) : 0;
+export function ComputeGiftCardApplied(total: number, creditValidations: ValidateAndLockCreditResponse[]) {
+  return Math.min(total, creditValidations.reduce((acc, x) => acc + (x.valid && x.credit_type === "MONEY" ? x.amount : 0), 0));
 }
 export function ComputeBalanceAfterCredits(total: number, giftCardApplied: number) {
   return RoundToTwoDecimalPlaces(total - giftCardApplied);

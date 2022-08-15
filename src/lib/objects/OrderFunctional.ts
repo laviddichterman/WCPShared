@@ -9,7 +9,7 @@ import {
   OptionPlacement,
   OptionQualifier,
   LogicalFunctionOperator,
-  WOrderInstance,
+  WOrderInstanceNoId,
   AbstractOrderExpression,
   OrderInstanceFunctionType,
   OrderInstanceFunction
@@ -17,7 +17,7 @@ import {
 import { LogicalFunctionOperatorToHumanString } from "./WFunctional";
 
 export class OrderFunctional {
-  static ProcessIfElseStatement(order: WOrderInstance, stmt: IIfElseExpression<AbstractOrderExpression>, cat: ICatalog) {
+  static ProcessIfElseStatement(order: WOrderInstanceNoId, stmt: IIfElseExpression<AbstractOrderExpression>, cat: ICatalog) {
     const branch_test = OrderFunctional.ProcessAbstractOrderExpressionStatement(order, stmt.test, cat);
     if (branch_test) {
       return OrderFunctional.ProcessAbstractOrderExpressionStatement(order, stmt.true_branch, cat);
@@ -25,26 +25,11 @@ export class OrderFunctional {
     return OrderFunctional.ProcessAbstractOrderExpressionStatement(order, stmt.false_branch, cat);
   }
 
-  static ProcessIfElseStatementWithTracking(order: WOrderInstance, stmt: IIfElseExpression<AbstractOrderExpression>, cat: ICatalog): [string | number | boolean | OptionPlacement, AbstractOrderExpression[]] {
-    const branchTestResult = OrderFunctional.ProcessAbstractOrderExpressionStatementWithTracking(order, stmt.test, cat);
-    const branchResult = branchTestResult[0] ?
-      OrderFunctional.ProcessAbstractOrderExpressionStatementWithTracking(order, stmt.true_branch, cat) :
-      OrderFunctional.ProcessAbstractOrderExpressionStatementWithTracking(order, stmt.false_branch, cat);
-    return branchResult[0] === true ? branchResult : [false, [<AbstractOrderExpression>{
-      discriminator: OrderInstanceFunctionType.Logical,
-      expr: {
-        operator: LogicalFunctionOperator.AND,
-        operandA: branchTestResult[1][0],
-        operandB: branchResult[1][0]
-      }
-    }]];
-  }
-
   static ProcessConstLiteralStatement(stmt: IConstLiteralExpression) {
     return stmt.value;
   }
 
-  static ProcessLogicalOperatorStatement(order: WOrderInstance, stmt: ILogicalExpression<AbstractOrderExpression>, cat: ICatalog): boolean {
+  static ProcessLogicalOperatorStatement(order: WOrderInstanceNoId, stmt: ILogicalExpression<AbstractOrderExpression>, cat: ICatalog): boolean {
     switch (stmt.operator) {
       case LogicalFunctionOperator.AND:
         return Boolean(OrderFunctional.ProcessAbstractOrderExpressionStatement(order, stmt.operandA, cat)) &&
@@ -75,52 +60,7 @@ export class OrderFunctional {
     }
   }
 
-  static ProcessLogicalOperatorStatementWithTracking(order: WOrderInstance, stmt: ILogicalExpression<AbstractOrderExpression>, cat: ICatalog): [boolean, AbstractOrderExpression[]] {
-    switch (stmt.operator) {
-      case LogicalFunctionOperator.AND:
-        const andResultA = <[boolean, AbstractOrderExpression[]]>OrderFunctional.ProcessAbstractOrderExpressionStatementWithTracking(order, stmt.operandA, cat);
-        if (andResultA[0]) {
-          return <[boolean, AbstractOrderExpression[]]>OrderFunctional.ProcessAbstractOrderExpressionStatementWithTracking(order, stmt.operandB!, cat);
-        }
-        return andResultA;
-      case LogicalFunctionOperator.OR:
-        const orResultA = <[boolean, AbstractOrderExpression[]]>OrderFunctional.ProcessAbstractOrderExpressionStatementWithTracking(order, stmt.operandA, cat);
-        if (orResultA[0]) {
-          return orResultA;
-        }
-        const orResultB = <[boolean, AbstractOrderExpression[]]>OrderFunctional.ProcessAbstractOrderExpressionStatementWithTracking(order, stmt.operandB!, cat);
-        return orResultB[0] == orResultB[0] ? [true, []] : [false, [<AbstractOrderExpression>{ discriminator: OrderInstanceFunctionType.Logical, expr: stmt }]];
-      case LogicalFunctionOperator.NOT:
-        const notResult = OrderFunctional.ProcessAbstractOrderExpressionStatementWithTracking(order, stmt.operandA, cat);
-        return !notResult[0] ? [true, []] : [false, [<AbstractOrderExpression>{ discriminator: OrderInstanceFunctionType.Logical, expr: stmt }]];
-      case LogicalFunctionOperator.EQ:
-        const eqResultA = OrderFunctional.ProcessAbstractOrderExpressionStatementWithTracking(order, stmt.operandA, cat);
-        const eqResultB = OrderFunctional.ProcessAbstractOrderExpressionStatementWithTracking(order, stmt.operandB!, cat);
-        return eqResultA[0] == eqResultB[0] ? [true, []] : [false, [<AbstractOrderExpression>{ discriminator: OrderInstanceFunctionType.Logical, expr: stmt }]];
-      case LogicalFunctionOperator.NE:
-        const neqResultA = OrderFunctional.ProcessAbstractOrderExpressionStatementWithTracking(order, stmt.operandA, cat);
-        const neqResultB = OrderFunctional.ProcessAbstractOrderExpressionStatementWithTracking(order, stmt.operandB!, cat);
-        return neqResultA[0] != neqResultB[0] ? [true, []] : [false, [<AbstractOrderExpression>{ discriminator: OrderInstanceFunctionType.Logical, expr: stmt }]];
-      case LogicalFunctionOperator.GT:
-        const gtResultA = OrderFunctional.ProcessAbstractOrderExpressionStatementWithTracking(order, stmt.operandA, cat);
-        const gtResultB = OrderFunctional.ProcessAbstractOrderExpressionStatementWithTracking(order, stmt.operandB!, cat);
-        return gtResultA[0] > gtResultB[0] ? [true, []] : [false, [<AbstractOrderExpression>{ discriminator: OrderInstanceFunctionType.Logical, expr: stmt }]];
-      case LogicalFunctionOperator.GE:
-        const geResultA = OrderFunctional.ProcessAbstractOrderExpressionStatementWithTracking(order, stmt.operandA, cat);
-        const geResultB = OrderFunctional.ProcessAbstractOrderExpressionStatementWithTracking(order, stmt.operandB!, cat);
-        return geResultA[0] >= geResultB[0] ? [true, []] : [false, [<AbstractOrderExpression>{ discriminator: OrderInstanceFunctionType.Logical, expr: stmt }]];
-      case LogicalFunctionOperator.LT:
-        const ltResultA = OrderFunctional.ProcessAbstractOrderExpressionStatementWithTracking(order, stmt.operandA, cat);
-        const ltResultB = OrderFunctional.ProcessAbstractOrderExpressionStatementWithTracking(order, stmt.operandB!, cat);
-        return ltResultA[0] < ltResultB[0] ? [true, []] : [false, [<AbstractOrderExpression>{ discriminator: OrderInstanceFunctionType.Logical, expr: stmt }]];
-      case LogicalFunctionOperator.LE:
-        const leResultA = OrderFunctional.ProcessAbstractOrderExpressionStatementWithTracking(order, stmt.operandA, cat);
-        const leResultB = OrderFunctional.ProcessAbstractOrderExpressionStatementWithTracking(order, stmt.operandB!, cat);
-        return leResultA[0] <= leResultB[0] ? [true, []] : [false, [<AbstractOrderExpression>{ discriminator: OrderInstanceFunctionType.Logical, expr: stmt }]];
-    }
-  }
-
-  static ProcessAbstractOrderExpressionStatement(order: WOrderInstance, stmt: AbstractOrderExpression, cat: ICatalog): string | number | boolean | OptionPlacement {
+  static ProcessAbstractOrderExpressionStatement(order: WOrderInstanceNoId, stmt: AbstractOrderExpression, cat: ICatalog): string | number | boolean | OptionPlacement {
     switch (stmt.discriminator) {
       case OrderInstanceFunctionType.ConstLiteral:
         return OrderFunctional.ProcessConstLiteralStatement(stmt.expr);
@@ -131,23 +71,8 @@ export class OrderFunctional {
     }
   }
 
-  static ProcessAbstractOrderExpressionStatementWithTracking(order: WOrderInstance, stmt: AbstractOrderExpression, cat: ICatalog): [string | number | boolean | OptionPlacement, AbstractOrderExpression[]] {
-    switch (stmt.discriminator) {
-      case OrderInstanceFunctionType.ConstLiteral:
-        return [OrderFunctional.ProcessConstLiteralStatement(stmt.expr), []];
-      case OrderInstanceFunctionType.IfElse:
-        return OrderFunctional.ProcessIfElseStatementWithTracking(order, stmt.expr, cat);
-      case OrderInstanceFunctionType.Logical:
-        return OrderFunctional.ProcessLogicalOperatorStatementWithTracking(order, stmt.expr, cat);
-    }
-  }
-
-  static ProcessOrderInstanceFunction(order: WOrderInstance, func: OrderInstanceFunction, cat: ICatalog) {
+  static ProcessOrderInstanceFunction(order: WOrderInstanceNoId, func: OrderInstanceFunction, cat: ICatalog) {
     return OrderFunctional.ProcessAbstractOrderExpressionStatement(order, func.expression, cat);
-  }
-
-  static ProcessProductInstanceFunctionWithTracking(order: WOrderInstance, func: OrderInstanceFunction, cat: ICatalog) {
-    return OrderFunctional.ProcessAbstractOrderExpressionStatementWithTracking(order, func.expression, cat);
   }
 
   static AbstractOrderExpressionStatementToString(stmt: AbstractOrderExpression, mods: ICatalogModifiers): string {

@@ -243,8 +243,7 @@ export function GenerateMenu(catalog: ICatalog, service_time: Date | number, ful
   const product_classes = ComputeProducts(catalog);
   const categories = ComputeCategories(catalog, product_classes);
   const product_instance_metadata = ComputeProductInstanceMetadata(product_classes, catalog, modifiers, service_time, fulfillmentId);
-  const product_instance_functions = { ...catalog.product_instance_functions };
-  const menu: IMenu = { modifiers, product_classes, product_instance_metadata, categories, product_instance_functions, version: catalog.version };
+  const menu: IMenu = { modifiers, product_classes, product_instance_metadata, categories, version: catalog.version };
   return menu;
 }
 
