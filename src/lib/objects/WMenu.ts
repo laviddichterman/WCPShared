@@ -30,10 +30,10 @@ type DisableFlagGetterType = (x: any) => boolean;
  */
 export function FilterProduct(item: IProductInstance, menu: IMenu, disable_from_menu_flag_getter: DisableFlagGetterType, order_time: Date | number, fulfillmentId: string) {
   const menuModifiers = menu.modifiers;
-  const productClass = menu.product_classes[item.product_id];
+  const productClass = menu.product_classes[item.productId];
   let passes = productClass !== undefined &&
-    productClass.product.service_disable.indexOf(fulfillmentId) === -1 &&
-    !disable_from_menu_flag_getter(item.display_flags) &&
+    productClass.product.serviceDisable.indexOf(fulfillmentId) === -1 &&
+    !disable_from_menu_flag_getter(item.displayFlags) &&
     DisableDataCheck(productClass.product.disabled, order_time).enable === DISABLE_REASON.ENABLED;
   // this is better as a forEach as it gives us the ability to skip out of the loop early
   Object.entries(item.modifiers).forEach(([modifier_type_id, options]) => {
@@ -41,9 +41,9 @@ export function FilterProduct(item: IProductInstance, menu: IMenu, disable_from_
     const menuModifierType = menuModifiers[modifier_type_id];
     const mtOptions = menuModifierType.options;
     const productModifierDefinition = productClass.product.modifiers.find(x => x.mtid === modifier_type_id)!;
-    passes &&= productModifierDefinition.service_disable.indexOf(fulfillmentId) === -1 &&
+    passes &&= productModifierDefinition.serviceDisable.indexOf(fulfillmentId) === -1 &&
       options.reduce((acc: boolean, x) =>
-        (acc && DisableDataCheck(mtOptions[x.option_id].mo.disabled, order_time).enable === DISABLE_REASON.ENABLED), true);
+        (acc && DisableDataCheck(mtOptions[x.optionId].mo.disabled, order_time).enable === DISABLE_REASON.ENABLED), true);
   });
   return passes;
 }
@@ -58,17 +58,17 @@ export function FilterProduct(item: IProductInstance, menu: IMenu, disable_from_
 export function FilterWCPProduct(item: WCPProduct, catalog: ICatalog, menu: IMenu, order_time: Date | number, fulfillmentId: string) {
   const productEntry = menu.product_classes[item.PRODUCT_CLASS.id];
   const newMetadata = WCPProductGenerateMetadata(item, productEntry, catalog, menu.modifiers, order_time, fulfillmentId);
-  return productEntry.product.service_disable.indexOf(fulfillmentId) === -1 &&
+  return productEntry.product.serviceDisable.indexOf(fulfillmentId) === -1 &&
     DisableDataCheck(productEntry.product.disabled, order_time) &&
     !newMetadata.incomplete &&
     Object.entries(item.modifiers).reduce((acc, modifier) => {
       const menuModifier = menu.modifiers[modifier[0]];
       const mdModifier = newMetadata.modifier_map[modifier[0]];
       return acc && modifier[1].reduce((moAcc, mo) => moAcc &&
-        ((mo.placement === OptionPlacement.LEFT && mdModifier.options[mo.option_id].enable_left.enable === DISABLE_REASON.ENABLED) ||
-          (mo.placement === OptionPlacement.RIGHT && mdModifier.options[mo.option_id].enable_right.enable === DISABLE_REASON.ENABLED) ||
-          (mo.placement === OptionPlacement.WHOLE && mdModifier.options[mo.option_id].enable_whole.enable === DISABLE_REASON.ENABLED)) &&
-        DisableDataCheck(menuModifier.options[mo.option_id].mo.disabled, order_time).enable === DISABLE_REASON.ENABLED, true);
+        ((mo.placement === OptionPlacement.LEFT && mdModifier.options[mo.optionId].enable_left.enable === DISABLE_REASON.ENABLED) ||
+          (mo.placement === OptionPlacement.RIGHT && mdModifier.options[mo.optionId].enable_right.enable === DISABLE_REASON.ENABLED) ||
+          (mo.placement === OptionPlacement.WHOLE && mdModifier.options[mo.optionId].enable_whole.enable === DISABLE_REASON.ENABLED)) &&
+        DisableDataCheck(menuModifier.options[mo.optionId].mo.disabled, order_time).enable === DISABLE_REASON.ENABLED, true);
     }, true);
 }
 
@@ -184,7 +184,7 @@ function ComputeProducts(cat: ICatalog) {
     const product_class = { ...cat.products[pId].product };
     // IMPORTANT: we need to sort by THIS ordinal here to ensure things are named properly.
     const product_instances = cat.products[pId].instances.slice().sort((a, b) => a.ordinal - b.ordinal);
-    const baseProductInstanceIndex = product_instances.findIndex(x => x.is_base);
+    const baseProductInstanceIndex = product_instances.findIndex(x => x.isBase);
     if (baseProductInstanceIndex !== -1) {
       // be sure to sort the modifiers, just in case...
       // TODO: better expectations around sorting
@@ -251,7 +251,7 @@ export function DoesProductExistInMenu(menu: IMenu, product: WCPProduct) {
   return Object.hasOwn(menu.product_classes, product.PRODUCT_CLASS.id) &&
     Object.entries(product.modifiers).reduce((acc, mod) => acc &&
       Object.hasOwn(menu.modifiers, mod[0]) &&
-      mod[1].reduce((optAcc, o) => optAcc && Object.hasOwn(menu.modifiers[mod[0]].options, o.option_id), true), true);
+      mod[1].reduce((optAcc, o) => optAcc && Object.hasOwn(menu.modifiers[mod[0]].options, o.optionId), true), true);
 }
 
 export function CanThisBeOrderedAtThisTimeAndFulfillment(product: WCPProduct, menu: IMenu, catalog: ICatalog, serviceTime: Date | number, fulfillment: string) {

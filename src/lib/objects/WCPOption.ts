@@ -29,7 +29,7 @@ export function IsOptionEnabled(option: WCPOption, product: WCPProduct, bake_cou
   // we would handle the limitation by using smarts at the wcpmodifierdir level
   const placement = GetPlacementFromMIDOID(product.modifiers, option.mt.id, option.mo.id);
   // TODO: bake and flavor stuff should move into the enable_filter itself, the option itself should just hold generalized metadata the enable filter function can use/reference
-  const { bake_max, flavor_max, bake_differential } = product.PRODUCT_CLASS.display_flags;
+  const { bake_max, flavor_max, bake_differential } = product.PRODUCT_CLASS.displayFlags;
   const proposed_delta = DELTA_MATRIX[placement.placement][location];
 
   const bake_after = [bake_count[LEFT_SIDE] + (option.mo.metadata.bake_factor * proposed_delta[LEFT_SIDE]), bake_count[RIGHT_SIDE] + (option.mo.metadata.bake_factor * proposed_delta[1])];
@@ -46,9 +46,9 @@ export function IsOptionEnabled(option: WCPOption, product: WCPProduct, bake_cou
   if (!passes_flavor) {
     return { enable: DISABLE_REASON.DISABLED_FLAVORS };
   }
-  const passesEnableFunction = !option.mo.enable_function || WFunctional.ProcessProductInstanceFunction(product, catalog.product_instance_functions[option.mo.enable_function], catalog) as boolean;
+  const passesEnableFunction = option.mo.enable === null || WFunctional.ProcessProductInstanceFunction(product, catalog.product_instance_functions[option.mo.enable], catalog) as boolean;
   if (!passesEnableFunction) {
-    return { enable: DISABLE_REASON.DISABLED_FUNCTION, functionId: option.mo.enable_function! };
+    return { enable: DISABLE_REASON.DISABLED_FUNCTION, functionId: option.mo.enable! };
   }
   return { enable: DISABLE_REASON.ENABLED };
 }

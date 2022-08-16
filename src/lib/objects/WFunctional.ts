@@ -202,7 +202,7 @@ export class WFunctional {
     return Object.entries(prod.modifiers).reduce((acc, [key, value]) => {
       const catalogModifierType = cat.modifiers[key];
       return (acc + value.reduce((acc2, optInstance) => {
-        const option = catalogModifierType.options.find(x => x.id === optInstance.option_id);
+        const option = catalogModifierType.options.find(x => x.id === optInstance.optionId);
         if (!option) {
           console.error(`Unexpectedly missing modifier option ${JSON.stringify(optInstance)}`);
           return acc2;
@@ -272,7 +272,7 @@ export class WFunctional {
       }
       const val = mods[expr.mtid];
       const opt = val.options.find(x => x.id === expr.moid) as unknown as IOption;
-      return `${val.modifier_type.name}.${opt.display_name}`;
+      return `${val.modifier_type.name}.${opt.displayName}`;
     }
     switch (stmt.discriminator) {
       case ProductInstanceFunctionType.ConstLiteral:
@@ -336,7 +336,7 @@ export class WFunctional {
       }
       const val = mods[expr.mtid];
       const opt = val.options.find(x => x.id === expr.moid)!;
-      return `${opt.display_name}`;
+      return `${opt.displayName}`;
     }
     switch (stmt.discriminator) {
       case ProductInstanceFunctionType.ConstLiteral:

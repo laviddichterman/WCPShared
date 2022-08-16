@@ -66,7 +66,15 @@ export interface FulfillmentConfig {
   // minimum time to place an order of this type
   leadTime: number;
   // operating hours for this service type
-  operatingHours: Record<DayOfTheWeek, IWInterval[]>;
+  operatingHours: {
+    [DayOfTheWeek.SUNDAY]: IWInterval[];
+    [DayOfTheWeek.MONDAY]: IWInterval[];
+    [DayOfTheWeek.TUESDAY]: IWInterval[];
+    [DayOfTheWeek.WEDNESDAY]: IWInterval[];
+    [DayOfTheWeek.THURSDAY]: IWInterval[];
+    [DayOfTheWeek.FRIDAY]: IWInterval[];
+    [DayOfTheWeek.SATURDAY]: IWInterval[];
+  };
   // special hours for this service
   // string in formatISODate format */
   specialHours: Record<string, IWInterval[]>;
@@ -377,12 +385,12 @@ export interface ICategory {
 export interface IOptionType {
   id: string;
   name: string;
-  display_name: string;
+  displayName: string;
   externalIDs: Record<string, string>;
   ordinal: number;
   min_selected: number;
   max_selected: number | null;
-  display_flags: {
+  displayFlags: {
     omit_section_if_no_available_options: boolean;
     omit_options_if_not_available: boolean;
     use_toggle_if_only_two_options: boolean;
@@ -397,28 +405,28 @@ export interface IOptionType {
 };
 export interface IOption {
   id: string;
-  display_name: string;
+  modifierTypeId: string;
+  displayName: string;
   description: string;
   shortcode: string;
   price: IMoney;
   externalIDs: Record<string, string>;
   disabled: IWInterval | null;
   ordinal: number;
-  option_type_id: string;
   metadata: {
     flavor_factor: number;
     bake_factor: number;
     can_split: boolean;
   };
-  enable_function: string | null;
-  display_flags: {
+  enable: string | null;
+  displayFlags: {
     omit_from_shortname: boolean;
     omit_from_name: boolean;
   };
 };
 
 export interface IOptionInstance extends IOptionState {
-  option_id: string;
+  optionId: string;
 };
 export interface IProductDisplayFlags {
   menu: {
@@ -456,17 +464,17 @@ export interface IProductDisplayFlags {
 export interface IProductModifier {
   mtid: string;
   enable: string | null;
-  service_disable: string[];
+  serviceDisable: string[];
 };
 
 export interface IProduct {
   id: string;
   price: IMoney;
   disabled: IWInterval | null;
-  service_disable: string[];
+  serviceDisable: string[];
   externalIDs: Record<string, string>;
 
-  display_flags: {
+  displayFlags: {
     flavor_max: number;
     bake_max: number;
     bake_differential: number;
@@ -491,7 +499,7 @@ export type ModifiersMap = Record<string, IOptionInstance[]>;
 export interface IProductInstance {
   id: string;
   // reference to the WProductSchema ID for this class of item
-  product_id: string; //{ type: Schema.Types.ObjectId, ref: 'WProductSchema'},
+  productId: string; //{ type: Schema.Types.ObjectId, ref: 'WProductSchema'},
 
   // ordinal for product matching
   ordinal: number;
@@ -500,15 +508,15 @@ export interface IProductInstance {
   modifiers: ModifiersMap;
 
   // flag to note that this product instance is the "default" form of the product to which all others should be compared
-  is_base: boolean;
+  isBase: boolean;
 
-  display_flags: IProductDisplayFlags,
+  displayFlags: IProductDisplayFlags,
 
   externalIDs: Record<string, string>;
 
   description: string;
 
-  display_name: string;
+  displayName: string;
 
   shortcode: string;
 };

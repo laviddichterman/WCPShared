@@ -7,7 +7,7 @@ export const PRODUCT_NAME_MODIFIER_TEMPLATE_REGEX = /(\{[A-Za-z0-9]+\})/g;
 
 export const GetPlacementFromMIDOID = (modifiers: ModifiersMap, mid: string, oid: string) => {
   const NOT_FOUND = { option_id: oid, placement: OptionPlacement.NONE, qualifier: OptionQualifier.REGULAR };
-  return Object.hasOwn(modifiers, mid) ? (modifiers[mid].find((x) => x.option_id === oid) || NOT_FOUND) : NOT_FOUND;
+  return Object.hasOwn(modifiers, mid) ? (modifiers[mid].find((x) => x.optionId === oid) || NOT_FOUND) : NOT_FOUND;
 };
 
 /**
