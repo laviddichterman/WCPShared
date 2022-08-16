@@ -1,4 +1,3 @@
-import type { CreatePaymentResponse } from 'square';
 import type { Polygon } from 'geojson';
 
 export type NullablePartial<T,
@@ -717,11 +716,6 @@ export interface JSFECreditV2 {
   readonly amount_used: number;
 };
 
-export interface CreateOrderResponse {
-  readonly success: boolean;
-  readonly result: CreatePaymentResponse | null;
-};
-
 export interface DeliveryInfoDto {
   address: string;
   address2: string;
@@ -878,3 +872,7 @@ export type CreateOrderRequestV2 = {
 
 export type CategorizedRebuiltCart = Record<string, CoreCartEntry<WProduct>[]>;
 
+export interface CreateOrderResponse {
+  readonly success: boolean;
+  readonly result: WOrderInstance | null;
+};
