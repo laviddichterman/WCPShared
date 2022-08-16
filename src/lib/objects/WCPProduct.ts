@@ -1,7 +1,8 @@
 import { DisableDataCheck, PRODUCT_NAME_MODIFIER_TEMPLATE_REGEX } from "../common";
 import { WFunctional } from "./WFunctional";
-import { IProduct, IProductInstance, OptionPlacement, ModifiersMap, MODIFIER_MATCH, PRODUCT_LOCATION, WCPProduct, WProductMetadata, MTID_MOID, ModifierEntry, WCPOption, MenuModifiers, IWModifiersInstance, IOptionInstance, OptionQualifier, MetadataModifierMap, ModifierDisplayListByLocation, ProductEntry, DISPLAY_AS, IMenu, MetadataModifierOptionMapEntry, WProduct, WCPProductJsFeDto, WCPProductV2Dto, ICatalog, DISABLE_REASON } from '../types';
+import { IProduct, IProductInstance, OptionPlacement, ModifiersMap, MODIFIER_MATCH, PRODUCT_LOCATION, WCPProduct, WProductMetadata, MTID_MOID, ModifierEntry, WCPOption, MenuModifiers, IOptionInstance, OptionQualifier, MetadataModifierMap, ModifierDisplayListByLocation, ProductEntry, DISPLAY_AS, IMenu, MetadataModifierOptionMapEntry, WProduct, WCPProductJsFeDto, WCPProductV2Dto, ICatalog, DISABLE_REASON } from '../types';
 import { IsOptionEnabled } from './WCPOption';
+import { cloneDeep } from 'lodash';
 // import { memoize } from 'lodash';
 
 /* TODO: we need to pull out the computations into memoizable functions
@@ -107,7 +108,7 @@ const MATCH_MATRIX: [MODIFIER_MATCH, MODIFIER_MATCH, boolean][][] = [
 ];
 
 export function CreateWCPProduct(product_class: IProduct, modifiers: ModifiersMap) {
-  return { PRODUCT_CLASS: product_class, modifiers } as WCPProduct;
+  return { PRODUCT_CLASS: product_class, modifiers: cloneDeep(modifiers) } as WCPProduct;
 }
 
 export function CreateProductWithMetadataFromJsFeDto(dto: WCPProductJsFeDto, catalog: ICatalog, menu: IMenu, service_time: Date | number, fulfillmentId: string): WProduct {
@@ -127,19 +128,6 @@ export function CreateProductWithMetadataFromV2Dto(dto: WCPProductV2Dto, catalog
   return { p: wcpProduct, m: productMetadata };
 }
 
-export function CreateWCPProductFromPI(prod: IProduct, pi: IProductInstance, menuModifiers: MenuModifiers) {
-  return CreateWCPProduct(
-    prod,
-    [...pi.modifiers].sort((a, b) => menuModifiers[a.modifier_type_id].modifier_type.ordinal - menuModifiers[b.modifier_type_id].modifier_type.ordinal).reduce((o, key) => {
-      const oMap = menuModifiers[key.modifier_type_id].options;
-      return {
-        ...o,
-        [key.modifier_type_id]: [...key.options].sort((a, b) => oMap[a.option_id].index - oMap[b.option_id].index).map(
-          x => ({ option_id: x.option_id, placement: OptionPlacement[x.placement], qualifier: OptionQualifier[x.qualifier] }))
-      };
-    }, {}), // this is a deep copy
-  );
-}
 export function SortModifersAndOptions(mMap: ModifiersMap, menuModifiers: MenuModifiers) {
   return Object.entries(mMap).sort(
     (a, b) => menuModifiers[a[0]].modifier_type.ordinal - menuModifiers[b[0]].modifier_type.ordinal).reduce(
@@ -154,11 +142,6 @@ export function DeepCopyModifiers(modifiers: ModifiersMap) {
 }
 
 function ModifiersMapGetter(mMap: ModifiersMap): (mtid: string) => IOptionInstance[] {
-  return (mtid: string) => Object.hasOwn(mMap, mtid) ? mMap[mtid] : [];
-}
-
-function IWModifiersInstanceListGetter(mil: IWModifiersInstance[]): (mtid: string) => IOptionInstance[] {
-  const mMap: ModifiersMap = mil.reduce((o, key) => ({ ...o, [key.modifier_type_id]: key.options.map(x => { return { option_id: x.option_id, placement: OptionPlacement[x.placement], qualifier: OptionQualifier[x.qualifier] }; }) }), {});
   return (mtid: string) => Object.hasOwn(mMap, mtid) ? mMap[mtid] : [];
 }
 
@@ -240,7 +223,7 @@ export function WProductCompareToIProductInstance(a: WCPProduct, b: IProductInst
     // no match on PID so we need to return 0
     return { mirror: false, match_matrix: [[], []], match: [NO_MATCH, NO_MATCH] } as WProductCompareResult;
   }
-  return WProductCompareGeneric(a.PRODUCT_CLASS, ModifiersMapGetter(a.modifiers), IWModifiersInstanceListGetter(b.modifiers), menuModifiers);
+  return WProductCompareGeneric(a.PRODUCT_CLASS, ModifiersMapGetter(a.modifiers), ModifiersMapGetter(b.modifiers), menuModifiers);
 }
 
 export function WProductCompare(a: WCPProduct, b: WCPProduct, menuModifiers: MenuModifiers) {

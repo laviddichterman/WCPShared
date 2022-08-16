@@ -417,12 +417,6 @@ export interface IOption {
   };
 };
 
-export interface IWOptionInstance {
-  option_id: string;
-  placement: keyof typeof OptionPlacement;
-  qualifier: keyof typeof OptionQualifier;
-};
-
 export interface IOptionInstance extends IOptionState {
   option_id: string;
 };
@@ -494,11 +488,6 @@ export interface IProduct {
 
 export type ModifiersMap = Record<string, IOptionInstance[]>;
 
-export interface IWModifiersInstance {
-  modifier_type_id: string;
-  options: IWOptionInstance[];
-};
-
 export interface IProductInstance {
   id: string;
   // reference to the WProductSchema ID for this class of item
@@ -508,7 +497,7 @@ export interface IProductInstance {
   ordinal: number;
 
   // applied modifiers for this instance of the product
-  modifiers: IWModifiersInstance[];
+  modifiers: ModifiersMap;
 
   // flag to note that this product instance is the "default" form of the product to which all others should be compared
   is_base: boolean;
@@ -803,9 +792,15 @@ export enum PaymentMethod {
   StoreCredit = "StoreCredit",
   //  External
 }
+
+export enum TenderBaseStatus {
+  AUTHORIZED = 'AUTHORIZED',
+  COMPLETED = 'COMPLETED',
+  CANCELED = 'CANCELED'
+}
 export interface TenderBase {
   readonly createdAt: number; // millisecond ticks
-  readonly status: 'AUTHORIZED' | 'COMPLETED' | 'CANCELED';
+  readonly status: TenderBaseStatus;
 }
 
 export interface PaymentBase extends TenderBase {

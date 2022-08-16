@@ -16,7 +16,7 @@ import {
   DISABLE_REASON
 } from "../types";
 
-import { CreateWCPProductFromPI, WCPProductGenerateMetadata } from "./WCPProduct";
+import { CreateWCPProduct, WCPProductGenerateMetadata } from "./WCPProduct";
 
 type DisableFlagGetterType = (x: any) => boolean;
 /**
@@ -36,13 +36,13 @@ export function FilterProduct(item: IProductInstance, menu: IMenu, disable_from_
     !disable_from_menu_flag_getter(item.display_flags) &&
     DisableDataCheck(productClass.product.disabled, order_time).enable === DISABLE_REASON.ENABLED;
   // this is better as a forEach as it gives us the ability to skip out of the loop early
-  item.modifiers.forEach(modifier => {
+  Object.entries(item.modifiers).forEach(([modifier_type_id, options]) => {
     // TODO: for incomplete product instances, this should check for a viable way to order the product
-    const menuModifierType = menuModifiers[modifier.modifier_type_id];
+    const menuModifierType = menuModifiers[modifier_type_id];
     const mtOptions = menuModifierType.options;
-    const productModifierDefinition = productClass.product.modifiers.find(x => x.mtid === modifier.modifier_type_id)!;
+    const productModifierDefinition = productClass.product.modifiers.find(x => x.mtid === modifier_type_id)!;
     passes &&= productModifierDefinition.service_disable.indexOf(fulfillmentId) === -1 &&
-      modifier.options.reduce((acc: boolean, x) =>
+      options.reduce((acc: boolean, x) =>
         (acc && DisableDataCheck(mtOptions[x.option_id].mo.disabled, order_time).enable === DISABLE_REASON.ENABLED), true);
   });
   return passes;
@@ -232,7 +232,7 @@ function ComputeProductInstanceMetadata(menuProducts: MenuProducts, catalog: ICa
   const md: MenuProductInstanceMetadata = {};
   Object.values(menuProducts).forEach(productEntry => {
     productEntry.instances_list.forEach(pi => {
-      md[pi.id] = WCPProductGenerateMetadata(CreateWCPProductFromPI(productEntry.product, pi, menuModifiers), productEntry, catalog, menuModifiers, service_time, fulfillmentId)
+      md[pi.id] = WCPProductGenerateMetadata(CreateWCPProduct(productEntry.product, pi.modifiers), productEntry, catalog, menuModifiers, service_time, fulfillmentId)
     });
   });
   return md;
