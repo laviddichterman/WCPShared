@@ -872,7 +872,14 @@ export type CreateOrderRequestV2 = {
 
 export type CategorizedRebuiltCart = Record<string, CoreCartEntry<WProduct>[]>;
 
+export interface WError {
+  category: string;
+  code: string;
+  detail: string;
+};
+
 export interface CreateOrderResponse {
   readonly success: boolean;
+  readonly errors: WError[];
   readonly result: WOrderInstance | null;
 };
