@@ -5,6 +5,10 @@ export const CREDIT_REGEX = /[A-Za-z0-9]{3}-[A-Za-z0-9]{2}-[A-Za-z0-9]{3}-[A-Z0-
 
 export const PRODUCT_NAME_MODIFIER_TEMPLATE_REGEX = /(\{[A-Za-z0-9]+\})/g;
 
+export function ReduceArrayToMapByKey<T, Key extends keyof T>(xs: T[], key: Key) {
+  return Object.fromEntries(xs.map(x => [x[key], x])) as Record<string, T>;
+};
+
 export const GetPlacementFromMIDOID = (modifiers: ModifiersMap, mid: string, oid: string) => {
   const NOT_FOUND = { option_id: oid, placement: OptionPlacement.NONE, qualifier: OptionQualifier.REGULAR };
   return Object.hasOwn(modifiers, mid) ? (modifiers[mid].find((x) => x.optionId === oid) || NOT_FOUND) : NOT_FOUND;

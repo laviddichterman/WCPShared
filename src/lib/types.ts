@@ -5,6 +5,12 @@ export type NullablePartial<T,
   NP = Partial<Pick<T, NK>> & Pick<T, Exclude<keyof T, NK>>
   > = { [K in keyof NP]-?: NP[K] | null };
 
+// export type NestedKeyOf<ObjectType extends object> =
+//   { [Key in keyof ObjectType & (string | number)]: ObjectType[Key] extends object
+//     ? `${Key}` | `${Key}.${NestedKeyOf<ObjectType[Key]>}`
+//     : `${Key}`
+//   }[keyof ObjectType & (string | number)];
+
 export interface SEMVER { major: number; minor: number; patch: number; };
 
 export enum DayOfTheWeek {
@@ -28,6 +34,16 @@ export enum FulfillmentType {
   DELIVERY,
   SHIPPING,
 }
+
+export type OperatingHourSpecification = {
+  [DayOfTheWeek.SUNDAY]: IWInterval[];
+  [DayOfTheWeek.MONDAY]: IWInterval[];
+  [DayOfTheWeek.TUESDAY]: IWInterval[];
+  [DayOfTheWeek.WEDNESDAY]: IWInterval[];
+  [DayOfTheWeek.THURSDAY]: IWInterval[];
+  [DayOfTheWeek.FRIDAY]: IWInterval[];
+  [DayOfTheWeek.SATURDAY]: IWInterval[];
+};
 
 export interface FulfillmentConfig {
   id: string;
@@ -65,15 +81,7 @@ export interface FulfillmentConfig {
   // minimum time to place an order of this type
   leadTime: number;
   // operating hours for this service type
-  operatingHours: {
-    [DayOfTheWeek.SUNDAY]: IWInterval[];
-    [DayOfTheWeek.MONDAY]: IWInterval[];
-    [DayOfTheWeek.TUESDAY]: IWInterval[];
-    [DayOfTheWeek.WEDNESDAY]: IWInterval[];
-    [DayOfTheWeek.THURSDAY]: IWInterval[];
-    [DayOfTheWeek.FRIDAY]: IWInterval[];
-    [DayOfTheWeek.SATURDAY]: IWInterval[];
-  };
+  operatingHours: OperatingHourSpecification;
   // special hours for this service
   // string in formatISODate format */
   specialHours: Record<string, IWInterval[]>;
@@ -99,7 +107,7 @@ export interface FulfillmentConfig {
 export type WIntervalTuple = [number, number];
 export type IntervalTupleList = WIntervalTuple[];
 export type OperatingHoursList = [IntervalTupleList, IntervalTupleList, IntervalTupleList, IntervalTupleList, IntervalTupleList, IntervalTupleList, IntervalTupleList];
-export interface ServicesEnableMap { [index: number]: boolean };
+export type FulfillmentConfigMap = Record<string, FulfillmentConfig>;
 export interface IWSettings {
   additional_pizza_lead_time: number;
   time_step: number[];
@@ -135,14 +143,15 @@ export interface IWBlockedOff {
   }[];
 };
 export interface AvailabilityInfoMap {
-  // the union of blocked off times for the services specified in computation stored as a list of two tuples
-  blocked_off_union: IntervalTupleList;
-  // the union of operating hours for the services specified in computation stored as a list of two tuples
-  operating_intervals: IntervalTupleList;
+  // the union of blocked off times for the services specified in computation stored as a list of IWIntervals
+  blockedOffUnion: IWInterval[];
+  // the union of operating hours for the services specified in computation stored as a list of IWIntervals
+  operatingIntervals: IWInterval[];
   // the minutes from current time needed to prepare the order
   leadTime: number;
   // the minimum number of minutes between selectable options for any services specified in computation
-  min_time_step: number
+  minTimeStep: number;
+  specialHoursUnion: IWInterval[] | null;
 };
 /**
  * @typedef {[string, IntervalTupleList][][]} JSFEBlockedOff - is stored in the memory/wire format here of:
@@ -679,6 +688,7 @@ export interface TipSelection {
 };
 
 export interface DeliveryAddressValidateRequest {
+  fulfillmentId: string;
   address: string;
   zipcode: string;
   city: string;
@@ -696,13 +706,6 @@ export interface DeliveryAddressValidateResponse {
   readonly in_area: boolean;
   readonly found: boolean;
   readonly address_components: Array<AddressComponent>;
-};
-
-export interface ValidateDeliveryResponseV1 {
-  validated_delivery_address: string;
-  address1: string;
-  address2: string;
-  instructions: string;
 };
 
 export interface TotalsV2 {
