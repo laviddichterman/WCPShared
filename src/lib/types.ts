@@ -104,18 +104,21 @@ export interface FulfillmentConfig {
   // maybe split that to another interface and have socketio only surface the public stuff?
 };
 
-export type WIntervalTuple = [number, number];
-export type IntervalTupleList = WIntervalTuple[];
-export type OperatingHoursList = [IntervalTupleList, IntervalTupleList, IntervalTupleList, IntervalTupleList, IntervalTupleList, IntervalTupleList, IntervalTupleList];
+export interface PostBlockedOffToFulfillmentsRequest {
+  fulfillmentIds: string[];
+  date: string;
+  interval: IWInterval;
+};
+
+export type SetLeadTimesRequest = Record<string, number>;
+
 export type FulfillmentConfigMap = Record<string, FulfillmentConfig>;
 export interface IWSettings {
   additional_pizza_lead_time: number;
-  time_step: number[];
   pipeline_info: {
     baking_pipeline: { slots: Number, time: Number }[];
     transfer_padding: number;
   };
-  operating_hours: OperatingHoursList[];
   config: Record<string, number | string | boolean>;
   // {
   // SQUARE_APPLICATION_ID: String,
@@ -135,13 +138,6 @@ export interface IWSettings {
   // MESSAGE_REQUEST_SLICING: String
   // };
 };
-export interface IWBlockedOff {
-  blocked_off: {
-    service: number;
-    exclusion_date: string;
-    excluded_intervals: IWInterval[];
-  }[];
-};
 export interface AvailabilityInfoMap {
   // the union of blocked off times for the services specified in computation stored as a list of IWIntervals
   blockedOffUnion: IWInterval[];
@@ -153,14 +149,6 @@ export interface AvailabilityInfoMap {
   minTimeStep: number;
   specialHoursUnion: IWInterval[] | null;
 };
-/**
- * @typedef {[string, IntervalTupleList][][]} JSFEBlockedOff - is stored in the memory/wire format here of:
- * [service_index][<String, [<start, end>]>], 
- *  meaning an array indexed by service_index of...
- * ... an array of two-tuples ...
- * ... whose 0th element is the string representation of the date, and whose 1th element is a list of interval tuples
- */
-export type JSFEBlockedOff = ([string, IntervalTupleList])[][];
 
 export enum DayIndex { SUNDAY, MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY };
 
@@ -651,16 +639,39 @@ export interface EncryptStringLock {
   readonly auth: string;
 };
 
+export enum StoreCreditType {
+  'MONEY' = 'MONEY',
+  'DISCOUNT' = 'DISCOUNT'
+};
+
 export type ValidateAndLockCreditResponse = {
   readonly valid: true;
   readonly lock: EncryptStringLock;
   readonly amount: number;
-  readonly credit_type: "MONEY" | "DISCOUNT"
+  readonly credit_type: StoreCreditType;
 } | {
   readonly valid: false;
   readonly lock: null;
   readonly amount: 0;
-  readonly credit_type: "MONEY"
+  readonly credit_type: StoreCreditType.MONEY;
+};
+
+export interface IssueStoreCreditRequest {
+  amount: IMoney;
+  addedBy: string;
+  reason: string;
+  recipientNameFirst: string;
+  recipientNameLast: string;
+  recipientEmail: string;
+  creditType: StoreCreditType;
+  expiration: string | null;
+};
+
+export type PurchaseStoreCreditRequest = Omit<IssueStoreCreditRequest, 'creditType' | 'reason' | 'expiration'> & {
+  sendEmailToRecipient: boolean;
+  senderName: string;
+  senderEmail: string;
+  recipientMessage: string;
 };
 
 export interface ValidateLockAndSpendRequest {

@@ -1,5 +1,5 @@
 import { getTime } from "date-fns";
-import { CoreCartEntry, DISABLE_REASON, IWInterval, ModifiersMap, OptionPlacement, OptionQualifier, TipSelection, ValidateAndLockCreditResponse, WProduct } from "./types";
+import { CoreCartEntry, DISABLE_REASON, IMoney, IWInterval, ModifiersMap, OptionPlacement, OptionQualifier, TipSelection, ValidateAndLockCreditResponse, WProduct } from "./types";
 
 export const CREDIT_REGEX = /[A-Za-z0-9]{3}-[A-Za-z0-9]{2}-[A-Za-z0-9]{3}-[A-Z0-9]{8}$/;
 
@@ -32,6 +32,10 @@ export function DisableDataCheck(disable_data: IWInterval | null, order_time: Da
         { enable: DISABLE_REASON.ENABLED }));
   // ))
   // return !disable_data || (!(disable_data.start > disable_data.end) && (disable_data.start > getTime(order_time) || disable_data.end < getTime(order_time)));
+}
+
+export function MoneyToDisplayString(money: IMoney, showCurrencyUnit: boolean) {
+  return `${showCurrencyUnit ? '$' : ""}${(money.amount / 100).toFixed(2)}`;
 }
 
 export function ComputeMainProductCategoryCount(MAIN_CATID: string, cart: CoreCartEntry<any>[]) {

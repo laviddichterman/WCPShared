@@ -13,7 +13,7 @@ import {
   subMinutes
 } from 'date-fns';
 
-import { AvailabilityInfoMap, DayIndex, FulfillmentConfig, FulfillmentConfigMap, IntervalTupleList, IWInterval, JSFEBlockedOff, OperatingHoursList, WIntervalTuple } from '../types';
+import { AvailabilityInfoMap, DayIndex, FulfillmentConfig, FulfillmentConfigMap, IWInterval, OperatingHourSpecification } from '../types';
 
 export const ADDITIONAL_PIZZA_LEAD_TIME_TO_DEPRECATE = 5;
 
@@ -93,59 +93,23 @@ export class WDateUtils {
     return `${printHour}:${printMinute}${meridian}`;
   }
 
-  static CompareIntervals(a: WIntervalTuple, b: WIntervalTuple) {
-    // compares the starting time of two intervals
-    return a[0] - b[0];
-  };
-
   static CompareIWIntervals(a: IWInterval, b: IWInterval) {
     // compares the starting time of two intervals
     return a.start - b.start;
   };
 
-  static ExtractCompareDate(a: [string, IntervalTupleList], b: [string, IntervalTupleList]) {
+  static ExtractCompareDate<T>(a: [string, T], b: [string, T]) {
     return compareAsc(parseISO(a[0]), parseISO(b[0]));
   };
 
   /**
-   * 
-   * @param {IntervalTupleList} intervals - array of length 2 arrays of Numbers
-   * @returns {IntervalTupleList} the input intervals array, sorted by interval start time, minimized to the union of the input array
-   */
-  static ComputeUnionsForIntervals(intervals: IntervalTupleList) {
-    // todo: maybe shallow copy this array?
-    intervals.sort(WDateUtils.CompareIntervals);
-    const interval_unions = [intervals[0]];
-    let j = 1;
-    let k = 0;
-    while (j < intervals.length) {
-      if (interval_unions[k][1] >= intervals[j][0]) {
-        // union the two intervals into the kth element of interval unions
-        interval_unions[k] = [interval_unions[k][0], Math.max(interval_unions[k][1], intervals[j][1])];
-        j += 1;
-      }
-      else if (interval_unions[k][1] < intervals[j][0]) {
-        // intervals do not intersect, add the jth interval to the end of the
-        // interval_unions and increment both iterators
-        interval_unions.push(intervals[j]);
-        j += 1;
-        k += 1;
-      }
-      else {
-        break;
-      }
-    }
-    return interval_unions;
-  }
-
-  /**
  * 
- * @param {IntervalTupleList} a - array of length 2 arrays of Numbers, sorted by start
- * @param {IntervalTupleList} b - array of length 2 arrays of Numbers, sorted by start
+ * @param {IWInterval[]} a - array of IWInterval, sorted by start
+ * @param {IWInterval[]} b - array of IWInterval, sorted by start
  * @param {Number} step - the next available interval step resolution
- * @returns {IntervalTupleList} a new array, the set subtraction of intervals a minus b
+ * @returns {IWInterval[]} a new array, the set subtraction of intervals a minus b
  */
-  static ComputeSubtractionOfIntervalSets(a: IntervalTupleList, b: IntervalTupleList, step: number) {
+  static ComputeSubtractionOfIntervalSets(a: IWInterval[], b: IWInterval[], step: number) {
     // if a is empty or there's nothing to subtract, return a
     if (!a.length || !b.length) {
       return a;
@@ -160,7 +124,7 @@ export class WDateUtils {
       let should_add = true;
       // eslint-disable-next-line no-plusplus
       for (let b_idx = j; b_idx < b.length; ++b_idx) {
-        if (a[a_idx][0] > b[b_idx][1]) { // a is entirely after b 
+        if (a[a_idx].start > b[b_idx].end) { // a is entirely after b 
           // then we don't need to look at b[j] anymore
           // assert: j === b_idx
           j += 1;
@@ -171,14 +135,14 @@ export class WDateUtils {
           // if b's end time is greater than or equal to a's start time and b's start time is less than or eq to a's end time
           // ... a0 <= b1, b0 <= b1, b0 <= a1, a0 <= a1
           // eslint-disable-next-line no-lonely-if
-          if (a[a_idx][1] >= b[b_idx][0]) {
+          if (a[a_idx].end >= b[b_idx].start) {
             // b0 <= a0 <= b1 <= a1
-            if (a[a_idx][0] >= b[b_idx][0]) {
+            if (a[a_idx].end >= b[b_idx].start) {
               // case: from the beginning of a's interval, some or all of a is clipped by some or all of b
               // "partial to full eclipse from the beginning"
-              if (b[b_idx][1] < a[a_idx][1]) {
+              if (b[b_idx].end < a[a_idx].end) {
                 // case partial eclipse
-                a.splice(a_idx, 1, [Math.min(b[b_idx][1] + step, a[a_idx][1]), a[a_idx][1]]);
+                a.splice(a_idx, 1, { start: Math.min(b[b_idx].end + step, a[a_idx].end), end: a[a_idx].end });
                 ++j;
               }
               else {
@@ -189,11 +153,11 @@ export class WDateUtils {
               }
             }
             else { // ... a0 < b0 <= b1, b0 <= a1, a0 <= a1
-              retval.push([a[a_idx][0], b[b_idx][0] - step]);
+              retval.push({ start: a[a_idx].start, end: b[b_idx].start - step });
               // a0 < b0 <= b1 < a1
-              if (b[b_idx][1] < a[0][1]) {
+              if (b[b_idx].end < a[0].end) {
                 // bisection
-                a.splice(a_idx, 1, [b[b_idx][1] + step, a[a_idx][1]]);
+                a.splice(a_idx, 1, { start: b[b_idx].end + step, end: a[a_idx].end });
               }
               else { // b1 === a1
                 // otherwise partial eclipse from the end
@@ -253,11 +217,11 @@ export class WDateUtils {
   /**
    * Computes a list of operating times available from the operating ranges
    */
-  static GetOperatingTimesForDate(operating_ranges: IntervalTupleList, step: number, lead_time_min: number) {
+  static GetOperatingTimesForDateSEEMSUNUSED(operating_ranges: IWInterval[], step: number, lead_time_min: number) {
     const retval: number[] = [];
     operating_ranges.forEach((range) => {
-      let earliest = Math.max(lead_time_min, range[0]);
-      while (earliest <= range[1]) {
+      let earliest = Math.max(lead_time_min, range.start);
+      while (earliest <= range.end) {
         retval.push(earliest);
         earliest += step;
       }
@@ -360,85 +324,33 @@ export class WDateUtils {
   // Adds the interval to the operating hours interval map.
   // This map differs slightly from the map used by blocked off times
   // This method makes a deep-enough copy for use by ReactJS
-  static AddIntervalToOperatingHours(service_index: number, day_index: number, interval: WIntervalTuple, new_interval_map: OperatingHoursList[]) {
-    const operating_hours = new_interval_map[service_index][day_index].slice();
-    operating_hours.push(interval);
-    new_interval_map[service_index][day_index] = WDateUtils.ComputeUnionsForIntervals(operating_hours);
+  static AddIntervalToOperatingHours(day_index: DayIndex, interval: IWInterval, operatingHours: OperatingHourSpecification): OperatingHourSpecification {
+    return { ...operatingHours, [day_index]: ComputeUnionsForIWInterval([...operatingHours[day_index], interval]) };
   }
 
-  // Removes the interval from the operating hours interval map.
-  // This map differs slightly from the map used by blocked off times
-  // This method makes a deep-enough copy for use by ReactJS
-  static RemoveIntervalFromOperatingHours(service_index: number, day_index: number, interval_index: number, interval_map: OperatingHoursList[]) {
-    const new_interval_map = interval_map.slice();
-    const new_interval_map_for_service = interval_map[service_index].slice() as OperatingHoursList;
-    const new_interval_map_for_day = new_interval_map_for_service[day_index].slice();
-    new_interval_map_for_day.splice(interval_index, 1);
-    new_interval_map_for_service[day_index] = new_interval_map_for_day;
-    new_interval_map[service_index] = new_interval_map_for_service;
-    return new_interval_map;
+  static AddIntervalToDate(interval: IWInterval, isoDate: string, dateIntervalsMap: Record<string, IWInterval[]>) {
+    const intervals = [...dateIntervalsMap[isoDate], interval] ?? [interval];
+    intervals.sort(WDateUtils.CompareIWIntervals);
+    return {
+      ...dateIntervalsMap,
+      [isoDate]: intervals
+    };
   }
 
-  /**
-   * Creates a ReactJS safe object copy of the BlockedOff interval map array with
-   * interval_map[service_index][day_index][1][interval_index] element removed
-   * NOTE: when we stop using socketIo to update blocked off times, this will not be a useful function
-   * and we'll want to replace it with a specific interval to remove from a service and date's blocked off array
-   * @param {Number} service_index 
-   * @param {Number} day_index 
-   * @param {Number} interval_index 
-   * @param {BLOCKED_OFF_WIRE_FORMAT} interval_map
-   * @returns an updated interval_map
-   */
-  static RemoveIntervalFromBlockedOffWireFormat(service_index: number, day_index: number, interval_index: number, interval_map: JSFEBlockedOff) {
-    const new_interval_map = interval_map.slice();
-    const new_interval_map_for_service = new_interval_map[service_index].slice();
-    const new_interval_map_for_intervals = new_interval_map_for_service[day_index][1].slice();
-    new_interval_map_for_intervals.splice(interval_index, 1);
-    new_interval_map_for_service[day_index] = [new_interval_map_for_service[day_index][0], new_interval_map_for_intervals];
-    if (new_interval_map_for_intervals.length === 0) {
-      new_interval_map_for_service.splice(day_index, 1);
-    }
-    new_interval_map[service_index] = new_interval_map_for_service;
-    return new_interval_map;
-  }
-
-  static AddIntervalToService(service_index: number, parsed_date: string, interval: WIntervalTuple, new_interval_map: JSFEBlockedOff) {
-    for (const [date_index, _] of new_interval_map[service_index].entries()) {
-      if (parsed_date === new_interval_map[service_index][date_index][0]) {
-        const new_interval_map_for_service_and_day = new_interval_map[service_index][date_index][1].slice();
-        new_interval_map_for_service_and_day.push(interval);
-        new_interval_map_for_service_and_day.sort(WDateUtils.CompareIntervals);
-        new_interval_map[service_index][date_index] = [new_interval_map[service_index][date_index][0], new_interval_map_for_service_and_day];
-        return;
-      }
-    }
-    const new_interval_map_for_service = new_interval_map[service_index].slice();
-    new_interval_map_for_service.push([parsed_date, [interval]]);
-    new_interval_map_for_service.sort(WDateUtils.ExtractCompareDate);
-    new_interval_map[service_index] = new_interval_map_for_service;
-  }
-
-  static RemoveInterval(service_index: number, day_index: DayIndex, interval_index: number, interval_map: JSFEBlockedOff) {
-    const new_interval_map = interval_map.slice();
-    const new_interval_map_for_service = new_interval_map[service_index].slice();
-    const new_interval_map_for_intervals = new_interval_map_for_service[day_index][1].slice();
-    new_interval_map_for_intervals.splice(interval_index, 1);
-    new_interval_map_for_service[day_index] = [new_interval_map_for_service[day_index][0], new_interval_map_for_intervals];
-    if (new_interval_map_for_intervals.length === 0) {
-      new_interval_map_for_service.splice(day_index, 1);
-    }
-    new_interval_map[service_index] = new_interval_map_for_service;
-    return new_interval_map;
+  static SubtractIntervalFromDate(interval: IWInterval, isoDate: string, dateIntervalsMap: Record<string, IWInterval[]>, timeStep: number) {
+    const intervals = dateIntervalsMap[isoDate] ?? [];
+    intervals.sort(WDateUtils.CompareIWIntervals);
+    return {
+      ...dateIntervalsMap,
+      [isoDate]: WDateUtils.ComputeSubtractionOfIntervalSets(intervals, [interval], timeStep)
+    };
   }
 
   /**
-   * Determines if there's any hours for a particular service
+   * Determines if there's any hours specified for a particular service
    */
-  static HasOperatingHoursForService(SERVICES: Record<string, string>, OPERATING_HOURS: OperatingHoursList[], serviceNumber: number) {
-    return Object.hasOwn(SERVICES, String(serviceNumber)) &&
-      serviceNumber < OPERATING_HOURS.length &&
-      OPERATING_HOURS[serviceNumber].reduce((acc, dayIntervals) => acc || dayIntervals.some(v => v[0] < v[1] && v[0] >= 0 && v[1] <= 1440), false)
+  static HasOperatingHours(operatingHours: OperatingHourSpecification) {
+    return Object.values(operatingHours).reduce((acc, dayIntervals) => acc || dayIntervals.some(v => v.start < v.end && v.start >= 0 && v.end <= 1440), false)
   }
 
   // // TODO: move to WCPShared
