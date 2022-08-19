@@ -692,10 +692,14 @@ export type SpendCreditResponse = {
   balance: IMoney;
 } | { success: false };
 
-export interface TipSelection {
+export type TipSelection = {
   value: IMoney;
   isSuggestion: boolean;
-  isPercentage: boolean;
+  isPercentage: false;
+} | {
+  value: number;
+  isSuggestion: boolean;
+  isPercentage: true;
 };
 
 export interface DeliveryAddressValidateRequest {

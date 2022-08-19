@@ -61,7 +61,7 @@ export function ComputeTipBasis(subtotalPreDiscount: number, taxAmount: number) 
 }
 
 export function ComputeTipValue(tip: TipSelection | null, basis: number) {
-  return tip !== null ? (tip.isPercentage ? RoundToTwoDecimalPlaces(tip.value.amount * basis) : tip.value.amount) : 0;
+  return tip !== null ? (tip.isPercentage ? RoundToTwoDecimalPlaces(tip.value * basis) : tip.value.amount) : 0;
 }
 
 export function ComputeSubtotalPreDiscount(cartTotal: number, serviceFees: number) {
