@@ -30,8 +30,6 @@ export function DisableDataCheck(disable_data: IWInterval | null, order_time: Da
       (disable_data.start <= getTime(order_time) && disable_data.end >= getTime(order_time)) ?
         { enable: DISABLE_REASON.DISABLED_TIME, interval: disable_data } :
         { enable: DISABLE_REASON.ENABLED }));
-  // ))
-  // return !disable_data || (!(disable_data.start > disable_data.end) && (disable_data.start > getTime(order_time) || disable_data.end < getTime(order_time)));
 }
 
 export function MoneyToDisplayString(money: IMoney, showCurrencyUnit: boolean) {
@@ -47,11 +45,11 @@ export function RoundToTwoDecimalPlaces(number: number) {
 }
 
 export function ComputeCartSubTotal(cart: CoreCartEntry<WProduct>[]) {
-  return cart.reduce((acc, entry) => RoundToTwoDecimalPlaces(acc + (entry.product.m.price * entry.quantity)), 0);
+  return cart.reduce((acc, entry) => acc + (entry.product.m.price.amount * entry.quantity), 0);
 }
 
 export function ComputeDiscountApplied(subtotalPreDiscount: number, creditValidations: ValidateAndLockCreditResponse[]) {
-  return Math.min(subtotalPreDiscount, creditValidations.reduce((acc, x) => acc + (x.valid && x.credit_type === "DISCOUNT" ? x.amount : 0), 0));
+  return Math.min(subtotalPreDiscount, creditValidations.reduce((acc, x) => acc + (x.valid && x.credit_type === "DISCOUNT" ? x.amount.amount : 0), 0));
 }
 
 export function ComputeTaxAmount(subtotalAfterDiscount: number, taxRate: number) {
@@ -59,23 +57,23 @@ export function ComputeTaxAmount(subtotalAfterDiscount: number, taxRate: number)
 }
 
 export function ComputeTipBasis(subtotalPreDiscount: number, taxAmount: number) {
-  return RoundToTwoDecimalPlaces(subtotalPreDiscount + taxAmount);
+  return subtotalPreDiscount + taxAmount;
 }
 
 export function ComputeTipValue(tip: TipSelection | null, basis: number) {
-  return tip !== null ? (tip.isPercentage ? RoundToTwoDecimalPlaces(tip.value * basis) : tip.value) : 0;
+  return tip !== null ? (tip.isPercentage ? RoundToTwoDecimalPlaces(tip.value.amount * basis) : tip.value.amount) : 0;
 }
 
 export function ComputeSubtotalPreDiscount(cartTotal: number, serviceFees: number) {
-  return RoundToTwoDecimalPlaces(cartTotal + serviceFees);
+  return cartTotal + serviceFees;
 }
 
 export function ComputeSubtotalAfterDiscount(subtotalPreDiscount: number, discountApplied: number) {
-  return RoundToTwoDecimalPlaces(subtotalPreDiscount - discountApplied);
+  return subtotalPreDiscount - discountApplied;
 }
 
 export function ComputeTotal(subtotalAfterDiscount: number, taxAmount: number, tipAmount: number) {
-  return RoundToTwoDecimalPlaces(subtotalAfterDiscount + taxAmount + tipAmount);
+  return subtotalAfterDiscount + taxAmount + tipAmount;
 }
 
 export function ComputeAutogratuityEnabled(mainProductCount: number, threshold: number, isDelivery: boolean) {
@@ -83,8 +81,8 @@ export function ComputeAutogratuityEnabled(mainProductCount: number, threshold: 
 }
 
 export function ComputeGiftCardApplied(total: number, creditValidations: ValidateAndLockCreditResponse[]) {
-  return Math.min(total, creditValidations.reduce((acc, x) => acc + (x.valid && x.credit_type === "MONEY" ? x.amount : 0), 0));
+  return Math.min(total, creditValidations.reduce((acc, x) => acc + (x.valid && x.credit_type === "MONEY" ? x.amount.amount : 0), 0));
 }
 export function ComputeBalanceAfterCredits(total: number, giftCardApplied: number) {
-  return RoundToTwoDecimalPlaces(total - giftCardApplied);
+  return total - giftCardApplied;
 }

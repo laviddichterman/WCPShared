@@ -95,7 +95,7 @@ export function ComputePotentialPrices(metadata: WProductMetadata, menuModifiers
     }
     prices.splice(0, 2, Object.keys(combined_prices).map(x => Number(x)));
   }
-  return prices[0].sort((a, b) => a - b).map(x => x + metadata.price);
+  return prices[0].sort((a, b) => a - b).map(x => x + metadata.price.amount);
 }
 
 // matrix of how products match indexed by [first placement][second placement] containing [left match, right match, break_mirror]
@@ -385,7 +385,7 @@ export function WCPProductGenerateMetadata(a: WCPProduct, productClassMenu: Prod
     shortname: '',
     pi: [leftPI.id, rightPI.id],
     is_split,
-    price: price / 100,
+    price: { currency: PRODUCT_CLASS.price.currency, amount: price },
     incomplete: false,
     modifier_map: {} as MetadataModifierMap,
     advanced_option_eligible: false,

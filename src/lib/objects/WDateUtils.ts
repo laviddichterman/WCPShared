@@ -13,7 +13,7 @@ import {
   subMinutes
 } from 'date-fns';
 
-import { AvailabilityInfoMap, DayIndex, FulfillmentConfig, FulfillmentConfigMap, IWInterval, OperatingHourSpecification } from '../types';
+import { AvailabilityInfoMap, DayIndex, FulfillmentConfig, IWInterval, OperatingHourSpecification } from '../types';
 
 export const ADDITIONAL_PIZZA_LEAD_TIME_TO_DEPRECATE = 5;
 
@@ -49,16 +49,15 @@ export function ComputeUnionsForIWInterval(intervals: IWInterval[]) {
 
 /**
  * gets the union of blocked off hours for a given date and the provided services
- * @param {Record<string, Pick<FulfillmentConfig, 'blockedOff'>>} config - the blocked off config 
- * @param {string[]} services - list of fulfillment IDs we're interested in
+ * @param {Record<string, IWInterval[]>[]} blockedOffs - the blocked off config for fulfillments we're interested in 
  * @param {String} dateString - the date, in formatISODate
  * @returns the union of blocked off times for all specified services
  */
-export function BlockedOffIntervalsForServicesAndDate(config: Record<string, Pick<FulfillmentConfig, 'blockedOff'>>, services: string[], dateString: string) {
+export function BlockedOffIntervalsForServicesAndDate(blockedOffs: Record<string, IWInterval[]>[], dateString: string) {
   return ComputeUnionsForIWInterval(
-    services.reduce(
-      (acc: IWInterval[], fId) =>
-        Object.hasOwn(config[fId].blockedOff, dateString) ? [...acc, ...config[fId].blockedOff[dateString]] : acc, []));
+    blockedOffs.reduce(
+      (acc: IWInterval[], blockedOff) =>
+        Object.hasOwn(blockedOff, dateString) ? [...acc, ...blockedOff[dateString]] : acc, []));
 }
 
 export class WDateUtils {
@@ -196,19 +195,21 @@ export class WDateUtils {
 
   /**
    * gets the union of operating hours for a given day and the provided services
-   * @param {Record<string, Pick<FulfillmentConfig, 'operatingHours' | 'specialHours'>>} config - operating hour and special hour override configuration
-   * @param {string[]} fulfillments - list of fulfillmentIds
-   * @param {Number} day_index - the day of the week, 0 = sunday // consider using something like differenceInDays(previousSunday(now), now)
+   * @param {{ operatingHours: OperatingHourSpecification; specialHours: Record<string, IWInterval[]>; }[]} config - operating hour and special hour override configuration
+   * @param {string} isoDate - YYYYMMDD string of when we're looking for hours
+   * @param {Number} day_index - the day of the week, 0 = sunday // consider using something like differenceInDays(previousSunday(isoDate), isoDate)
    * @returns 
    */
   static GetOperatingHoursForServicesAndDate(
-    config: Record<string, Pick<FulfillmentConfig, 'operatingHours' | 'specialHours'>>,
-    fulfillments: string[],
+    configs: {
+      operatingHours: OperatingHourSpecification;
+      specialHours: Record<string, IWInterval[]>;
+    }[],
     isoDate: string,
     day_index: DayIndex) {
-    const allHours = fulfillments.reduce((acc, fId) => {
-      const fulfillmentConfig = config[fId];
-      return acc.concat(Object.hasOwn(fulfillmentConfig.specialHours, isoDate) ? fulfillmentConfig.specialHours[isoDate] : config[fId].operatingHours[day_index]);
+    const allHours = configs.reduce((acc, config) => {
+      const fulfillmentConfig = config;
+      return acc.concat(Object.hasOwn(fulfillmentConfig.specialHours, isoDate) ? fulfillmentConfig.specialHours[isoDate] : config.operatingHours[day_index]);
     }, [] as IWInterval[]);
 
     return ComputeUnionsForIWInterval(allHours);
@@ -229,7 +230,7 @@ export class WDateUtils {
     return retval;
   }
 
-  static HandleBlockedOffTime(blocked_off_intervals: IWInterval[], operatingIntervals: IWInterval[], start: number, step: number) {
+  static HandleBlockedOffTime(blockedOffIntervals: IWInterval[], operatingIntervals: IWInterval[], start: number, step: number) {
     let pushed_time = start;
     for (let op_idx = 0; op_idx < operatingIntervals.length; ++op_idx) {
       if (pushed_time < operatingIntervals[op_idx].start) {
@@ -237,9 +238,9 @@ export class WDateUtils {
       }
       // if the time we're looking at is in the current operating time interval...
       if (operatingIntervals[op_idx].end >= pushed_time && operatingIntervals[op_idx].start <= pushed_time) {
-        for (let bo_idx = 0; bo_idx < blocked_off_intervals.length; ++bo_idx) {
-          if (blocked_off_intervals[bo_idx].end >= pushed_time && blocked_off_intervals[bo_idx].start <= pushed_time) {
-            pushed_time = blocked_off_intervals[bo_idx].end + step;
+        for (let bo_idx = 0; bo_idx < blockedOffIntervals.length; ++bo_idx) {
+          if (blockedOffIntervals[bo_idx].end >= pushed_time && blockedOffIntervals[bo_idx].start <= pushed_time) {
+            pushed_time = blockedOffIntervals[bo_idx].end + step;
           }
         }
         if (pushed_time > operatingIntervals[op_idx].end) {
@@ -252,13 +253,13 @@ export class WDateUtils {
     return pushed_time > operatingIntervals[operatingIntervals.length - 1].end ? -1 : pushed_time;
   }
 
-  static GetInfoMapForAvailabilityComputation(config: FulfillmentConfigMap, date: string, services: string[], stuff_to_depreciate_map: { cart_based_lead_time: number; size: number; }) {
+  static GetInfoMapForAvailabilityComputation(configs: FulfillmentConfig[], date: string, stuff_to_depreciate_map: { cart_based_lead_time: number; size: number; }) {
     const jsDate = parseISO(date);
     const isoDate = WDateUtils.formatISODate(jsDate);
-    const blockedOffUnion = BlockedOffIntervalsForServicesAndDate(config, services, isoDate);
-    const operatingIntervals = WDateUtils.GetOperatingHoursForServicesAndDate(config, services, isoDate, getDay(jsDate));
-    const minTimeStep = Math.min(...services.map(fId => config[fId].timeStep));
-    const minLeadTime = Math.min(...services.map(fId => config[fId].leadTime));
+    const blockedOffUnion = BlockedOffIntervalsForServicesAndDate(configs.map(x => x.blockedOff), isoDate);
+    const operatingIntervals = WDateUtils.GetOperatingHoursForServicesAndDate(configs, isoDate, getDay(jsDate));
+    const minTimeStep = Math.min(...configs.map(config => config.timeStep));
+    const minLeadTime = Math.min(...configs.map(config => config.leadTime));
     const order_size = Math.max(stuff_to_depreciate_map.size, 1);
     const cart_based_lead_time = Object.hasOwn(stuff_to_depreciate_map, "cart_based_lead_time") ? stuff_to_depreciate_map.cart_based_lead_time : 0;
     // cart_based_lead_time and service/size lead time don't stack
@@ -292,7 +293,7 @@ export class WDateUtils {
 
   /**
    * @param {AvailabilityInfoMap} INFO - as computed by GetInfoMapForAvailabilityComputation  
-   * @param date - date to find the first available time for
+   * @param date - isoDate to find the first available time for
    * @param currently - ISO string of the current date and time according to dog (the server, whatever)
    * @returns the first available time in minutes from the start of the day (not taking into account DST), or -1 if no time is available
    */
@@ -353,6 +354,8 @@ export class WDateUtils {
     return Object.values(operatingHours).reduce((acc, dayIntervals) => acc || dayIntervals.some(v => v.start < v.end && v.start >= 0 && v.end <= 1440), false)
   }
 
+
+
   // // TODO: move to WCPShared
   // static ComputeNextAvailableServiceDateTimeForService(serviceHasAnyOperatingHours: boolean, (testDate: Date | number) => {
   //   value: number;
@@ -391,6 +394,33 @@ export class WDateUtils {
   //       return nextAvailableForServiceFunction(1) ?? now
   //     });
 
+}
+export const HasOperatingHoursForFulfillments = (fulfillmentConfigs: FulfillmentConfig[]) =>
+  fulfillmentConfigs.reduce((acc, fulfillment) => acc || WDateUtils.HasOperatingHours(fulfillment.operatingHours), false);
+
+/**
+ *  NOTE: FIRST CONFIRM YOU HAVE ANY OPERATING HOURS FOR FULFILLMENTS OTHERWISE THIS RUNS FOREVER 
+ * @param {FulfillmentConfig[]} fulfillmentConfigs map of the fulfillments we're interested in  
+ * @param now - ISO string of the current date and time according to dog (the server, whatever)
+ */
+export const GetNextAvailableServiceDate = (fulfillmentConfigs: FulfillmentConfig[], orderSize: number, now: string): [string, number] | null => {
+
+  if (!HasOperatingHoursForFulfillments(fulfillmentConfigs)) {
+    return null;
+  }
+
+  let dateAttempted = startOfDay(parseISO(now));
+
+  while (1) {
+    const isoDate = WDateUtils.formatISODate(dateAttempted);
+    const INFO = WDateUtils.GetInfoMapForAvailabilityComputation(fulfillmentConfigs, isoDate, { cart_based_lead_time: 0, size: orderSize });
+    const firstAvailableTime = WDateUtils.ComputeFirstAvailableTimeForDate(INFO, isoDate, now);
+    if (firstAvailableTime !== -1) {
+      return [isoDate, firstAvailableTime];
+    }
+    dateAttempted = addDays(dateAttempted, 1);
+  }
+  return null;
 }
 
 export default WDateUtils;

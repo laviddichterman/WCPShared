@@ -568,7 +568,7 @@ export interface WProductMetadata {
   name: string;
   shortname: string;
   description: string;
-  price: number;
+  price: IMoney;
   pi: [string, string];
   is_split: boolean;
   incomplete: boolean;
@@ -647,12 +647,12 @@ export enum StoreCreditType {
 export type ValidateAndLockCreditResponse = {
   readonly valid: true;
   readonly lock: EncryptStringLock;
-  readonly amount: number;
+  readonly amount: IMoney;
   readonly credit_type: StoreCreditType;
 } | {
   readonly valid: false;
   readonly lock: null;
-  readonly amount: 0;
+  readonly amount: { amount: 0, currency: CURRENCY.USD };
   readonly credit_type: StoreCreditType.MONEY;
 };
 
@@ -676,7 +676,7 @@ export type PurchaseStoreCreditRequest = Omit<IssueStoreCreditRequest, 'creditTy
 
 export interface ValidateLockAndSpendRequest {
   readonly code: string;
-  readonly amount: number;
+  readonly amount: IMoney;
   readonly lock: EncryptStringLock;
   readonly updatedBy: string;
 }
@@ -689,11 +689,11 @@ export interface ValidateLockAndSpendSuccess {
 
 export type SpendCreditResponse = {
   success: true;
-  balance: number;
+  balance: IMoney;
 } | { success: false };
 
 export interface TipSelection {
-  value: number;
+  value: IMoney;
   isSuggestion: boolean;
   isPercentage: boolean;
 };
@@ -720,14 +720,14 @@ export interface DeliveryAddressValidateResponse {
 };
 
 export interface TotalsV2 {
-  tip: number;
-  balance: number;
+  tip: IMoney;
+  balance: IMoney;
 }
 
 export interface JSFECreditV2 {
   readonly validation: ValidateAndLockCreditResponse;
   readonly code: string;
-  readonly amount_used: number;
+  readonly amount_used: IMoney;
 };
 
 export interface DeliveryInfoDto {
