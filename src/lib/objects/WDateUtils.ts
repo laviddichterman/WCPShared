@@ -399,7 +399,6 @@ export const HasOperatingHoursForFulfillments = (fulfillmentConfigs: Fulfillment
   fulfillmentConfigs.reduce((acc, fulfillment) => acc || WDateUtils.HasOperatingHours(fulfillment.operatingHours), false);
 
 /**
- *  NOTE: FIRST CONFIRM YOU HAVE ANY OPERATING HOURS FOR FULFILLMENTS OTHERWISE THIS RUNS FOREVER 
  * @param {FulfillmentConfig[]} fulfillmentConfigs map of the fulfillments we're interested in  
  * @param now - ISO string of the current date and time according to dog (the server, whatever)
  */

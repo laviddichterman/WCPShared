@@ -651,9 +651,6 @@ export type ValidateAndLockCreditResponse = {
   readonly credit_type: StoreCreditType;
 } | {
   readonly valid: false;
-  readonly lock: null;
-  readonly amount: { amount: 0, currency: CURRENCY.USD };
-  readonly credit_type: StoreCreditType.MONEY;
 };
 
 export interface IssueStoreCreditRequest {
