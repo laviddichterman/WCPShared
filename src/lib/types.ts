@@ -44,6 +44,11 @@ export type OperatingHourSpecification = {
   [DayOfTheWeek.FRIDAY]: IWInterval[];
   [DayOfTheWeek.SATURDAY]: IWInterval[];
 };
+export type DateIntervalEntry = {
+  key: string;
+  value: IWInterval[];
+};
+export type DateIntervalsEntries = DateIntervalEntry[];
 
 export interface FulfillmentConfig {
   id: string;
@@ -84,10 +89,10 @@ export interface FulfillmentConfig {
   operatingHours: OperatingHourSpecification;
   // special hours for this service
   // string in formatISODate format */
-  specialHours: Record<string, IWInterval[]>;
+  specialHours: DateIntervalsEntries;
   // blocked off times for this service
   // string in formatISODate format */
-  blockedOff: Record<string, IWInterval[]>;
+  blockedOff: DateIntervalsEntries;
   // minimum "length" of the service. Pickup could be over a period of time, or it could be just one moment
   minDuration: number;
   // maximum duration of the service. For time-limited dine-ins this would be the length of their reservation
@@ -467,7 +472,6 @@ export interface IProduct {
   disabled: IWInterval | null;
   serviceDisable: string[];
   externalIDs: Record<string, string>;
-
   displayFlags: {
     flavor_max: number;
     bake_max: number;

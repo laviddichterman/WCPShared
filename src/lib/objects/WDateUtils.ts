@@ -13,7 +13,7 @@ import {
   subMinutes
 } from 'date-fns';
 
-import { AvailabilityInfoMap, DayOfTheWeek, FulfillmentConfig, IWInterval, OperatingHourSpecification } from '../types';
+import { AvailabilityInfoMap, DateIntervalsEntries, DayOfTheWeek, FulfillmentConfig, IWInterval, OperatingHourSpecification } from '../types';
 
 export const ADDITIONAL_PIZZA_LEAD_TIME_TO_DEPRECATE = 5;
 
@@ -24,7 +24,7 @@ export const ADDITIONAL_PIZZA_LEAD_TIME_TO_DEPRECATE = 5;
  */
 export function ComputeUnionsForIWInterval(intervals: IWInterval[]) {
   const sortedIntervals = intervals.slice().sort(WDateUtils.CompareIWIntervals);
-  const interval_unions = [sortedIntervals[0]];
+  const interval_unions = intervals.length > 0 ? [sortedIntervals[0]] : [];
   let j = 1;
   let k = 0;
   while (j < sortedIntervals.length) {
@@ -49,15 +49,15 @@ export function ComputeUnionsForIWInterval(intervals: IWInterval[]) {
 
 /**
  * gets the union of blocked off hours for a given date and the provided services
- * @param {Record<string, IWInterval[]>[]} blockedOffs - the blocked off config for fulfillments we're interested in 
+ * @param {DateIntervalsEntries[]} blockedOffs - the blocked off config for fulfillments we're interested in 
  * @param {String} dateString - the date, in formatISODate
  * @returns the union of blocked off times for all specified services
  */
-export function BlockedOffIntervalsForServicesAndDate(blockedOffs: Record<string, IWInterval[]>[], dateString: string) {
-  return ComputeUnionsForIWInterval(
-    blockedOffs.reduce(
-      (acc: IWInterval[], blockedOff) =>
-        Object.hasOwn(blockedOff, dateString) ? [...acc, ...blockedOff[dateString]] : acc, []));
+export function BlockedOffIntervalsForServicesAndDate(blockedOffs: DateIntervalsEntries[], dateString: string) {
+  return ComputeUnionsForIWInterval(blockedOffs.reduce((acc: IWInterval[], blockedOff: DateIntervalsEntries) => {
+    const foundIntervalsIndex = blockedOff.findIndex(entry => entry.key === dateString);
+    return foundIntervalsIndex === -1 ? acc : [...acc, ...blockedOff[foundIntervalsIndex].value];
+  }, []));
 }
 
 export class WDateUtils {
@@ -195,7 +195,7 @@ export class WDateUtils {
 
   /**
    * gets the union of operating hours for a given day and the provided services
-   * @param {{ operatingHours: OperatingHourSpecification; specialHours: Record<string, IWInterval[]>; }[]} config - operating hour and special hour override configuration
+   * @param {{ operatingHours: OperatingHourSpecification; specialHours: DateIntervalsEntries; }[]} config - operating hour and special hour override configuration
    * @param {string} isoDate - YYYYMMDD string of when we're looking for hours
    * @param {Number} day_index - the day of the week, 0 = sunday // consider using something like differenceInDays(previousSunday(isoDate), isoDate)
    * @returns 
@@ -203,13 +203,13 @@ export class WDateUtils {
   static GetOperatingHoursForServicesAndDate(
     configs: {
       operatingHours: OperatingHourSpecification;
-      specialHours: Record<string, IWInterval[]>;
+      specialHours: DateIntervalsEntries;
     }[],
     isoDate: string,
     day_index: DayOfTheWeek) {
     const allHours = configs.reduce((acc, config) => {
-      const fulfillmentConfig = config;
-      return acc.concat(Object.hasOwn(fulfillmentConfig.specialHours, isoDate) ? fulfillmentConfig.specialHours[isoDate] : config.operatingHours[day_index]);
+      const specialHoursForDateIndex = config.specialHours.findIndex(x => x.key === isoDate);
+      return acc.concat(specialHoursForDateIndex !== -1 ? config.specialHours[specialHoursForDateIndex].value : config.operatingHours[day_index]);
     }, [] as IWInterval[]);
 
     return ComputeUnionsForIWInterval(allHours);
@@ -329,22 +329,20 @@ export class WDateUtils {
     return { ...operatingHours, [day_index]: ComputeUnionsForIWInterval([...operatingHours[day_index], interval]) };
   }
 
-  static AddIntervalToDate(interval: IWInterval, isoDate: string, dateIntervalsMap: Record<string, IWInterval[]>) {
-    const intervals = [...dateIntervalsMap[isoDate], interval] ?? [interval];
-    intervals.sort(WDateUtils.CompareIWIntervals);
-    return {
-      ...dateIntervalsMap,
-      [isoDate]: intervals
-    };
+  static AddIntervalToDate(interval: IWInterval, isoDate: string, dateIntervalsMap: DateIntervalsEntries): DateIntervalsEntries {
+    const foundIntervalEntryIndex = dateIntervalsMap.findIndex(x => x.key === isoDate);
+    return foundIntervalEntryIndex !== -1 ?
+      [...dateIntervalsMap.slice(0, foundIntervalEntryIndex),
+      { key: isoDate, value: [...dateIntervalsMap[foundIntervalEntryIndex].value, interval].sort(WDateUtils.CompareIWIntervals) },
+      ...dateIntervalsMap.slice(foundIntervalEntryIndex + 1)] : [...dateIntervalsMap, { key: isoDate, value: [interval] }];
   }
 
-  static SubtractIntervalFromDate(interval: IWInterval, isoDate: string, dateIntervalsMap: Record<string, IWInterval[]>, timeStep: number) {
-    const intervals = dateIntervalsMap[isoDate] ?? [];
-    intervals.sort(WDateUtils.CompareIWIntervals);
-    return {
-      ...dateIntervalsMap,
-      [isoDate]: WDateUtils.ComputeSubtractionOfIntervalSets(intervals, [interval], timeStep)
-    };
+  static SubtractIntervalFromDate(interval: IWInterval, isoDate: string, dateIntervalsMap: DateIntervalsEntries, timeStep: number): DateIntervalsEntries {
+    const foundIntervalEntryIndex = dateIntervalsMap.findIndex(x => x.key === isoDate);
+    return foundIntervalEntryIndex !== -1 ?
+      [...dateIntervalsMap.slice(0, foundIntervalEntryIndex),
+      { key: isoDate, value: WDateUtils.ComputeSubtractionOfIntervalSets(dateIntervalsMap[foundIntervalEntryIndex].value, [interval], timeStep) },
+      ...dateIntervalsMap.slice(foundIntervalEntryIndex + 1)] : dateIntervalsMap;
   }
 
   /**
