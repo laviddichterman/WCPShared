@@ -29,10 +29,10 @@ export interface IWInterval {
 };
 
 export enum FulfillmentType {
-  PICKUP,
-  DINEIN,
-  DELIVERY,
-  SHIPPING,
+  PickUp = 'PickUp',
+  DineIn = 'DineIn',
+  Delivery = 'Delivery',
+  Shipping = 'Shipping',
 }
 
 export type OperatingHourSpecification = {
@@ -149,8 +149,6 @@ export interface AvailabilityInfoMap {
   minTimeStep: number;
   specialHoursUnion: IWInterval[] | null;
 };
-
-export enum DayIndex { SUNDAY, MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY };
 
 export enum DISPLAY_AS {
   OMIT = 'OMIT',

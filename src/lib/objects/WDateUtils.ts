@@ -13,7 +13,7 @@ import {
   subMinutes
 } from 'date-fns';
 
-import { AvailabilityInfoMap, DayIndex, FulfillmentConfig, IWInterval, OperatingHourSpecification } from '../types';
+import { AvailabilityInfoMap, DayOfTheWeek, FulfillmentConfig, IWInterval, OperatingHourSpecification } from '../types';
 
 export const ADDITIONAL_PIZZA_LEAD_TIME_TO_DEPRECATE = 5;
 
@@ -188,7 +188,7 @@ export class WDateUtils {
    * @param {Number} day_index - the day of the week, 0 = sunday // consider using something like differenceInDays(previousSunday(now), now)
    * @returns 
    */
-  static GetOperatingHoursForServicesAndDayISTHISUSED(config: Record<string, Pick<FulfillmentConfig, 'operatingHours'>>, fulfillments: string[], day_index: DayIndex) {
+  static GetOperatingHoursForServicesAndDayISTHISUSED(config: Record<string, Pick<FulfillmentConfig, 'operatingHours'>>, fulfillments: string[], day_index: DayOfTheWeek) {
     const allHours = fulfillments.reduce((acc, fId) => acc.concat(config[fId].operatingHours[day_index]), [] as IWInterval[]);
     return ComputeUnionsForIWInterval(allHours);
   }
@@ -206,7 +206,7 @@ export class WDateUtils {
       specialHours: Record<string, IWInterval[]>;
     }[],
     isoDate: string,
-    day_index: DayIndex) {
+    day_index: DayOfTheWeek) {
     const allHours = configs.reduce((acc, config) => {
       const fulfillmentConfig = config;
       return acc.concat(Object.hasOwn(fulfillmentConfig.specialHours, isoDate) ? fulfillmentConfig.specialHours[isoDate] : config.operatingHours[day_index]);
@@ -325,7 +325,7 @@ export class WDateUtils {
   // Adds the interval to the operating hours interval map.
   // This map differs slightly from the map used by blocked off times
   // This method makes a deep-enough copy for use by ReactJS
-  static AddIntervalToOperatingHours(day_index: DayIndex, interval: IWInterval, operatingHours: OperatingHourSpecification): OperatingHourSpecification {
+  static AddIntervalToOperatingHours(day_index: DayOfTheWeek, interval: IWInterval, operatingHours: OperatingHourSpecification): OperatingHourSpecification {
     return { ...operatingHours, [day_index]: ComputeUnionsForIWInterval([...operatingHours[day_index], interval]) };
   }
 
