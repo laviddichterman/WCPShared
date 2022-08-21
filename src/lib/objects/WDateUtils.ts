@@ -183,18 +183,6 @@ export class WDateUtils {
 
   /**
    * gets the union of operating hours for a given day and the provided services
-   * @param {Record<string, Pick<FulfillmentConfig, 'operatingHours'>>} config - operating hour configuration
-   * @param {string[]} fulfillments - list of fulfillmentIds
-   * @param {Number} day_index - the day of the week, 0 = sunday // consider using something like differenceInDays(previousSunday(now), now)
-   * @returns 
-   */
-  static GetOperatingHoursForServicesAndDayISTHISUSED(config: Record<string, Pick<FulfillmentConfig, 'operatingHours'>>, fulfillments: string[], day_index: DayOfTheWeek) {
-    const allHours = fulfillments.reduce((acc, fId) => acc.concat(config[fId].operatingHours[day_index]), [] as IWInterval[]);
-    return ComputeUnionsForIWInterval(allHours);
-  }
-
-  /**
-   * gets the union of operating hours for a given day and the provided services
    * @param {{ operatingHours: OperatingHourSpecification; specialHours: DateIntervalsEntries; }[]} config - operating hour and special hour override configuration
    * @param {string} isoDate - YYYYMMDD string of when we're looking for hours
    * @param {Number} day_index - the day of the week, 0 = sunday // consider using something like differenceInDays(previousSunday(isoDate), isoDate)
@@ -213,21 +201,6 @@ export class WDateUtils {
     }, [] as IWInterval[]);
 
     return ComputeUnionsForIWInterval(allHours);
-  }
-
-  /**
-   * Computes a list of operating times available from the operating ranges
-   */
-  static GetOperatingTimesForDateSEEMSUNUSED(operating_ranges: IWInterval[], step: number, lead_time_min: number) {
-    const retval: number[] = [];
-    operating_ranges.forEach((range) => {
-      let earliest = Math.max(lead_time_min, range.start);
-      while (earliest <= range.end) {
-        retval.push(earliest);
-        earliest += step;
-      }
-    });
-    return retval;
   }
 
   static HandleBlockedOffTime(blockedOffIntervals: IWInterval[], operatingIntervals: IWInterval[], start: number, step: number) {
@@ -334,15 +307,23 @@ export class WDateUtils {
     return foundIntervalEntryIndex !== -1 ?
       [...dateIntervalsMap.slice(0, foundIntervalEntryIndex),
       { key: isoDate, value: [...dateIntervalsMap[foundIntervalEntryIndex].value, interval].sort(WDateUtils.CompareIWIntervals) },
-      ...dateIntervalsMap.slice(foundIntervalEntryIndex + 1)] : [...dateIntervalsMap, { key: isoDate, value: [interval] }];
+      ...dateIntervalsMap.slice(foundIntervalEntryIndex + 1)] :
+      [...dateIntervalsMap, { key: isoDate, value: [interval] }].sort((a, b) => compareAsc(parseISO(a.key), parseISO(b.key)));
   }
 
   static SubtractIntervalFromDate(interval: IWInterval, isoDate: string, dateIntervalsMap: DateIntervalsEntries, timeStep: number): DateIntervalsEntries {
     const foundIntervalEntryIndex = dateIntervalsMap.findIndex(x => x.key === isoDate);
-    return foundIntervalEntryIndex !== -1 ?
-      [...dateIntervalsMap.slice(0, foundIntervalEntryIndex),
-      { key: isoDate, value: WDateUtils.ComputeSubtractionOfIntervalSets(dateIntervalsMap[foundIntervalEntryIndex].value, [interval], timeStep) },
-      ...dateIntervalsMap.slice(foundIntervalEntryIndex + 1)] : dateIntervalsMap;
+    if (foundIntervalEntryIndex !== -1) {
+      const subtraction = WDateUtils.ComputeSubtractionOfIntervalSets(dateIntervalsMap[foundIntervalEntryIndex].value, [interval], timeStep);
+      const retval = [...dateIntervalsMap];
+      if (subtraction.length > 0) {
+        retval[foundIntervalEntryIndex].value = subtraction;
+      } else {
+        retval.splice(foundIntervalEntryIndex, 1);
+      }
+      return retval;
+    }
+    return dateIntervalsMap;
   }
 
   /**
