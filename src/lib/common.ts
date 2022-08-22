@@ -1,5 +1,6 @@
-import { getTime } from "date-fns";
-import { CoreCartEntry, CURRENCY, DISABLE_REASON, IMoney, IWInterval, ModifiersMap, OptionPlacement, OptionQualifier, TipSelection, ValidateAndLockCreditResponse, WProduct } from "./types";
+import { addMinutes, getTime } from "date-fns";
+import WDateUtils from "./objects/WDateUtils";
+import { CoreCartEntry, CURRENCY, DISABLE_REASON, FulfillmentConfig, FulfillmentDto, IMoney, IWInterval, ModifiersMap, OptionPlacement, OptionQualifier, TipSelection, ValidateAndLockCreditResponse, WProduct } from "./types";
 
 export const CREDIT_REGEX = /[A-Za-z0-9]{3}-[A-Za-z0-9]{2}-[A-Za-z0-9]{3}-[A-Z0-9]{8}$/;
 
@@ -12,6 +13,13 @@ export function ReduceArrayToMapByKey<T, Key extends keyof T>(xs: T[], key: Key)
 export const GetPlacementFromMIDOID = (modifiers: ModifiersMap, mid: string, oid: string) => {
   const NOT_FOUND = { option_id: oid, placement: OptionPlacement.NONE, qualifier: OptionQualifier.REGULAR };
   return Object.hasOwn(modifiers, mid) ? (modifiers[mid].find((x) => x.optionId === oid) || NOT_FOUND) : NOT_FOUND;
+};
+
+export const DateTimeIntervalBuilder = ({ selectedDate, selectedTime }: Pick<FulfillmentDto, "selectedDate" | "selectedTime">, fulfillment: FulfillmentConfig) => {
+  // hack for date computation on DST transition days since we're currently not open during the time jump
+  const date_lower = WDateUtils.ComputeServiceDateTime(selectedDate, selectedTime);
+  const date_upper = addMinutes(date_lower, fulfillment.maxDuration);
+  return { start: date_lower, end: date_upper } as Interval;
 };
 
 /**

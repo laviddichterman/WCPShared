@@ -120,10 +120,6 @@ export type SetLeadTimesRequest = Record<string, number>;
 export type FulfillmentConfigMap = Record<string, FulfillmentConfig>;
 export interface IWSettings {
   additional_pizza_lead_time: number;
-  pipeline_info: {
-    baking_pipeline: { slots: Number, time: Number }[];
-    transfer_padding: number;
-  };
   config: Record<string, number | string | boolean>;
   // {
   // SQUARE_APPLICATION_ID: String,
