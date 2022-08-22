@@ -775,23 +775,16 @@ export interface CartEntry extends CoreCartEntry<WProduct> {
   isLocked: boolean;
 };
 
-export interface MetricsDto {
-  // ISO string of the server time given during page load
+// Note: the timeToX should be adjusted by pageLoadTimeLocal to represent a duration
+export interface Metrics {
+  // parsed from ISO string of the server time given during page load
   pageLoadTime: number;
-  // the Date.now() on load
-  pageLoadTimeLocal: number;
-  // roughTicksSinceLoad + max(TIMING_POLLING_INTERVAL, (currentTime - Previous value of currentTime)
-  roughTicksSinceLoad: number;
   // number of times the user got pushed to a new time
   numTimeBumps: number;
   // times the tip was adjusted
   numTipAdjusts: number;
   // times the tip got reset due to being under minimum
   numTipFixed: number;
-  // current time, or the last time we checked the validity of our availability, this tracks the server time
-  currentTime: number;
-  // current local time, compared to the pageLoadTimeLocal to determine how long since load
-  currentLocalTime: number;
   // time to first product added to cart
   timeToFirstProduct: number;
   // time of selecting a service date
@@ -875,7 +868,7 @@ export interface WOrderInstance {
   readonly discounts: OrderLineDiscount[];
   readonly payments: OrderPayment[];
   readonly refunds: OrderPayment[];
-  readonly metrics: MetricsDto;
+  readonly metrics: Metrics;
 };
 
 export type WOrderInstanceNoId = Omit<WOrderInstance, 'id'>;
