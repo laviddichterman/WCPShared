@@ -64,6 +64,8 @@ export interface FulfillmentConfig {
   terms: string[];
   // UI messaging strings
   messages: {
+    // description of the fulfillment
+    DESCRIPTION: string | null;
     CONFIRMATION: string;
     INSTRUCTIONS: string;
   };
@@ -71,6 +73,8 @@ export interface FulfillmentConfig {
   menuBaseCategoryId: string;
   // order page categoryId
   orderBaseCategoryId: string;
+  // order page supplementary categoryId
+  orderSupplementaryCategoryId: string | null;
   // if pre-payment is required
   requirePrepayment: boolean;
   // if pre-payment is allowed
