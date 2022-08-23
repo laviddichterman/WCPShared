@@ -865,13 +865,14 @@ export interface WOrderInstancePartial {
   readonly customerInfo: CustomerInfoDto;
   readonly fulfillment: FulfillmentDto;
   readonly cart: CoreCartEntry<WCPProductV2Dto>[];
+  readonly metrics: Metrics;
 };
 
 export type CreateOrderRequestV2 = {
-  nonce?: string;
-  specialInstructions: string;
-  totals: TotalsV2;
-  creditValidations: JSFECreditV2[];
+  readonly nonce?: string;
+  readonly specialInstructions: string;
+  readonly totals: TotalsV2;
+  readonly creditValidations: JSFECreditV2[];
 } & WOrderInstancePartial;
 
 
@@ -881,7 +882,6 @@ export type WOrderInstance = WOrderInstancePartial & {
   readonly discounts: OrderLineDiscount[];
   readonly payments: OrderPayment[];
   readonly refunds: OrderPayment[];
-  readonly metrics: Metrics;
 };
 
 export type CategorizedRebuiltCart = Record<string, CoreCartEntry<WProduct>[]>;
