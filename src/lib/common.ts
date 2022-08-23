@@ -1,6 +1,6 @@
 import { addMinutes, getTime } from "date-fns";
 import WDateUtils from "./objects/WDateUtils";
-import { CoreCartEntry, CURRENCY, DISABLE_REASON, FulfillmentConfig, FulfillmentDto, IMoney, IWInterval, ModifiersMap, OptionPlacement, OptionQualifier, TipSelection, ValidateAndLockCreditResponse, WProduct } from "./types";
+import { CoreCartEntry, CURRENCY, DISABLE_REASON, FulfillmentConfig, FulfillmentDto, IMoney, IWInterval, JSFECreditV2, ModifiersMap, OptionPlacement, OptionQualifier, TipSelection, WProduct } from "./types";
 
 export const CREDIT_REGEX = /[A-Za-z0-9]{3}-[A-Za-z0-9]{2}-[A-Za-z0-9]{3}-[A-Z0-9]{8}$/;
 
@@ -56,8 +56,23 @@ export function ComputeCartSubTotal(cart: CoreCartEntry<WProduct>[]): IMoney {
   return { amount: cart.reduce((acc, entry) => acc + (entry.product.m.price.amount * entry.quantity), 0), currency: CURRENCY.USD };
 }
 
-export function ComputeDiscountApplied(subtotalPreDiscount: IMoney, creditValidations: ValidateAndLockCreditResponse[]): IMoney {
-  return { amount: Math.min(subtotalPreDiscount.amount, creditValidations.reduce((acc, x) => acc + (x.valid && x.credit_type === "DISCOUNT" ? x.amount.amount : 0), 0)), currency: subtotalPreDiscount.currency };
+export const ComputeCreditsApplied = (subtotalPreCredits: IMoney, creditValidations: Omit<JSFECreditV2, "amount_used">[]): JSFECreditV2[] => {
+  return creditValidations.reduce((acc, credit) => {
+    const amountToApply = Math.min(acc.remaining, credit.validation.amount.amount)
+    return {
+      remaining: acc.remaining - amountToApply,
+      credits: amountToApply > 0 ?
+        [...acc.credits,
+        {
+          ...credit,
+          amount_used: {
+            currency: credit.validation.amount.currency,
+            amount: amountToApply
+          }
+        }] :
+        acc.credits
+    };
+  }, { remaining: subtotalPreCredits.amount, credits: [] as JSFECreditV2[] }).credits;
 }
 
 export function ComputeTaxAmount(subtotalAfterDiscount: IMoney, taxRate: number): IMoney {
@@ -88,9 +103,6 @@ export function ComputeAutogratuityEnabled(mainProductCount: number, threshold: 
   return mainProductCount >= threshold || isDelivery;
 }
 
-export function ComputeGiftCardApplied(total: IMoney, creditValidations: ValidateAndLockCreditResponse[]): IMoney {
-  return { currency: total.currency, amount: Math.min(total.amount, creditValidations.reduce((acc, x) => acc + (x.valid && x.credit_type === "MONEY" ? x.amount.amount : 0), 0)) };
-}
 export function ComputeBalanceAfterCredits(total: IMoney, giftCardApplied: IMoney): IMoney {
   return { currency: total.currency, amount: total.amount - giftCardApplied.amount };
 }

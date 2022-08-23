@@ -9,7 +9,7 @@ import {
   OptionPlacement,
   OptionQualifier,
   LogicalFunctionOperator,
-  WOrderInstanceNoId,
+  WOrderInstancePartial,
   AbstractOrderExpression,
   OrderInstanceFunctionType,
   OrderInstanceFunction
@@ -17,7 +17,9 @@ import {
 import { LogicalFunctionOperatorToHumanString } from "./WFunctional";
 
 export class OrderFunctional {
-  static ProcessIfElseStatement(order: WOrderInstanceNoId, stmt: IIfElseExpression<AbstractOrderExpression>, cat: ICatalog) {
+
+  // TODO: this can be made generic with the product instance version
+  static ProcessIfElseStatement(order: WOrderInstancePartial, stmt: IIfElseExpression<AbstractOrderExpression>, cat: ICatalog) {
     const branch_test = OrderFunctional.ProcessAbstractOrderExpressionStatement(order, stmt.test, cat);
     if (branch_test) {
       return OrderFunctional.ProcessAbstractOrderExpressionStatement(order, stmt.true_branch, cat);
@@ -29,7 +31,8 @@ export class OrderFunctional {
     return stmt.value;
   }
 
-  static ProcessLogicalOperatorStatement(order: WOrderInstanceNoId, stmt: ILogicalExpression<AbstractOrderExpression>, cat: ICatalog): boolean {
+  // TODO: this can be made generic with the product instance version
+  static ProcessLogicalOperatorStatement(order: WOrderInstancePartial, stmt: ILogicalExpression<AbstractOrderExpression>, cat: ICatalog): boolean {
     switch (stmt.operator) {
       case LogicalFunctionOperator.AND:
         return Boolean(OrderFunctional.ProcessAbstractOrderExpressionStatement(order, stmt.operandA, cat)) &&
@@ -60,7 +63,7 @@ export class OrderFunctional {
     }
   }
 
-  static ProcessAbstractOrderExpressionStatement(order: WOrderInstanceNoId, stmt: AbstractOrderExpression, cat: ICatalog): string | number | boolean | OptionPlacement {
+  static ProcessAbstractOrderExpressionStatement(order: WOrderInstancePartial, stmt: AbstractOrderExpression, cat: ICatalog): string | number | boolean | OptionPlacement {
     switch (stmt.discriminator) {
       case OrderInstanceFunctionType.ConstLiteral:
         return OrderFunctional.ProcessConstLiteralStatement(stmt.expr);
@@ -71,7 +74,7 @@ export class OrderFunctional {
     }
   }
 
-  static ProcessOrderInstanceFunction(order: WOrderInstanceNoId, func: OrderInstanceFunction, cat: ICatalog) {
+  static ProcessOrderInstanceFunction(order: WOrderInstancePartial, func: OrderInstanceFunction, cat: ICatalog) {
     return OrderFunctional.ProcessAbstractOrderExpressionStatement(order, func.expression, cat);
   }
 

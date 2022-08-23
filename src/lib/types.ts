@@ -128,9 +128,8 @@ export interface IWSettings {
   // {
   // SQUARE_APPLICATION_ID: String,
   // SQUARE_LOCATION: String,
-  // MENU_CATID: String,
-  // MAIN_CATID: String,
-  // SUPP_CATID: String,
+  // DEFAULT_FULFILLMENTID: String,
+  // TIP_PREAMBLE: String,
   // TAX_RATE: Number,
   // ALLOW_ADVANCED: Boolean,
   // MAX_PARTY_SIZE: Number,
@@ -646,12 +645,14 @@ export enum StoreCreditType {
   'DISCOUNT' = 'DISCOUNT'
 };
 
-export type ValidateAndLockCreditResponse = {
+export interface ValidateAndLockCreditResponseValid {
   readonly valid: true;
   readonly lock: EncryptStringLock;
   readonly amount: IMoney;
   readonly credit_type: StoreCreditType;
-} | {
+};
+
+export type ValidateAndLockCreditResponse = ValidateAndLockCreditResponseValid | {
   readonly valid: false;
 };
 
@@ -686,10 +687,11 @@ export interface ValidateLockAndSpendSuccess {
   index: number;
 };
 
-export type SpendCreditResponse = {
-  success: true;
-  balance: IMoney;
-} | { success: false };
+export interface SpendCreditResponseSuccess {
+  readonly success: true;
+  readonly balance: IMoney;
+};
+export type SpendCreditResponse = SpendCreditResponseSuccess | { success: false };
 
 export type TipSelection = {
   value: IMoney;
@@ -710,9 +712,9 @@ export interface DeliveryAddressValidateRequest {
 }
 
 export interface AddressComponent {
-  types: Array<string>;
-  long_name: string;
-  short_name: string;
+  readonly types: Array<string>;
+  readonly long_name: string;
+  readonly short_name: string;
 };
 
 export interface DeliveryAddressValidateResponse {
@@ -728,7 +730,7 @@ export interface TotalsV2 {
 }
 
 export interface JSFECreditV2 {
-  readonly validation: ValidateAndLockCreditResponse;
+  readonly validation: ValidateAndLockCreditResponseValid;
   readonly code: string;
   readonly amount_used: IMoney;
 };
@@ -859,26 +861,28 @@ export interface OrderLineDiscountCodeAmount extends TenderBase {
 
 export type OrderLineDiscount = OrderLineDiscountCodeAmount;
 
-export interface WOrderInstance {
-  readonly id: string;
-  readonly status: 'OPEN' | 'COMPLETED' | 'CANCELED';
+export interface WOrderInstancePartial {
   readonly customerInfo: CustomerInfoDto;
   readonly fulfillment: FulfillmentDto;
   readonly cart: CoreCartEntry<WCPProductV2Dto>[];
-  readonly discounts: OrderLineDiscount[];
-  readonly payments: OrderPayment[];
-  readonly refunds: OrderPayment[];
-  readonly metrics: Metrics;
 };
-
-export type WOrderInstanceNoId = Omit<WOrderInstance, 'id'>;
 
 export type CreateOrderRequestV2 = {
   nonce?: string;
   specialInstructions: string;
   totals: TotalsV2;
   creditValidations: JSFECreditV2[];
-} & Omit<WOrderInstanceNoId, 'payments' | 'refunds' | 'status'>;
+} & WOrderInstancePartial;
+
+
+export type WOrderInstance = WOrderInstancePartial & {
+  readonly id: string;
+  readonly status: 'OPEN' | 'COMPLETED' | 'CANCELED';
+  readonly discounts: OrderLineDiscount[];
+  readonly payments: OrderPayment[];
+  readonly refunds: OrderPayment[];
+  readonly metrics: Metrics;
+};
 
 export type CategorizedRebuiltCart = Record<string, CoreCartEntry<WProduct>[]>;
 

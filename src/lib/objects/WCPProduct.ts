@@ -1,6 +1,6 @@
 import { DisableDataCheck, PRODUCT_NAME_MODIFIER_TEMPLATE_REGEX } from "../common";
 import { WFunctional } from "./WFunctional";
-import { IProduct, IProductInstance, OptionPlacement, ModifiersMap, MODIFIER_MATCH, PRODUCT_LOCATION, WCPProduct, WProductMetadata, MTID_MOID, ModifierEntry, WCPOption, MenuModifiers, IOptionInstance, OptionQualifier, MetadataModifierMap, ModifierDisplayListByLocation, ProductEntry, DISPLAY_AS, IMenu, MetadataModifierOptionMapEntry, WProduct, WCPProductJsFeDto, WCPProductV2Dto, ICatalog, DISABLE_REASON } from '../types';
+import { IProduct, IProductInstance, OptionPlacement, ModifiersMap, MODIFIER_MATCH, PRODUCT_LOCATION, WCPProduct, WProductMetadata, MTID_MOID, ModifierEntry, WCPOption, MenuModifiers, IOptionInstance, OptionQualifier, MetadataModifierMap, ModifierDisplayListByLocation, ProductEntry, DISPLAY_AS, IMenu, MetadataModifierOptionMapEntry, WProduct, WCPProductJsFeDto, WCPProductV2Dto, ICatalog, DISABLE_REASON, IMoney } from '../types';
 import { IsOptionEnabled } from './WCPOption';
 import { cloneDeep } from 'lodash';
 // import { memoize } from 'lodash';
@@ -71,13 +71,14 @@ const HandleOptionCurry = (menuModifiers: MenuModifiers, getterFxn: (menuModifie
  * modifier types or their options, single select meaning (MIN===MAX===1)
  * @param {WProductMetadata} metadata - the product instance to use
  * @param {MenuModifiers} menuModifiers
- * @return {[Number]} array of prices in ascending order
+ * @return {IMoney[]} array of prices in ascending order
  */
-export function ComputePotentialPrices(metadata: WProductMetadata, menuModifiers: MenuModifiers) {
+export function ComputePotentialPrices(metadata: WProductMetadata, menuModifiers: MenuModifiers): IMoney[] {
+  // TODO: rewrite with map instead of foreach and use an object
   const prices: number[][] = [];
   Object.keys(metadata.modifier_map).forEach(mtid => {
     if (!metadata.modifier_map[mtid].meets_minimum) {
-      const whole_enabled_modifier_options = menuModifiers[mtid].options_list.filter(x => metadata.modifier_map[mtid].options[String(x.mo.id)].enable_whole.enable === DISABLE_REASON.ENABLED);
+      const whole_enabled_modifier_options = menuModifiers[mtid].options_list.filter(x => metadata.modifier_map[mtid].options[x.mo.id].enable_whole.enable === DISABLE_REASON.ENABLED);
       const enabled_prices = whole_enabled_modifier_options.map(x => x.mo.price.amount);
       const deduped_prices = [...new Set(enabled_prices)];
       prices.push(deduped_prices);
@@ -95,7 +96,7 @@ export function ComputePotentialPrices(metadata: WProductMetadata, menuModifiers
     }
     prices.splice(0, 2, Object.keys(combined_prices).map(x => Number(x)));
   }
-  return prices[0].sort((a, b) => a - b).map(x => x + metadata.price.amount);
+  return prices[0].sort((a, b) => a - b).map(x => ({ amount: x + metadata.price.amount, currency: metadata.price.currency }));
 }
 
 // matrix of how products match indexed by [first placement][second placement] containing [left match, right match, break_mirror]
