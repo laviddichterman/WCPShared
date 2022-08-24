@@ -46,7 +46,7 @@ export function IsOptionEnabled(option: WCPOption, product: WCPProduct, bake_cou
   if (!passes_flavor) {
     return { enable: DISABLE_REASON.DISABLED_FLAVORS };
   }
-  const passesEnableFunction = option.mo.enable === null || WFunctional.ProcessProductInstanceFunction(product, catalog.product_instance_functions[option.mo.enable], catalog) as boolean;
+  const passesEnableFunction = !option.mo.enable || WFunctional.ProcessProductInstanceFunction(product, catalog.product_instance_functions[option.mo.enable], catalog) as boolean;
   if (!passesEnableFunction) {
     return { enable: DISABLE_REASON.DISABLED_FUNCTION, functionId: option.mo.enable! };
   }
