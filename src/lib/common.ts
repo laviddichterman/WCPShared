@@ -1,6 +1,6 @@
 import { addMinutes, getTime } from "date-fns";
 import WDateUtils from "./objects/WDateUtils";
-import { CoreCartEntry, CURRENCY, DISABLE_REASON, FulfillmentConfig, FulfillmentDto, IMoney, IWInterval, JSFECreditV2, ModifiersMap, OptionPlacement, OptionQualifier, TipSelection, WProduct } from "./types";
+import { CoreCartEntry, CURRENCY, DISABLE_REASON, FulfillmentConfig, FulfillmentDto, IMoney, IWInterval, JSFECreditV2, ProductModifierEntry, OptionPlacement, OptionQualifier, TipSelection, WProduct, IOptionInstance } from "./types";
 
 export const CREDIT_REGEX = /[A-Za-z0-9]{3}-[A-Za-z0-9]{2}-[A-Za-z0-9]{3}-[A-Z0-9]{8}$/;
 
@@ -10,9 +10,10 @@ export function ReduceArrayToMapByKey<T, Key extends keyof T>(xs: T[], key: Key)
   return Object.fromEntries(xs.map(x => [x[key], x])) as Record<string, T>;
 };
 
-export const GetPlacementFromMIDOID = (modifiers: ModifiersMap, mid: string, oid: string) => {
-  const NOT_FOUND = { option_id: oid, placement: OptionPlacement.NONE, qualifier: OptionQualifier.REGULAR };
-  return Object.hasOwn(modifiers, mid) ? (modifiers[mid].find((x) => x.optionId === oid) || NOT_FOUND) : NOT_FOUND;
+export const GetPlacementFromMIDOID = (modifiers: ProductModifierEntry[], mtid: string, oid: string): IOptionInstance => {
+  const NOT_FOUND: IOptionInstance = { optionId: oid, placement: OptionPlacement.NONE, qualifier: OptionQualifier.REGULAR };
+  const modifierEntry = modifiers.find(x => x.modifierTypeId === mtid);
+  return modifierEntry !== undefined ? (modifierEntry.options.find((x) => x.optionId === oid) || NOT_FOUND) : NOT_FOUND;
 };
 
 export const DateTimeIntervalBuilder = ({ selectedDate, selectedTime }: Pick<FulfillmentDto, "selectedDate" | "selectedTime">, fulfillment: FulfillmentConfig) => {

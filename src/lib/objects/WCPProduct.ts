@@ -1,6 +1,7 @@
 import { DisableDataCheck, PRODUCT_NAME_MODIFIER_TEMPLATE_REGEX } from "../common";
 import { WFunctional } from "./WFunctional";
-import { IProduct, IProductInstance, OptionPlacement, ModifiersMap, MODIFIER_MATCH, PRODUCT_LOCATION, WCPProduct, WProductMetadata, MTID_MOID, ModifierEntry, WCPOption, MenuModifiers, IOptionInstance, OptionQualifier, MetadataModifierMap, ModifierDisplayListByLocation, ProductEntry, DISPLAY_AS, IMenu, MetadataModifierOptionMapEntry, WProduct, WCPProductJsFeDto, WCPProductV2Dto, ICatalog, DISABLE_REASON, IMoney } from '../types';
+import type { IProduct, IProductInstance, ProductModifierEntry, WCPProduct, WProductMetadata, MTID_MOID, ModifierEntry, WCPOption, MenuModifiers, IOptionInstance, MetadataModifierMap, ModifierDisplayListByLocation, ProductEntry, IMenu, MetadataModifierOptionMapEntry, WProduct, WCPProductV2Dto, ICatalog, IMoney } from '../types';
+import { MODIFIER_MATCH, PRODUCT_LOCATION, DISPLAY_AS, DISABLE_REASON, OptionPlacement, OptionQualifier } from '../types';
 import { IsOptionEnabled } from './WCPOption';
 import { cloneDeep } from 'lodash';
 // import { memoize } from 'lodash';
@@ -108,46 +109,36 @@ const MATCH_MATRIX: [MODIFIER_MATCH, MODIFIER_MATCH, boolean][][] = [
   // [[ NONE ], [ LEFT ], [ RIGHT], [ WHOLE]]
 ];
 
-export function CreateWCPProduct(product_class: IProduct, modifiers: ModifiersMap) {
+export function CreateWCPProduct(product_class: IProduct, modifiers: ProductModifierEntry[]) {
   return { PRODUCT_CLASS: product_class, modifiers: cloneDeep(modifiers) } as WCPProduct;
 }
 
-export function CreateProductWithMetadataFromJsFeDto(dto: WCPProductJsFeDto, catalog: ICatalog, menu: IMenu, service_time: Date | number, fulfillmentId: string): WProduct {
-  //[<quantity, {pid, modifiers: {MID: [<placement, OID>]}}]}
-  const productEntry = menu.product_classes[dto.pid];
-  const modifiers = Object.entries(dto.modifiers).reduce((acc, [mtId, placements]) => ({ ...acc, [mtId]: placements.map(([placement, moId]) => ({ optionId: moId, placement: placement, qualifier: OptionQualifier.REGULAR })) }), {} as ModifiersMap);
-  const wcpProduct = CreateWCPProduct(productEntry.product, modifiers);
-  const productMetadata = WCPProductGenerateMetadata(wcpProduct, productEntry, catalog, menu.modifiers, service_time, fulfillmentId);
-  return { p: wcpProduct, m: productMetadata };
-}
-
 export function CreateProductWithMetadataFromV2Dto(dto: WCPProductV2Dto, catalog: ICatalog, menu: IMenu, service_time: Date | number, fulfillmentId: string): WProduct {
-  //[<quantity, {pid, modifiers: {MID: [<placement, OID>]}}]}
   const productEntry = menu.product_classes[dto.pid];
-  const wcpProduct = CreateWCPProduct(productEntry.product, dto.modifiers);
+  // TODO: remove this sort and do the sort in the metadata computation
+  const wcpProduct = CreateWCPProduct(productEntry.product, dto.modifiers.slice().sort((a, b) => menu.modifiers[a.modifierTypeId].modifier_type.ordinal - menu.modifiers[b.modifierTypeId].modifier_type.ordinal));
   const productMetadata = WCPProductGenerateMetadata(wcpProduct, productEntry, catalog, menu.modifiers, service_time, fulfillmentId);
   return { p: wcpProduct, m: productMetadata };
 }
 
-export function SortModifersAndOptions(mMap: ModifiersMap, menuModifiers: MenuModifiers) {
-  return Object.entries(mMap).sort(
-    (a, b) => menuModifiers[a[0]].modifier_type.ordinal - menuModifiers[b[0]].modifier_type.ordinal).reduce(
-      (acc, [mtId, options]) => {
-        const oMap = menuModifiers[mtId].options;
-        return { ...acc, [mtId]: [...options].sort((a, b) => oMap[a.optionId].index - oMap[b.optionId].index) };
-      }, {} as ModifiersMap);
+export function SortModifersAndOptions(mMap: ProductModifierEntry[], menuModifiers: MenuModifiers) {
+  return mMap.sort(
+    (a, b) => menuModifiers[a.modifierTypeId].modifier_type.ordinal - menuModifiers[b.modifierTypeId].modifier_type.ordinal).map(
+      (modifierEntry) => {
+        const oMap = menuModifiers[modifierEntry.modifierTypeId].options;
+        return { modifierTypeId: modifierEntry.modifierTypeId, options: modifierEntry.options.slice().sort((a, b) => oMap[a.optionId].index - oMap[b.optionId].index) };
+      });
 }
 
-export function DeepCopyModifiers(modifiers: ModifiersMap) {
-  return Object.entries(modifiers).reduce((o, [k, v]) => ({ ...o, [k]: v.map(x => ({ ...x })) }), {} as ModifiersMap);
-}
-
-function ModifiersMapGetter(mMap: ModifiersMap): (mtid: string) => IOptionInstance[] {
-  return (mtid: string) => Object.hasOwn(mMap, mtid) ? mMap[mtid] : [];
+function ProductModifierEntriesGetter(productMods: ProductModifierEntry[]): (mtid: string) => IOptionInstance[] {
+  return (mtid: string) => {
+    const foundMod = productMods.find(x => x.modifierTypeId === mtid);
+    return foundMod ? foundMod.options : [];
+  }
 }
 
 function MetadataModifiersInstanceListGetter(mil: MetadataModifierMap): (mtid: string) => IOptionInstance[] {
-  const mMap: ModifiersMap = Object.entries(mil).reduce((o, [k, v]) => ({ ...o, [k]: Object.entries(v.options).map(([moid, opt]) => ({ ...opt, optionId: moid } as IOptionInstance)) }), {});
+  const mMap: Record<string, IOptionInstance[]> = Object.entries(mil).reduce((o, [k, v]) => ({ ...o, [k]: Object.entries(v.options).map(([moid, opt]) => ({ ...opt, optionId: moid } as IOptionInstance)) }), {});
   return (mtid: string) => Object.hasOwn(mil, mtid) ? mMap[mtid] : [];
 }
 /**
@@ -224,7 +215,7 @@ export function WProductCompareToIProductInstance(a: WCPProduct, b: IProductInst
     // no match on PID so we need to return 0
     return { mirror: false, match_matrix: [[], []], match: [NO_MATCH, NO_MATCH] } as WProductCompareResult;
   }
-  return WProductCompareGeneric(a.PRODUCT_CLASS, ModifiersMapGetter(a.modifiers), ModifiersMapGetter(b.modifiers), menuModifiers);
+  return WProductCompareGeneric(a.PRODUCT_CLASS, ProductModifierEntriesGetter(a.modifiers), ProductModifierEntriesGetter(b.modifiers), menuModifiers);
 }
 
 export function WProductCompare(a: WCPProduct, b: WCPProduct, menuModifiers: MenuModifiers) {
@@ -233,7 +224,7 @@ export function WProductCompare(a: WCPProduct, b: WCPProduct, menuModifiers: Men
     // no match on PID so we need to return 0
     return { mirror: false, match_matrix: [[], []], match: [NO_MATCH, NO_MATCH] } as WProductCompareResult;
   }
-  return WProductCompareGeneric(a.PRODUCT_CLASS, ModifiersMapGetter(a.modifiers), ModifiersMapGetter(b.modifiers), menuModifiers);
+  return WProductCompareGeneric(a.PRODUCT_CLASS, ProductModifierEntriesGetter(a.modifiers), ProductModifierEntriesGetter(b.modifiers), menuModifiers);
 }
 
 export function WProductEquals(comparison: WProductCompareResult) {
@@ -364,9 +355,9 @@ export function WCPProductGenerateMetadata(a: WCPProduct, productClassMenu: Prod
   let price = PRODUCT_CLASS.price.amount;
 
   // We need to compute this before the modifier match matrix, otherwise the metadata limits won't be pre-computed
-  Object.entries(a.modifiers).forEach(([mtid, options]) => {
-    options.forEach((opt) => {
-      const mo = menuModifiers[mtid].options[opt.optionId].mo;
+  a.modifiers.forEach((modifierEntry: ProductModifierEntry) => {
+    modifierEntry.options.forEach((opt: IOptionInstance) => {
+      const mo = menuModifiers[modifierEntry.modifierTypeId].options[opt.optionId].mo;
       if (opt.placement === OptionPlacement.LEFT || opt.placement === OptionPlacement.WHOLE) {
         bake_count[LEFT_SIDE] += mo.metadata.bake_factor;
         flavor_count[LEFT_SIDE] += mo.metadata.flavor_factor;
@@ -437,8 +428,9 @@ export function WCPProductGenerateMetadata(a: WCPProduct, productClassMenu: Prod
     }
 
     const num_selected = [0, 0];
-    if (Object.hasOwn(a.modifiers, mtid)) {
-      a.modifiers[mtid].forEach((placed_option) => {
+    const foundProductModifierEntry = a.modifiers.find(x => x.modifierTypeId === mtid);
+    if (foundProductModifierEntry) {
+      foundProductModifierEntry.options.forEach((placed_option) => {
         const moid = placed_option.optionId;
         const location = placed_option.placement;
         const moIdX = CATALOG_MODIFIER_INFO.options[moid].index;

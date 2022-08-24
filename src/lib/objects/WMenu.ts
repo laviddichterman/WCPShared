@@ -36,13 +36,13 @@ export function FilterProduct(item: IProductInstance, menu: IMenu, disable_from_
     !disable_from_menu_flag_getter(item.displayFlags) &&
     DisableDataCheck(productClass.product.disabled, order_time).enable === DISABLE_REASON.ENABLED;
   // this is better as a forEach as it gives us the ability to skip out of the loop early
-  Object.entries(item.modifiers).forEach(([modifier_type_id, options]) => {
+  item.modifiers.forEach((productModifierEntry) => {
     // TODO: for incomplete product instances, this should check for a viable way to order the product
-    const menuModifierType = menuModifiers[modifier_type_id];
+    const menuModifierType = menuModifiers[productModifierEntry.modifierTypeId];
     const mtOptions = menuModifierType.options;
-    const productModifierDefinition = productClass.product.modifiers.find(x => x.mtid === modifier_type_id)!;
+    const productModifierDefinition = productClass.product.modifiers.find(x => x.mtid === productModifierEntry.modifierTypeId)!;
     passes &&= productModifierDefinition.serviceDisable.indexOf(fulfillmentId) === -1 &&
-      options.reduce((acc: boolean, x) =>
+      productModifierEntry.options.reduce((acc: boolean, x) =>
         (acc && DisableDataCheck(mtOptions[x.optionId].mo.disabled, order_time).enable === DISABLE_REASON.ENABLED), true);
   });
   return passes;
@@ -61,10 +61,10 @@ export function FilterWCPProduct(item: WCPProduct, catalog: ICatalog, menu: IMen
   return productEntry.product.serviceDisable.indexOf(fulfillmentId) === -1 &&
     DisableDataCheck(productEntry.product.disabled, order_time) &&
     !newMetadata.incomplete &&
-    Object.entries(item.modifiers).reduce((acc, modifier) => {
-      const menuModifier = menu.modifiers[modifier[0]];
-      const mdModifier = newMetadata.modifier_map[modifier[0]];
-      return acc && modifier[1].reduce((moAcc, mo) => moAcc &&
+    item.modifiers.reduce((acc, modifier) => {
+      const menuModifier = menu.modifiers[modifier.modifierTypeId];
+      const mdModifier = newMetadata.modifier_map[modifier.modifierTypeId];
+      return acc && modifier.options.reduce((moAcc, mo) => moAcc &&
         ((mo.placement === OptionPlacement.LEFT && mdModifier.options[mo.optionId].enable_left.enable === DISABLE_REASON.ENABLED) ||
           (mo.placement === OptionPlacement.RIGHT && mdModifier.options[mo.optionId].enable_right.enable === DISABLE_REASON.ENABLED) ||
           (mo.placement === OptionPlacement.WHOLE && mdModifier.options[mo.optionId].enable_whole.enable === DISABLE_REASON.ENABLED)) &&
@@ -249,9 +249,9 @@ export function GenerateMenu(catalog: ICatalog, service_time: Date | number, ful
 
 export function DoesProductExistInMenu(menu: IMenu, product: WCPProduct) {
   return Object.hasOwn(menu.product_classes, product.PRODUCT_CLASS.id) &&
-    Object.entries(product.modifiers).reduce((acc, mod) => acc &&
-      Object.hasOwn(menu.modifiers, mod[0]) &&
-      mod[1].reduce((optAcc, o) => optAcc && Object.hasOwn(menu.modifiers[mod[0]].options, o.optionId), true), true);
+    product.modifiers.reduce((acc, mod) => acc &&
+      Object.hasOwn(menu.modifiers, mod.modifierTypeId) &&
+      mod.options.reduce((optAcc, o) => optAcc && Object.hasOwn(menu.modifiers[mod.modifierTypeId].options, o.optionId), true), true);
 }
 
 export function CanThisBeOrderedAtThisTimeAndFulfillment(product: WCPProduct, menu: IMenu, catalog: ICatalog, serviceTime: Date | number, fulfillment: string) {

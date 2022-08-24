@@ -491,7 +491,7 @@ export interface IProduct {
   category_ids: string[];
 };
 
-export type ModifiersMap = Record<string, IOptionInstance[]>;
+export interface ProductModifierEntry { modifierTypeId: string; options: IOptionInstance[]; };
 
 export interface IProductInstance {
   id: string;
@@ -502,7 +502,7 @@ export interface IProductInstance {
   ordinal: number;
 
   // applied modifiers for this instance of the product
-  modifiers: ModifiersMap;
+  modifiers: ProductModifierEntry[];
 
   // flag to note that this product instance is the "default" form of the product to which all others should be compared
   isBase: boolean;
@@ -584,7 +584,7 @@ export interface WProductMetadata {
 
 export interface WCPProduct {
   PRODUCT_CLASS: IProduct;
-  modifiers: ModifiersMap;
+  modifiers: ProductModifierEntry[];
 };
 
 export interface WProduct {
@@ -621,18 +621,10 @@ export interface IMenu {
   readonly version: string;
 };
 
-export interface WCPProductJsFeDto {
-  pid: string;
-  modifiers: { [index: string]: [OptionPlacement, string][] };
-};
-
 export interface WCPProductV2Dto {
   pid: string;
-  modifiers: ModifiersMap;
+  modifiers: ProductModifierEntry[];
 }
-
-// Mapping from CategoryID to tuple of quantity and product type T
-export type CartDto<T> = Record<string, [number, T][]>;
 
 export interface EncryptStringLock {
   readonly enc: string;
@@ -693,15 +685,17 @@ export interface SpendCreditResponseSuccess {
 };
 export type SpendCreditResponse = SpendCreditResponseSuccess | { success: false };
 
-export type TipSelection = {
-  value: IMoney;
-  isSuggestion: boolean;
-  isPercentage: false;
-} | {
+export interface TipSelectionPercentage {
   value: number;
   isSuggestion: boolean;
   isPercentage: true;
 };
+export interface TipSelectionAmount {
+  value: IMoney;
+  isSuggestion: boolean;
+  isPercentage: false;
+};
+export type TipSelection = TipSelectionPercentage | TipSelectionAmount;
 
 export interface DeliveryAddressValidateRequest {
   fulfillmentId: string;

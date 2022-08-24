@@ -194,14 +194,14 @@ export class WFunctional {
   }
 
   static ProcessHasAnyOfModifierTypeExtractionOperatorStatement(prod: WCPProduct, stmt: IHasAnyOfModifierExpression) {
-    return Object.hasOwn(prod.modifiers, stmt.mtid) ?
-      prod.modifiers[stmt.mtid].filter(x => x.placement !== OptionPlacement.NONE).length > 0 : false;
+    const foundModifier = prod.modifiers.find(x => x.modifierTypeId === stmt.mtid);
+    return foundModifier ? foundModifier.options.filter(x => x.placement !== OptionPlacement.NONE).length > 0 : false;
   }
 
   static ProcessProductMetadataExpression(prod: WCPProduct, stmt: ProductMetadataExpression, cat: ICatalog) {
-    return Object.entries(prod.modifiers).reduce((acc, [key, value]) => {
-      const catalogModifierType = cat.modifiers[key];
-      return (acc + value.reduce((acc2, optInstance) => {
+    return prod.modifiers.reduce((acc, modifier) => {
+      const catalogModifierType = cat.modifiers[modifier.modifierTypeId];
+      return (acc + modifier.options.reduce((acc2, optInstance) => {
         const option = catalogModifierType.options.find(x => x.id === optInstance.optionId);
         if (!option) {
           console.error(`Unexpectedly missing modifier option ${JSON.stringify(optInstance)}`);
