@@ -5,13 +5,11 @@ import {
   ConstModifierPlacementLiteralExpression,
   IAbstractExpression,
   ICatalog,
-  ICatalogModifiers,
   IConstLiteralExpression,
   IHasAnyOfModifierExpression,
   IIfElseExpression,
   ILogicalExpression,
   IModifierPlacementExpression,
-  IOption,
   IProductInstanceFunction,
   MetadataField,
   OptionPlacement,
@@ -200,9 +198,8 @@ export class WFunctional {
 
   static ProcessProductMetadataExpression(prod: WCPProduct, stmt: ProductMetadataExpression, cat: ICatalog) {
     return prod.modifiers.reduce((acc, modifier) => {
-      const catalogModifierType = cat.modifiers[modifier.modifierTypeId];
       return (acc + modifier.options.reduce((acc2, optInstance) => {
-        const option = catalogModifierType.options.find(x => x.id === optInstance.optionId);
+        const option = cat.options[optInstance.optionId];
         if (!option) {
           console.error(`Unexpectedly missing modifier option ${JSON.stringify(optInstance)}`);
           return acc2;
@@ -261,18 +258,16 @@ export class WFunctional {
     return WFunctional.ProcessAbstractExpressionStatementWithTracking(prod, func.expression, cat);
   }
 
-  static AbstractExpressionStatementToString(stmt: IAbstractExpression, mods: ICatalogModifiers): string {
+  static AbstractExpressionStatementToString(stmt: IAbstractExpression, catalog: ICatalog): string {
     function logical(expr: ILogicalExpression<IAbstractExpression>) {
-      const operandAString = WFunctional.AbstractExpressionStatementToString(expr.operandA, mods);
-      return expr.operator === LogicalFunctionOperator.NOT || !expr.operandB ? `NOT (${operandAString})` : `(${operandAString} ${expr.operator} ${WFunctional.AbstractExpressionStatementToString(expr.operandB, mods)})`;
+      const operandAString = WFunctional.AbstractExpressionStatementToString(expr.operandA, catalog);
+      return expr.operator === LogicalFunctionOperator.NOT || !expr.operandB ? `NOT (${operandAString})` : `(${operandAString} ${expr.operator} ${WFunctional.AbstractExpressionStatementToString(expr.operandB, catalog)})`;
     }
     function modifierPlacement(expr: IModifierPlacementExpression) {
-      if (!Object.hasOwn(mods, expr.mtid)) {
+      if (!Object.hasOwn(catalog.modifiers, expr.mtid) || !Object.hasOwn(catalog.options, expr.moid)) {
         return "";
       }
-      const val = mods[expr.mtid];
-      const opt = val.options.find(x => x.id === expr.moid) as unknown as IOption;
-      return `${val.modifier_type.name}.${opt.displayName}`;
+      return `${catalog.modifiers[expr.mtid].modifierType.name}.${catalog.options[expr.moid].displayName}`;
     }
     switch (stmt.discriminator) {
       case ProductInstanceFunctionType.ConstLiteral:
@@ -289,28 +284,28 @@ export class WFunctional {
             return String(OptionQualifier[stmt.expr.value]);
         }
       case ProductInstanceFunctionType.IfElse:
-        return `IF(${WFunctional.AbstractExpressionStatementToString(stmt.expr.test, mods)}) { ${WFunctional.AbstractExpressionStatementToString(stmt.expr.true_branch, mods)} } ELSE { ${WFunctional.AbstractExpressionStatementToString(stmt.expr.false_branch, mods)} }`;
+        return `IF(${WFunctional.AbstractExpressionStatementToString(stmt.expr.test, catalog)}) { ${WFunctional.AbstractExpressionStatementToString(stmt.expr.true_branch, catalog)} } ELSE { ${WFunctional.AbstractExpressionStatementToString(stmt.expr.false_branch, catalog)} }`;
       case ProductInstanceFunctionType.Logical:
         return logical(stmt.expr);
       case ProductInstanceFunctionType.ModifierPlacement:
         return modifierPlacement(stmt.expr);
       case ProductInstanceFunctionType.HasAnyOfModifierType:
-        return `ANY ${mods[(stmt.expr).mtid].modifier_type.name}`;
+        return `ANY ${catalog.modifiers[(stmt.expr).mtid].modifierType.name}`;
       case ProductInstanceFunctionType.ProductMetadata:
         return `:${MetadataField[stmt.expr.field]}@${PRODUCT_LOCATION[stmt.expr.location]}`;
     }
   }
 
-  static AbstractExpressionStatementToHumanReadableString(stmt: IAbstractExpression, mods: ICatalogModifiers): string {
+  static AbstractExpressionStatementToHumanReadableString(stmt: IAbstractExpression, catalog: ICatalog): string {
     function logical(expr: ILogicalExpression<IAbstractExpression>) {
-      const operandAString = WFunctional.AbstractExpressionStatementToHumanReadableString(expr.operandA, mods);
+      const operandAString = WFunctional.AbstractExpressionStatementToHumanReadableString(expr.operandA, catalog);
       if (expr.operator === LogicalFunctionOperator.NOT || !expr.operandB) {
         if (expr.operandA.discriminator === ProductInstanceFunctionType.HasAnyOfModifierType) {
-          return `no ${mods[expr.operandA.expr.mtid].modifier_type.name} modifiers are selected`
+          return `no ${catalog.modifiers[expr.operandA.expr.mtid].modifierType.name} modifiers are selected`
         }
         return `not ${operandAString}`;
       }
-      const operandBString = WFunctional.AbstractExpressionStatementToHumanReadableString(expr.operandB, mods);
+      const operandBString = WFunctional.AbstractExpressionStatementToHumanReadableString(expr.operandB, catalog);
       if (expr.operandA.discriminator === ProductInstanceFunctionType.ModifierPlacement &&
         expr.operandB.discriminator === ProductInstanceFunctionType.ConstLiteral &&
         expr.operandB.expr.discriminator === ConstLiteralDiscriminator.MODIFIER_PLACEMENT) {
@@ -331,12 +326,10 @@ export class WFunctional {
       return `${operandAString} ${LogicalFunctionOperatorToHumanString(expr.operator)} ${operandBString}`;
     }
     function modifierPlacement(expr: IModifierPlacementExpression) {
-      if (!Object.hasOwn(mods, expr.mtid)) {
+      if (!Object.hasOwn(catalog.options, expr.moid)) {
         return "";
       }
-      const val = mods[expr.mtid];
-      const opt = val.options.find(x => x.id === expr.moid)!;
-      return `${opt.displayName}`;
+      return `${catalog.options[expr.moid].displayName}`;
     }
     switch (stmt.discriminator) {
       case ProductInstanceFunctionType.ConstLiteral:
@@ -353,13 +346,13 @@ export class WFunctional {
             return startCase(snakeCase((OptionQualifier[stmt.expr.value])));
         }
       case ProductInstanceFunctionType.IfElse:
-        return `if ${WFunctional.AbstractExpressionStatementToHumanReadableString(stmt.expr.test, mods)} then ${WFunctional.AbstractExpressionStatementToHumanReadableString(stmt.expr.true_branch, mods)}, otherwise ${WFunctional.AbstractExpressionStatementToString(stmt.expr.false_branch, mods)}`;
+        return `if ${WFunctional.AbstractExpressionStatementToHumanReadableString(stmt.expr.test, catalog)} then ${WFunctional.AbstractExpressionStatementToHumanReadableString(stmt.expr.true_branch, catalog)}, otherwise ${WFunctional.AbstractExpressionStatementToHumanReadableString(stmt.expr.false_branch, catalog)}`;
       case ProductInstanceFunctionType.Logical:
         return logical(stmt.expr);
       case ProductInstanceFunctionType.ModifierPlacement:
         return modifierPlacement(stmt.expr);
       case ProductInstanceFunctionType.HasAnyOfModifierType:
-        return `any ${mods[(stmt.expr).mtid].modifier_type.name} modifiers selected`;
+        return `any ${catalog.modifiers[(stmt.expr).mtid].modifierType.name} modifiers selected`;
       case ProductInstanceFunctionType.ProductMetadata:
         return `:${MetadataField[stmt.expr.field]}@${PRODUCT_LOCATION[stmt.expr.location]}`;
     }

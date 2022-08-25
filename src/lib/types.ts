@@ -518,19 +518,23 @@ export interface IProductInstance {
   shortcode: string;
 };
 
-export interface CatalogModifierEntry { options: IOption[]; modifier_type: IOptionType; };
+export type RecordModifierOptions = Record<string, IOption>;
+export interface CatalogModifierEntry { options: string[]; modifierType: IOptionType; };
 export type ICatalogModifiers = Record<string, CatalogModifierEntry>;
 export interface CatalogCategoryEntry { category: ICategory; children: string[]; products: string[]; };
 export type ICatalogCategories = Record<string, CatalogCategoryEntry>;
-export interface CatalogProductEntry { product: IProduct; instances: IProductInstance[]; };
+export type RecordProductInstances = Record<string, IProductInstance>;
+export interface CatalogProductEntry { product: IProduct; instances: string[]; };
 export type ICatalogProducts = Record<string, CatalogProductEntry>;
 export type RecordProductInstanceFunctions = Record<string, IProductInstanceFunction>;
 export type RecordOrderInstanceFunctions = Record<string, OrderInstanceFunction>;
 export interface ICatalog {
+  options: RecordModifierOptions;
   modifiers: ICatalogModifiers;
   categories: ICatalogCategories;
   products: ICatalogProducts;
-  product_instance_functions: RecordProductInstanceFunctions;
+  productInstances: RecordProductInstances;
+  productInstanceFunctions: RecordProductInstanceFunctions;
   orderInstanceFunctions: RecordOrderInstanceFunctions;
   version: string;
   api: SEMVER;
@@ -608,7 +612,7 @@ export interface CategoryEntry {
   serviceDisable: string[];
 };
 export type MenuCategories = Record<string, CategoryEntry>;
-export interface ProductEntry { product: IProduct; base_id: string, instances_list: IProductInstance[]; instances: Record<string, IProductInstance>; };
+export interface ProductEntry { product: IProduct; baseId: string, instances_list: IProductInstance[]; instances: RecordProductInstances; };
 export type MenuProducts = Record<string, ProductEntry>;
 export type MenuProductInstanceMetadata = Record<string, WProductMetadata>;
 export interface ModifierEntry { modifier_type: IOptionType; options_list: WCPOption[]; options: Record<string, WCPOption>; };
@@ -818,26 +822,32 @@ export interface PaymentBase extends TenderBase {
 
 export interface StoreCreditPayment extends PaymentBase {
   readonly t: PaymentMethod.StoreCredit;
-  readonly code: string;
-  readonly lock: EncryptStringLock;
+  readonly payment: {
+    readonly code: string;
+    readonly lock: EncryptStringLock;
+  };
 };
 
 export interface CashPayment extends PaymentBase {
   readonly t: PaymentMethod.Cash;
-  readonly amountTendered: IMoney;
-  readonly change: IMoney;
+  readonly payment: {
+    readonly amountTendered: IMoney;
+    readonly change: IMoney;
+  };
 };
 
 export interface CreditPayment extends PaymentBase {
   readonly t: PaymentMethod.CreditCard;
-  readonly processor: "SQUARE";// | "STRIPE";
-  readonly processorId: string;
-  readonly receiptUrl: string;
-  readonly last4: string;
-  readonly cardBrand: string;
-  readonly expYear: string;
-  readonly cardholderName: string;
-  readonly billingZip: string;
+  readonly payment: {
+    readonly processor: "SQUARE";// | "STRIPE";
+    readonly processorId: string;
+    readonly receiptUrl: string;
+    readonly last4: string;
+    readonly cardBrand: string;
+    readonly expYear: string;
+    readonly cardholderName: string;
+    readonly billingZip: string;
+  };
 };
 
 export type OrderPayment = CashPayment | CreditPayment | StoreCreditPayment; // ExternalPayment;
@@ -848,9 +858,11 @@ export enum DiscountMethod {
 
 export interface OrderLineDiscountCodeAmount extends TenderBase {
   readonly t: DiscountMethod.CreditCodeAmount;
-  readonly amount: IMoney;
-  readonly code: string;
-  readonly lock: EncryptStringLock;
+  readonly discount: {
+    readonly amount: IMoney;
+    readonly code: string;
+    readonly lock: EncryptStringLock;
+  };
 }
 
 export type OrderLineDiscount = OrderLineDiscountCodeAmount;

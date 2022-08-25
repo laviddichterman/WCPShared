@@ -6,3 +6,4 @@ export * from "./lib/objects/WDateUtils";
 export * from "./lib/objects/WFunctional";
 export * from "./lib/objects/OrderFunctional";
 export * from "./lib/objects/WMenu";
+export * from "./lib/objects/ICatalog";

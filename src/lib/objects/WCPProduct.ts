@@ -257,6 +257,7 @@ export function WProductDisplayOptions(menuModifiers: MenuModifiers, exhaustive_
 };
 
 
+// TODO: split this out into generic templating code for use in order messages
 type MatchTemplateObject = { [index: string]: string };
 const RunTemplating = (product: IProduct, menuModifiers: MenuModifiers, metadata: WProductMetadata) => {
   const HandleOption = HandleOptionCurry(menuModifiers, HandleOptionNameNoFilter);
@@ -300,7 +301,7 @@ interface IMatchInfo { product: [IProductInstance | null, IProductInstance | nul
 
 export function WCPProductGenerateMetadata(a: WCPProduct, productClassMenu: ProductEntry, catalog: ICatalog, menuModifiers: MenuModifiers, service_time: Date | number, fulfillmentId: string) {
   const PRODUCT_CLASS = productClassMenu.product;
-  const BASE_PRODUCT_INSTANCE = productClassMenu.instances[productClassMenu.base_id];
+  const BASE_PRODUCT_INSTANCE = productClassMenu.instances[productClassMenu.baseId];
 
   const bake_count: [number, number] = [0, 0];
   const flavor_count: [number, number] = [0, 0];
@@ -406,7 +407,7 @@ export function WCPProductGenerateMetadata(a: WCPProduct, productClassMenu: Prod
     { enable: DISABLE_REASON.DISABLED_FUNCTION, functionId: string } |
     { enable: DISABLE_REASON.DISABLED_FULFILLMENT_TYPE, fulfillment: string }) =
       pc_modifier.serviceDisable.indexOf(fulfillmentId) !== -1 ? { enable: DISABLE_REASON.DISABLED_FULFILLMENT_TYPE, fulfillment: fulfillmentId } :
-        (modifier_type_enable_function === null || WFunctional.ProcessProductInstanceFunction(a, catalog.product_instance_functions[modifier_type_enable_function], catalog) ?
+        (modifier_type_enable_function === null || WFunctional.ProcessProductInstanceFunction(a, catalog.productInstanceFunctions[modifier_type_enable_function], catalog) ?
           { enable: DISABLE_REASON.ENABLED } :
           { enable: DISABLE_REASON.DISABLED_FUNCTION, functionId: modifier_type_enable_function });
     for (let moIdX = 0; moIdX < CATALOG_MODIFIER_INFO.options_list.length; ++moIdX) {
