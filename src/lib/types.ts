@@ -13,6 +13,12 @@ export type NullablePartial<T,
 
 export interface SEMVER { major: number; minor: number; patch: number; };
 
+export interface WError {
+  category: string;
+  code: string;
+  detail: string;
+};
+
 export enum DayOfTheWeek {
   SUNDAY,
   MONDAY,
@@ -670,6 +676,25 @@ export type PurchaseStoreCreditRequest = Omit<IssueStoreCreditRequest, 'creditTy
   recipientMessage: string;
 };
 
+export interface PurchaseStoreCreditResponseSuccess {
+  referenceId: string;
+  code: string;
+  squareOrderId: string;
+  amount: IMoney;
+  last4: string;
+  receiptUrl: string;
+};
+
+export type PurchaseStoreCreditResponse = {
+  error: WError[],
+  success: true;
+  result: PurchaseStoreCreditResponseSuccess;
+} | {
+  error: WError[],
+  success: false;
+  result: null;
+};
+
 export interface ValidateLockAndSpendRequest {
   readonly code: string;
   readonly amount: IMoney;
@@ -892,11 +917,7 @@ export type WOrderInstance = WOrderInstancePartial & {
 
 export type CategorizedRebuiltCart = Record<string, CoreCartEntry<WProduct>[]>;
 
-export interface WError {
-  category: string;
-  code: string;
-  detail: string;
-};
+
 
 export interface CreateOrderResponse {
   readonly success: boolean;
