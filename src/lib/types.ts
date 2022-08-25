@@ -868,10 +868,10 @@ export interface CreditPayment extends PaymentBase {
     readonly processorId: string;
     readonly receiptUrl: string;
     readonly last4: string;
-    readonly cardBrand: string;
-    readonly expYear: string;
-    readonly cardholderName: string;
-    readonly billingZip: string;
+    readonly cardBrand?: string;
+    readonly expYear?: string;
+    readonly cardholderName?: string;
+    readonly billingZip?: string;
   };
 };
 
