@@ -34,7 +34,7 @@ const CatalogMapGenerator = (categories: ICategory[], products: IProduct[], prod
 };
 
 const ModifierTypeMapGenerator = (modifier_types: IOptionType[], options: IOption[]) => {
-  var modifier_types_map: ICatalogModifiers = modifier_types.reduce((acc, m) => ({ ...acc, [m.id]: { options: [], modifier_type: m } }), {});
+  const modifier_types_map = modifier_types.reduce((acc, m) => ({ ...acc, [m.id]: { options: [], modifierType: m } }), {} as ICatalogModifiers);
   options.forEach(o => {
     if (Object.hasOwn(modifier_types_map, o.modifierTypeId)) {
       modifier_types_map[o.modifierTypeId].options.push(o.id);
