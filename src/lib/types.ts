@@ -3,7 +3,7 @@ import type { Polygon } from 'geojson';
 export type NullablePartial<T,
   NK extends keyof T = { [K in keyof T]: null extends T[K] ? K : never }[keyof T],
   NP = Partial<Pick<T, NK>> & Pick<T, Exclude<keyof T, NK>>
-  > = { [K in keyof NP]-?: NP[K] | null };
+> = { [K in keyof NP]-?: NP[K] | null };
 
 // export type NestedKeyOf<ObjectType extends object> =
 //   { [Key in keyof ObjectType & (string | number)]: ObjectType[Key] extends object
@@ -899,11 +899,11 @@ export interface WOrderInstancePartial {
   readonly fulfillment: FulfillmentDto;
   readonly cart: CoreCartEntry<WCPProductV2Dto>[];
   readonly metrics: Metrics;
+  readonly specialInstructions: string;
 };
 
 export type CreateOrderRequestV2 = {
   readonly nonce?: string;
-  readonly specialInstructions: string;
   readonly totals: TotalsV2;
   readonly creditValidations: JSFECreditV2[];
 } & WOrderInstancePartial;
@@ -915,7 +915,7 @@ export type WOrderInstance = WOrderInstancePartial & {
   readonly discounts: OrderLineDiscount[];
   readonly payments: OrderPayment[];
   readonly refunds: OrderPayment[];
-  readonly externalIDs: KeyValue[];
+  readonly metadata: KeyValue[];
 };
 
 export type CategorizedRebuiltCart = Record<string, CoreCartEntry<WProduct>[]>;
