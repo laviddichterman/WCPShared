@@ -19,6 +19,8 @@ export interface WError {
   detail: string;
 };
 
+export interface KeyValue { key: string; value: string; };
+
 export enum DayOfTheWeek {
   SUNDAY,
   MONDAY,
@@ -390,7 +392,7 @@ export interface IOptionType {
   id: string;
   name: string;
   displayName: string;
-  externalIDs: Record<string, string>;
+  externalIDs: KeyValue[];
   ordinal: number;
   min_selected: number;
   max_selected: number | null;
@@ -414,7 +416,7 @@ export interface IOption {
   description: string;
   shortcode: string;
   price: IMoney;
-  externalIDs: Record<string, string>;
+  externalIDs: KeyValue[];
   disabled: IWInterval | null;
   ordinal: number;
   metadata: {
@@ -476,7 +478,7 @@ export interface IProduct {
   price: IMoney;
   disabled: IWInterval | null;
   serviceDisable: string[];
-  externalIDs: Record<string, string>;
+  externalIDs: KeyValue[];
   displayFlags: {
     flavor_max: number;
     bake_max: number;
@@ -515,7 +517,7 @@ export interface IProductInstance {
 
   displayFlags: IProductDisplayFlags,
 
-  externalIDs: Record<string, string>;
+  externalIDs: KeyValue[];
 
   description: string;
 
@@ -913,6 +915,7 @@ export type WOrderInstance = WOrderInstancePartial & {
   readonly discounts: OrderLineDiscount[];
   readonly payments: OrderPayment[];
   readonly refunds: OrderPayment[];
+  readonly externalIDs: KeyValue[];
 };
 
 export type CategorizedRebuiltCart = Record<string, CoreCartEntry<WProduct>[]>;
