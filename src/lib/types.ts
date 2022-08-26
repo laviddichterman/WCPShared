@@ -899,7 +899,7 @@ export interface WOrderInstancePartial {
   readonly fulfillment: FulfillmentDto;
   readonly cart: CoreCartEntry<WCPProductV2Dto>[];
   readonly metrics: Metrics;
-  readonly specialInstructions: string;
+  readonly specialInstructions?: string;
 };
 
 export type CreateOrderRequestV2 = {
