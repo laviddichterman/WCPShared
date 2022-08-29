@@ -749,11 +749,6 @@ export interface DeliveryAddressValidateResponse {
   readonly address_components: Array<AddressComponent>;
 };
 
-export interface TotalsV2 {
-  tip: IMoney;
-  balance: IMoney;
-}
-
 export interface JSFECreditV2 {
   readonly validation: ValidateAndLockCreditResponseValid;
   readonly code: string;
@@ -899,12 +894,12 @@ export interface WOrderInstancePartial {
   readonly fulfillment: FulfillmentDto;
   readonly cart: CoreCartEntry<WCPProductV2Dto>[];
   readonly metrics: Metrics;
+  readonly tip: TipSelection;
   readonly specialInstructions?: string;
 };
 
 export type CreateOrderRequestV2 = {
   readonly nonce?: string;
-  readonly totals: TotalsV2;
   readonly creditValidations: JSFECreditV2[];
 } & WOrderInstancePartial;
 
