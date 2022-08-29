@@ -872,6 +872,8 @@ export interface CreditPayment extends PaymentBase {
   };
 };
 
+export interface OrderTax { amount: IMoney; };
+
 export type OrderPayment = CashPayment | CreditPayment | StoreCreditPayment; // ExternalPayment;
 
 export enum DiscountMethod {
@@ -901,6 +903,7 @@ export interface WOrderInstancePartial {
 export type CreateOrderRequestV2 = {
   readonly nonce?: string;
   readonly creditValidations: JSFECreditV2[];
+  readonly balance: IMoney;
 } & WOrderInstancePartial;
 
 
@@ -910,12 +913,11 @@ export type WOrderInstance = WOrderInstancePartial & {
   readonly discounts: OrderLineDiscount[];
   readonly payments: OrderPayment[];
   readonly refunds: OrderPayment[];
+  readonly taxes: OrderTax[];
   readonly metadata: KeyValue[];
 };
 
 export type CategorizedRebuiltCart = Record<string, CoreCartEntry<WProduct>[]>;
-
-
 
 export interface CreateOrderResponse {
   readonly success: boolean;
