@@ -840,6 +840,8 @@ export interface TenderBase {
 export interface PaymentBase extends TenderBase {
   readonly t: PaymentMethod;
   readonly amount: IMoney;
+  // the portion of the total payment amount 
+  readonly tipAmount: IMoney;
 };
 
 export interface StoreCreditPayment extends PaymentBase {
