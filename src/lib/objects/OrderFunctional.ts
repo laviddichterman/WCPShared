@@ -2,7 +2,6 @@ import { startCase, snakeCase } from "lodash";
 import {
   ConstLiteralDiscriminator,
   ICatalog,
-  ICatalogModifiers,
   IConstLiteralExpression,
   IIfElseExpression,
   ILogicalExpression,
@@ -78,10 +77,10 @@ export class OrderFunctional {
     return OrderFunctional.ProcessAbstractOrderExpressionStatement(order, func.expression, cat);
   }
 
-  static AbstractOrderExpressionStatementToString(stmt: AbstractOrderExpression, mods: ICatalogModifiers): string {
+  static AbstractOrderExpressionStatementToString(stmt: AbstractOrderExpression, catalog: ICatalog): string {
     function logical(expr: ILogicalExpression<AbstractOrderExpression>) {
-      const operandAString = OrderFunctional.AbstractOrderExpressionStatementToString(expr.operandA, mods);
-      return expr.operator === LogicalFunctionOperator.NOT || !expr.operandB ? `NOT (${operandAString})` : `(${operandAString} ${expr.operator} ${OrderFunctional.AbstractOrderExpressionStatementToString(expr.operandB, mods)})`;
+      const operandAString = OrderFunctional.AbstractOrderExpressionStatementToString(expr.operandA, catalog);
+      return expr.operator === LogicalFunctionOperator.NOT || !expr.operandB ? `NOT (${operandAString})` : `(${operandAString} ${expr.operator} ${OrderFunctional.AbstractOrderExpressionStatementToString(expr.operandB, catalog)})`;
     }
     switch (stmt.discriminator) {
       case OrderInstanceFunctionType.ConstLiteral:
@@ -98,19 +97,19 @@ export class OrderFunctional {
             return String(OptionQualifier[stmt.expr.value]);
         }
       case OrderInstanceFunctionType.IfElse:
-        return `IF(${OrderFunctional.AbstractOrderExpressionStatementToString(stmt.expr.test, mods)}) { ${OrderFunctional.AbstractOrderExpressionStatementToString(stmt.expr.true_branch, mods)} } ELSE { ${OrderFunctional.AbstractOrderExpressionStatementToString(stmt.expr.false_branch, mods)} }`;
+        return `IF(${OrderFunctional.AbstractOrderExpressionStatementToString(stmt.expr.test, catalog)}) { ${OrderFunctional.AbstractOrderExpressionStatementToString(stmt.expr.true_branch, catalog)} } ELSE { ${OrderFunctional.AbstractOrderExpressionStatementToString(stmt.expr.false_branch, catalog)} }`;
       case OrderInstanceFunctionType.Logical:
         return logical(stmt.expr);
     }
   }
 
-  static AbstractOrderExpressionStatementToHumanReadableString(stmt: AbstractOrderExpression, mods: ICatalogModifiers): string {
+  static AbstractOrderExpressionStatementToHumanReadableString(stmt: AbstractOrderExpression, catalog: ICatalog): string {
     function logical(expr: ILogicalExpression<AbstractOrderExpression>) {
-      const operandAString = OrderFunctional.AbstractOrderExpressionStatementToHumanReadableString(expr.operandA, mods);
+      const operandAString = OrderFunctional.AbstractOrderExpressionStatementToHumanReadableString(expr.operandA, catalog);
       if (expr.operator === LogicalFunctionOperator.NOT || !expr.operandB) {
         return `not ${operandAString}`;
       }
-      const operandBString = OrderFunctional.AbstractOrderExpressionStatementToHumanReadableString(expr.operandB, mods);
+      const operandBString = OrderFunctional.AbstractOrderExpressionStatementToHumanReadableString(expr.operandB, catalog);
       return `${operandAString} ${LogicalFunctionOperatorToHumanString(expr.operator)} ${operandBString}`;
     }
     switch (stmt.discriminator) {
@@ -128,7 +127,7 @@ export class OrderFunctional {
             return startCase(snakeCase((OptionQualifier[stmt.expr.value])));
         }
       case OrderInstanceFunctionType.IfElse:
-        return `if ${OrderFunctional.AbstractOrderExpressionStatementToHumanReadableString(stmt.expr.test, mods)} then ${OrderFunctional.AbstractOrderExpressionStatementToHumanReadableString(stmt.expr.true_branch, mods)}, otherwise ${OrderFunctional.AbstractOrderExpressionStatementToHumanReadableString(stmt.expr.false_branch, mods)}`;
+        return `if ${OrderFunctional.AbstractOrderExpressionStatementToHumanReadableString(stmt.expr.test, catalog)} then ${OrderFunctional.AbstractOrderExpressionStatementToHumanReadableString(stmt.expr.true_branch, catalog)}, otherwise ${OrderFunctional.AbstractOrderExpressionStatementToHumanReadableString(stmt.expr.false_branch, catalog)}`;
       case OrderInstanceFunctionType.Logical:
         return logical(stmt.expr);
     }
