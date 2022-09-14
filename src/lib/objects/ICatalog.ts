@@ -4,7 +4,7 @@
 // product_map is mapping from productId to { product, instances (list of instance objects)}
 
 import { ReduceArrayToMapByKey } from "../common";
-import type { ICatalog, SEMVER, ICatalogModifiers, ICatalogCategories, ICategory, IProduct, IProductInstance, RecordOrderInstanceFunctions, RecordProductInstanceFunctions, ICatalogProducts, IOptionType, IOption } from "../types";
+import type { ICatalog, SEMVER, ICatalogModifiers, ICatalogCategories, ICategory, IProduct, IProductInstance, RecordOrderInstanceFunctions, RecordProductInstanceFunctions, ICatalogProducts, IOptionType, IOption, ICatalogSelectors } from "../types";
 
 // orphan_products is list of orphan product ids
 const CatalogMapGenerator = (categories: ICategory[], products: IProduct[], product_instances: IProductInstance[]): [ICatalogCategories, ICatalogProducts] => {
@@ -69,3 +69,20 @@ export const CatalogGenerator = (
     version: Date.now().toString(36).toUpperCase(),
   };
 }
+
+export const ICatalogSelectorWrapper = (catalog: ICatalog): ICatalogSelectors => ({
+  categories: () => Object.keys(catalog.categories),
+  category: (id) => catalog.categories[id],
+  modifierEntries: () => Object.keys(catalog.modifiers),
+  modifierEntry: (id) => catalog.modifiers[id],
+  option: (id) => catalog.options[id],
+  options: () => Object.keys(catalog.options),
+  productEntry: (id) => catalog.products[id],
+  productEntries: () => Object.keys(catalog.products),
+  productInstance: (id) => catalog.productInstances[id],
+  productInstances: () => Object.keys(catalog.productInstances),
+  productInstanceFunction: (id) => catalog.productInstanceFunctions[id],
+  productInstanceFunctions: () => Object.keys(catalog.productInstanceFunctions),
+  orderInstanceFunction: (id) => catalog.orderInstanceFunctions[id],
+  orderInstanceFunctions: () => Object.keys(catalog.orderInstanceFunctions)
+})

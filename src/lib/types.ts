@@ -11,6 +11,13 @@ export type NullablePartial<T,
 //     : `${Key}`
 //   }[keyof ObjectType & (string | number)];
 
+export type Selector<T> = (id: string) => T | undefined;
+export type SelectIds = () => string[];
+export interface EntitySelector<T> {
+  selectById: Selector<T>;
+  selectIds: SelectIds;
+};
+
 export interface SEMVER { major: number; minor: number; patch: number; };
 
 export interface WError {
@@ -365,10 +372,18 @@ export interface OrderInstanceFunction {
   name: string;
 };
 
+// Note: Display logic might fallback to a different display option depending on live catalog data
 export enum CategoryDisplay {
+  // The child categories are displayed inline
+  'FLAT' = 'FLAT',
+  // The children categories are tabs just below the main category title
   'TAB' = 'TAB',
-  'TAB_IMMEDIATE' = 'TAB_IMMEDIATE',
+  // The children categories are displayed as expansion panels/accordions immediately below the main category title
   'ACCORDION' = 'ACCORDION',
+  // either 0 child categories and many contained products OR no contained products to many child categories
+  // child categories have no child categories
+  // metadata fields used to populate columns
+  // child categories are used as sortable/filterable columns in the table
   'TABLE' = 'TABLE'
 };
 
@@ -383,6 +398,7 @@ export interface ICategory {
   display_flags: {
     call_line_name: string;
     call_line_display: CALL_LINE_DISPLAY;
+    // nesting is a bad name, but it's basically how the category display is desired
     nesting: CategoryDisplay;
   };
   serviceDisable: string[];
@@ -497,6 +513,7 @@ export interface IProduct {
   };
   modifiers: IProductModifier[];
   category_ids: string[];
+  baseProductId: string;
 };
 
 export interface ProductModifierEntry { modifierTypeId: string; options: IOptionInstance[]; };
@@ -511,9 +528,6 @@ export interface IProductInstance {
 
   // applied modifiers for this instance of the product
   modifiers: ProductModifierEntry[];
-
-  // flag to note that this product instance is the "default" form of the product to which all others should be compared
-  isBase: boolean;
 
   displayFlags: IProductDisplayFlags,
 
@@ -547,6 +561,26 @@ export interface ICatalog {
   version: string;
   api: SEMVER;
 };
+
+export interface ICatalogModifierSelectors {
+  option: Selector<IOption>;
+  modifierEntry: Selector<CatalogModifierEntry>;
+}
+
+export type ICatalogSelectors = ICatalogModifierSelectors & {
+  options: SelectIds;
+  modifierEntries: SelectIds;
+  category: Selector<CatalogCategoryEntry>;
+  categories: SelectIds;
+  productInstance: Selector<IProductInstance>;
+  productInstances: SelectIds;
+  productEntry: Selector<CatalogProductEntry>;
+  productEntries: SelectIds;
+  productInstanceFunction: Selector<IProductInstanceFunction>;
+  productInstanceFunctions: SelectIds;
+  orderInstanceFunction: Selector<OrderInstanceFunction>;
+  orderInstanceFunctions: SelectIds;
+}
 
 export enum DISABLE_REASON {
   ENABLED = 0,
@@ -620,7 +654,7 @@ export interface CategoryEntry {
   serviceDisable: string[];
 };
 export type MenuCategories = Record<string, CategoryEntry>;
-export interface ProductEntry { product: IProduct; baseId: string, instances_list: IProductInstance[]; instances: RecordProductInstances; };
+export interface ProductEntry { product: IProduct; instances_list: IProductInstance[]; instances: RecordProductInstances; };
 export type MenuProducts = Record<string, ProductEntry>;
 export type MenuProductInstanceMetadata = Record<string, WProductMetadata>;
 export interface ModifierEntry { modifier_type: IOptionType; options_list: WCPOption[]; options: Record<string, WCPOption>; };
@@ -908,15 +942,25 @@ export type CreateOrderRequestV2 = {
   readonly balance: IMoney;
 } & WOrderInstancePartial;
 
+export enum WOrderStatus {
+  'OPEN' = 'OPEN',
+  'CONFIRMED' = 'CONFIRMED',
+  'PROCESSING' = 'PROCESSING',
+  'COMPLETED' = 'COMPLETED',
+  'CANCELED' = 'CANCELED'
+};
 
-export type WOrderInstance = WOrderInstancePartial & {
+export interface WOrderInstance extends WOrderInstancePartial {
   readonly id: string;
-  readonly status: 'OPEN' | 'COMPLETED' | 'CANCELED';
+  readonly status: WOrderStatus;
   readonly discounts: OrderLineDiscount[];
   readonly payments: OrderPayment[];
   readonly refunds: OrderPayment[];
   readonly taxes: OrderTax[];
+  // metadata is for storing state in 3p applications
   readonly metadata: KeyValue[];
+  // null means not locked, string identifies the lock holder
+  readonly locked: string | null;
 };
 
 export type CategorizedRebuiltCart = Record<string, CoreCartEntry<WProduct>[]>;

@@ -1,7 +1,6 @@
 import { DisableDataCheck } from "../common";
 import {
   CategoryEntry,
-  ICatalog,
   IMenu,
   IProductInstance,
   MenuCategories,
@@ -13,7 +12,8 @@ import {
   WCPOption,
   WCPProduct,
   OptionPlacement,
-  DISABLE_REASON
+  DISABLE_REASON,
+  ICatalogSelectors
 } from "../types";
 
 import { CreateWCPProduct, WCPProductGenerateMetadata } from "./WCPProduct";
@@ -55,9 +55,9 @@ export function FilterProduct(item: IProductInstance, menu: IMenu, disable_from_
  * @param order_time the time the product would be ordered
  * @returns true if the product passes filters for availability
  */
-export function FilterWCPProduct(item: WCPProduct, catalog: ICatalog, menu: IMenu, order_time: Date | number, fulfillmentId: string) {
+export function FilterWCPProduct(item: WCPProduct, catalog: ICatalogSelectors, menu: IMenu, order_time: Date | number, fulfillmentId: string) {
   const productEntry = menu.product_classes[item.PRODUCT_CLASS.id];
-  const newMetadata = WCPProductGenerateMetadata(item, productEntry, catalog, menu.modifiers, order_time, fulfillmentId);
+  const newMetadata = WCPProductGenerateMetadata(item, catalog, order_time, fulfillmentId);
   return productEntry.product.serviceDisable.indexOf(fulfillmentId) === -1 &&
     DisableDataCheck(productEntry.product.disabled, order_time) &&
     !newMetadata.incomplete &&
@@ -158,16 +158,17 @@ export function FilterWMenu(menu: IMenu, filter_products: (product: IProductInst
   });
 }
 
-function ComputeModifiers(cat: ICatalog) {
+function ComputeModifiers(cat: Pick<ICatalogSelectors, 'modifierEntries' | 'modifierEntry' | 'option'>) {
   const mods = {} as MenuModifiers;
-  Object.keys(cat.modifiers).forEach((mtid) => {
-    const mod = cat.modifiers[mtid].modifierType;
+  cat.modifierEntries().forEach((mtid) => {
+    const modifierEntry = cat.modifierEntry(mtid)!;
+    const mod = modifierEntry.modifierType;
     let opt_index = 0;
     const modifier_entry: ModifierEntry = { modifier_type: mod, options_list: [], options: {} };
-    cat.modifiers[mtid].options.slice()
-      .sort((a, b) => cat.options[a].ordinal - cat.options[b].ordinal)
+    modifierEntry.options.slice()
+      .sort((a, b) => cat.option(a)!.ordinal - cat.option(b)!.ordinal)
       .forEach((opt) => {
-        const option: WCPOption = { index: opt_index, mo: cat.options[opt], mt: mod };
+        const option: WCPOption = { index: opt_index, mo: cat.option(opt)!, mt: mod };
         modifier_entry.options_list.push(option);
         modifier_entry.options[option.mo.id] = option;
         opt_index += 1;
@@ -178,39 +179,34 @@ function ComputeModifiers(cat: ICatalog) {
 }
 
 
-function ComputeProducts(cat: ICatalog) {
+function ComputeProducts(cat: ICatalogSelectors) {
   const prods = {} as MenuProducts;
-  Object.keys(cat.products).forEach(pId => {
-    const product_class = { ...cat.products[pId].product };
+  cat.productEntries().forEach(pId => {
+    const product_class = { ...cat.productEntry(pId)!.product };
     // IMPORTANT: we need to sort by THIS ordinal here to ensure things are named properly.
-    const product_instances = cat.products[pId].instances.slice().sort((a, b) => cat.productInstances[a].ordinal - cat.productInstances[b].ordinal);
-    const baseProductInstanceIndex = product_instances.findIndex(x => cat.productInstances[x].isBase);
-    if (baseProductInstanceIndex !== -1) {
-      // be sure to sort the modifiers, just in case...
-      // TODO: better expectations around sorting
-      product_class.modifiers = [...product_class.modifiers].sort((a, b) => cat.modifiers[a.mtid].modifierType.ordinal - cat.modifiers[b.mtid].modifierType.ordinal);
-      const product_entry: ProductEntry = { product: product_class, instances_list: [], instances: {}, baseId: product_instances[baseProductInstanceIndex] };
-      product_instances.forEach((pi) => {
-        product_entry.instances_list.push(cat.productInstances[pi]);
-        product_entry.instances[pi] = cat.productInstances[pi];
-      });
-      prods[pId] = product_entry;
-    }
-    else {
-      console.error(`Pruning incomplete product ${product_class}`);
-    }
+    const product_instances = cat.productEntry(pId)!.instances.slice().sort((a, b) => cat.productInstance(a)!.ordinal - cat.productInstance(b)!.ordinal);
+    // be sure to sort the modifiers, just in case...
+    // TODO: better expectations around sorting
+    product_class.modifiers = [...product_class.modifiers].sort((a, b) => cat.modifierEntry(a.mtid)!.modifierType.ordinal - cat.modifierEntry(b.mtid)!.modifierType.ordinal);
+    const product_entry: ProductEntry = { product: product_class, instances_list: [], instances: {} };
+    product_instances.forEach((pi) => {
+      const piObj = cat.productInstance(pi)!;
+      product_entry.instances_list.push(piObj);
+      product_entry.instances[pi] = piObj;
+    });
+    prods[pId] = product_entry;
   });
   return prods;
 };
 
 
-function ComputeCategories(cat: ICatalog, product_classes: MenuProducts) {
+function ComputeCategories(cat: ICatalogSelectors, product_classes: MenuProducts) {
   const cats: MenuCategories = {};
-  Object.keys(cat.categories).forEach(catId => {
-    const catalogCategory = cat.categories[catId];
+  cat.categories().forEach(catId => {
+    const catalogCategory = cat.category(catId)!;
     const category_entry: CategoryEntry = {
       menu: [],
-      children: [...catalogCategory.children].sort((a, b) => cat.categories[a].category.ordinal - cat.categories[b].category.ordinal),
+      children: [...catalogCategory.children].sort((a, b) => cat.category(a)!.category.ordinal - cat.category(b)!.category.ordinal),
       menu_name: catalogCategory.category.description || catalogCategory.category.name,
       subtitle: catalogCategory.category?.subheading || null,
       footer: catalogCategory.category?.footnotes || null,
@@ -228,22 +224,22 @@ function ComputeCategories(cat: ICatalog, product_classes: MenuProducts) {
   return cats;
 }
 
-function ComputeProductInstanceMetadata(menuProducts: MenuProducts, catalog: ICatalog, menuModifiers: MenuModifiers, service_time: Date | number, fulfillmentId: string) {
+function ComputeProductInstanceMetadata(menuProducts: MenuProducts, catalog: ICatalogSelectors, service_time: Date | number, fulfillmentId: string) {
   const md: MenuProductInstanceMetadata = {};
   Object.values(menuProducts).forEach(productEntry => {
     productEntry.instances_list.forEach(pi => {
-      md[pi.id] = WCPProductGenerateMetadata(CreateWCPProduct(productEntry.product, pi.modifiers), productEntry, catalog, menuModifiers, service_time, fulfillmentId)
+      md[pi.id] = WCPProductGenerateMetadata(CreateWCPProduct(productEntry.product, pi.modifiers), catalog, service_time, fulfillmentId)
     });
   });
   return md;
 }
 
-export function GenerateMenu(catalog: ICatalog, service_time: Date | number, fulfillmentId: string) {
+export function GenerateMenu(catalog: ICatalogSelectors, version: string, service_time: Date | number, fulfillmentId: string) {
   const modifiers = ComputeModifiers(catalog);
   const product_classes = ComputeProducts(catalog);
   const categories = ComputeCategories(catalog, product_classes);
-  const product_instance_metadata = ComputeProductInstanceMetadata(product_classes, catalog, modifiers, service_time, fulfillmentId);
-  const menu: IMenu = { modifiers, product_classes, product_instance_metadata, categories, version: catalog.version };
+  const product_instance_metadata = ComputeProductInstanceMetadata(product_classes, catalog, service_time, fulfillmentId);
+  const menu: IMenu = { modifiers, product_classes, product_instance_metadata, categories, version };
   return menu;
 }
 
@@ -254,6 +250,6 @@ export function DoesProductExistInMenu(menu: IMenu, product: WCPProduct) {
       mod.options.reduce((optAcc, o) => optAcc && Object.hasOwn(menu.modifiers[mod.modifierTypeId].options, o.optionId), true), true);
 }
 
-export function CanThisBeOrderedAtThisTimeAndFulfillment(product: WCPProduct, menu: IMenu, catalog: ICatalog, serviceTime: Date | number, fulfillment: string) {
+export function CanThisBeOrderedAtThisTimeAndFulfillment(product: WCPProduct, menu: IMenu, catalog: ICatalogSelectors, serviceTime: Date | number, fulfillment: string) {
   return DoesProductExistInMenu(menu, product) && FilterWCPProduct(product, catalog, menu, serviceTime, fulfillment);
 }
