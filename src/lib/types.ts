@@ -11,7 +11,7 @@ export type NullablePartial<T,
 //     : `${Key}`
 //   }[keyof ObjectType & (string | number)];
 
-export type Selector<T> = (id: string) => T | undefined;
+export type Selector<T> = (id: string) => (T | undefined);
 export type SelectIds = () => string[];
 export interface EntitySelector<T> {
   selectById: Selector<T>;

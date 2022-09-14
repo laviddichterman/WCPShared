@@ -1,6 +1,6 @@
 {
   "name": "@wcp/wcpshared",
-  "version": "4.1.31",
+  "version": "4.1.32",
   "description": "Shared JS/TS modules for WARIO",
   "main": "build/main/index.js",
   "typings": "build/main/index.d.ts",
@@ -65,7 +65,7 @@
     "eslint": "^8.23.1",
     "eslint-config-prettier": "^8.5.0",
     "eslint-plugin-eslint-comments": "^3.2.0",
-    "eslint-plugin-functional": "^4.3.0",
+    "eslint-plugin-functional": "^4.3.1",
     "eslint-plugin-import": "^2.26.0",
     "gh-pages": "^4.0.0",
     "npm-run-all": "^4.1.5",
