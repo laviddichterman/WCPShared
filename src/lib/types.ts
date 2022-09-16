@@ -802,12 +802,15 @@ export interface DineInInfoDto {
   //tableId: string | null;
 };
 
-export interface FulfillmentDto {
-  //status: 'PROPOSED' | 'RESERVED' | 'PREPARED' | 'COMPLETED' | 'CANCELED' | 'FAILED';
-  selectedService: string;
+export interface FulfillmentTime {
   // as formatISODate
   selectedDate: string;
   selectedTime: number;
+}
+
+export interface FulfillmentDto extends FulfillmentTime {
+  //status: 'PROPOSED' | 'RESERVED' | 'PREPARED' | 'COMPLETED' | 'CANCELED' | 'FAILED';
+  selectedService: string;
   dineInInfo: DineInInfoDto | null;
   deliveryInfo: DeliveryInfoDto | null;
 }
