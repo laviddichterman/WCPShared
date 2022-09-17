@@ -1,6 +1,6 @@
 import { addMinutes, getTime } from "date-fns";
 import WDateUtils from "./objects/WDateUtils";
-import { CoreCartEntry, CURRENCY, DISABLE_REASON, FulfillmentConfig, FulfillmentDto, IMoney, IWInterval, JSFECreditV2, ProductModifierEntry, OptionPlacement, OptionQualifier, TipSelection, WProduct, IOptionInstance } from "./types";
+import { CoreCartEntry, CURRENCY, DISABLE_REASON, FulfillmentConfig, IMoney, IWInterval, JSFECreditV2, ProductModifierEntry, OptionPlacement, OptionQualifier, TipSelection, WProduct, IOptionInstance, FulfillmentTime } from "./types";
 
 export const CREDIT_REGEX = /[A-Za-z0-9]{3}-[A-Za-z0-9]{2}-[A-Za-z0-9]{3}-[A-Z0-9]{8}$/;
 
@@ -16,9 +16,9 @@ export const GetPlacementFromMIDOID = (modifiers: ProductModifierEntry[], mtid: 
   return modifierEntry !== undefined ? (modifierEntry.options.find((x) => x.optionId === oid) || NOT_FOUND) : NOT_FOUND;
 };
 
-export const DateTimeIntervalBuilder = ({ selectedDate, selectedTime }: Pick<FulfillmentDto, "selectedDate" | "selectedTime">, fulfillment: FulfillmentConfig) => {
+export const DateTimeIntervalBuilder = (fulfillmentTime: FulfillmentTime, fulfillment: FulfillmentConfig) => {
   // hack for date computation on DST transition days since we're currently not open during the time jump
-  const date_lower = WDateUtils.ComputeServiceDateTime(selectedDate, selectedTime);
+  const date_lower = WDateUtils.ComputeServiceDateTime(fulfillmentTime);
   const date_upper = addMinutes(date_lower, fulfillment.maxDuration);
   return { start: date_lower, end: date_upper } as Interval;
 };

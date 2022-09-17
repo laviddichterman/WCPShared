@@ -13,7 +13,7 @@ import {
   subMinutes
 } from 'date-fns';
 
-import { AvailabilityInfoMap, DateIntervalsEntries, DayOfTheWeek, FulfillmentConfig, IWInterval, OperatingHourSpecification } from '../types';
+import { AvailabilityInfoMap, DateIntervalsEntries, DayOfTheWeek, FulfillmentConfig, FulfillmentTime, IWInterval, OperatingHourSpecification } from '../types';
 
 export const ADDITIONAL_PIZZA_LEAD_TIME_TO_DEPRECATE = 5;
 
@@ -78,7 +78,7 @@ export class WDateUtils {
     return formatISO(d, { format: 'basic', representation: 'date' });
   }
 
-  static ComputeServiceDateTime(selectedDate: string, selectedTime: number) { return subMinutes(addDays(parseISO(selectedDate), 1), 1440 - selectedTime); };
+  static ComputeServiceDateTime(fulfillmentTime: FulfillmentTime) { return subMinutes(addDays(parseISO(fulfillmentTime.selectedDate), 1), 1440 - fulfillmentTime.selectedTime); };
 
   static MinutesToPrintTime(minutes: number) {
     if (Number.isNaN(minutes) || minutes < 0) {
