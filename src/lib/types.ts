@@ -884,6 +884,7 @@ export interface PaymentBase extends TenderBase {
 export interface StoreCreditPayment extends PaymentBase {
   readonly t: PaymentMethod.StoreCredit;
   readonly payment: {
+    readonly processorId: string;
     readonly code: string;
     readonly lock: EncryptStringLock;
   };
@@ -892,6 +893,7 @@ export interface StoreCreditPayment extends PaymentBase {
 export interface CashPayment extends PaymentBase {
   readonly t: PaymentMethod.Cash;
   readonly payment: {
+    readonly processorId: string;
     readonly amountTendered: IMoney;
     readonly change: IMoney;
   };
@@ -946,11 +948,11 @@ export type CreateOrderRequestV2 = {
 } & WOrderInstancePartial;
 
 export enum WOrderStatus {
-  'OPEN' = 'OPEN',
-  'CONFIRMED' = 'CONFIRMED',
-  'PROCESSING' = 'PROCESSING',
-  'COMPLETED' = 'COMPLETED',
-  'CANCELED' = 'CANCELED'
+  'OPEN' = 'OPEN', // order submitted to WARIO, yet to be manually confirmed by staff
+  'CONFIRMED' = 'CONFIRMED', // confirmed by staff
+  'PROCESSING' = 'PROCESSING', // order has been started
+  'COMPLETED' = 'COMPLETED', // order has been completed and fulfilled
+  'CANCELED' = 'CANCELED' // order has been canceled and refunded
 };
 
 export interface WOrderInstance extends WOrderInstancePartial {
