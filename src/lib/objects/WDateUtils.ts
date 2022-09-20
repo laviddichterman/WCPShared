@@ -341,7 +341,7 @@ export const HasOperatingHoursForFulfillments = (fulfillmentConfigs: Fulfillment
  * @param {FulfillmentConfig[]} fulfillmentConfigs map of the fulfillments we're interested in  
  * @param now - ISO string of the current date and time according to dog (the server, whatever)
  */
-export const GetNextAvailableServiceDate = (fulfillmentConfigs: FulfillmentConfig[], orderSize: number, now: string): [string, number] | null => {
+export const GetNextAvailableServiceDate = (fulfillmentConfigs: FulfillmentConfig[], orderSize: number, now: string): FulfillmentTime | null => {
   if (!HasOperatingHoursForFulfillments(fulfillmentConfigs)) {
     return null;
   }
@@ -352,7 +352,7 @@ export const GetNextAvailableServiceDate = (fulfillmentConfigs: FulfillmentConfi
     const INFO = WDateUtils.GetInfoMapForAvailabilityComputation(fulfillmentConfigs, isoDate, { cart_based_lead_time: 0, size: orderSize });
     const firstAvailableTime = WDateUtils.ComputeFirstAvailableTimeForDate(INFO, isoDate, now);
     if (firstAvailableTime !== -1) {
-      return [isoDate, firstAvailableTime];
+      return { selectedDate: isoDate, selectedTime: firstAvailableTime };
     }
     dateAttempted = addDays(dateAttempted, 1);
   }
