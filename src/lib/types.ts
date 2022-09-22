@@ -439,6 +439,9 @@ export interface IOption {
     flavor_factor: number;
     bake_factor: number;
     can_split: boolean;
+    allowHeavy: boolean;
+    allowLite: boolean;
+    allowOTS: boolean;
   };
   enable: string | null;
   displayFlags: {
