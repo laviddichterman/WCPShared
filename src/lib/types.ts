@@ -376,6 +376,7 @@ export interface PrinterGroup {
   id: string;
   name: string;
   singleItemPerTicket: boolean;
+  externalIDs: KeyValue[];
 };
 
 // Note: Display logic might fallback to a different display option depending on live catalog data
