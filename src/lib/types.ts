@@ -372,6 +372,12 @@ export interface OrderInstanceFunction {
   name: string;
 };
 
+export interface PrinterGroup {
+  id: string;
+  name: string;
+  singleItemPerTicket: string;
+};
+
 // Note: Display logic might fallback to a different display option depending on live catalog data
 export enum CategoryDisplay {
   // The child categories are displayed inline
@@ -517,6 +523,7 @@ export interface IProduct {
   modifiers: IProductModifier[];
   category_ids: string[];
   baseProductId: string;
+  printerGroup: string | null;
 };
 
 export interface ProductModifierEntry { modifierTypeId: string; options: IOptionInstance[]; };
