@@ -375,7 +375,7 @@ export interface OrderInstanceFunction {
 export interface PrinterGroup {
   id: string;
   name: string;
-  singleItemPerTicket: string;
+  singleItemPerTicket: boolean;
 };
 
 // Note: Display logic might fallback to a different display option depending on live catalog data
