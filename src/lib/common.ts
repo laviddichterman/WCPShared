@@ -11,10 +11,10 @@ export function ReduceArrayToMapByKey<T, Key extends keyof T>(xs: T[], key: Key)
   return Object.fromEntries(xs.map(x => [x[key], x])) as Record<string, T>;
 };
 
-export const RebuildAndSortCart = (cart: CoreCartEntry<WCPProductV2Dto>[], catalogSelectors: ICatalogSelectors, service_time: Date | number, fulfillmentConfig: FulfillmentConfig): CategorizedRebuiltCart => {
+export const RebuildAndSortCart = (cart: CoreCartEntry<WCPProductV2Dto>[], catalogSelectors: ICatalogSelectors, service_time: Date | number, fulfillmentId: string): CategorizedRebuiltCart => {
   return cart.reduce(
     (acc: CategorizedRebuiltCart, entry) => {
-      const product = CreateProductWithMetadataFromV2Dto(entry.product, catalogSelectors, service_time, fulfillmentConfig.id);
+      const product = CreateProductWithMetadataFromV2Dto(entry.product, catalogSelectors, service_time, fulfillmentId);
       const rebuiltEntry: CoreCartEntry<WProduct> = { ...entry, product };
       return { ...acc, [entry.categoryId]: Object.hasOwn(acc, entry.categoryId) ? [...acc[entry.categoryId], rebuiltEntry] : [rebuiltEntry] }
     }, {});

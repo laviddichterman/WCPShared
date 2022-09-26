@@ -731,16 +731,16 @@ export interface PurchaseStoreCreditResponseSuccess {
   last4: string;
   receiptUrl: string;
 };
-
-export type PurchaseStoreCreditResponse = {
-  error: WError[],
+export interface ResponseSuccess<T> {
   success: true;
-  result: PurchaseStoreCreditResponseSuccess;
-} | {
-  error: WError[],
+  result: T;
+}
+export interface ResponseFailure {
   success: false;
-  result: null;
-};
+  error: WError[],
+}
+
+export type PurchaseStoreCreditResponse = ResponseSuccess<PurchaseStoreCreditResponseSuccess> | ResponseFailure;
 
 export interface ValidateLockAndSpendRequest {
   readonly code: string;
@@ -819,8 +819,17 @@ export interface FulfillmentTime {
   selectedTime: number;
 }
 
+export enum WFulfillmentStatus {
+  'PROPOSED' = 'PROPOSED', // initial state of a new fulfillment
+  'SENT' = 'SENT', // fulfillment has been sent to the fulfiller, this could be a KDS or a printer
+  'CONFIRMED' = 'CONFIRMED', // confirmed by fulfiller
+  'PROCESSING' = 'PROCESSING', // fulfillment has been started
+  'COMPLETED' = 'COMPLETED', // fulfillment has been completed
+  'CANCELED' = 'CANCELED' // fulfillment has been canceled
+};
+
 export interface FulfillmentDto extends FulfillmentTime {
-  //status: 'PROPOSED' | 'RESERVED' | 'PREPARED' | 'COMPLETED' | 'CANCELED' | 'FAILED';
+  status: WFulfillmentStatus;
   selectedService: string;
   dineInInfo: DineInInfoDto | null;
   deliveryInfo: DeliveryInfoDto | null;
@@ -981,8 +990,6 @@ export interface WOrderInstance extends WOrderInstancePartial {
 
 export type CategorizedRebuiltCart = Record<string, CoreCartEntry<WProduct>[]>;
 
-export interface CreateOrderResponse {
-  readonly success: boolean;
-  readonly errors: WError[];
-  readonly result: WOrderInstance | null;
-};
+export type CrudOrderResponse = ResponseSuccess<WOrderInstance> | ResponseFailure;
+
+export type ResponseWithStatusCode<T> = T & { status: number; };
