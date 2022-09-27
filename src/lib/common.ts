@@ -1,7 +1,7 @@
 import { addMinutes, getTime } from "date-fns";
 import { CreateProductWithMetadataFromV2Dto } from "./objects/WCPProduct";
 import WDateUtils from "./objects/WDateUtils";
-import { CoreCartEntry, CURRENCY, DISABLE_REASON, FulfillmentConfig, IMoney, IWInterval, JSFECreditV2, ProductModifierEntry, OptionPlacement, OptionQualifier, TipSelection, WProduct, IOptionInstance, FulfillmentTime, WCPProductV2Dto, CategorizedRebuiltCart, ICatalogSelectors, IProductInstance, PRODUCT_LOCATION, Selector } from "./types";
+import { CoreCartEntry, CURRENCY, DISABLE_REASON, FulfillmentConfig, IMoney, IWInterval, JSFECreditV2, ProductModifierEntry, OptionPlacement, OptionQualifier, TipSelection, WProduct, IOptionInstance, FulfillmentTime, WCPProductV2Dto, CategorizedRebuiltCart, ICatalogSelectors, IProductInstance, PRODUCT_LOCATION, Selector, DineInInfoDto, CALL_LINE_DISPLAY } from "./types";
 
 export const CREDIT_REGEX = /[A-Za-z0-9]{3}-[A-Za-z0-9]{2}-[A-Za-z0-9]{3}-[A-Z0-9]{8}$/;
 
@@ -56,6 +56,33 @@ export const GenerateShortCode = function (productInstanceSelector: Selector<IPr
     `${productInstanceSelector(p.m.pi[PRODUCT_LOCATION.LEFT])?.shortcode ?? "UNDEFINED"}|${productInstanceSelector(p.m.pi[PRODUCT_LOCATION.RIGHT])?.shortcode ?? "UNDEFINED"}` :
     productInstanceSelector(p.m.pi[PRODUCT_LOCATION.LEFT])?.shortcode ?? "UNDEFINED";
 }
+
+export const GenerateDineInPlusString = (dineInInfo: DineInInfoDto | null) => dineInInfo && dineInInfo.partySize > 1 ? `+${dineInInfo.partySize - 1}` : "";
+
+export const EventTitleStringBuilder = (catalogSelectors: Pick<ICatalogSelectors, 'category' | 'productInstance'>, fulfillmentConfig: FulfillmentConfig, customer: string, dineInInfo: DineInInfoDto | null, cart: CategorizedRebuiltCart, special_instructions: string) => {
+  const has_special_instructions = special_instructions && special_instructions.length > 0;
+
+  const titles = Object.entries(cart).map(([catid, category_cart]) => {
+    const category = catalogSelectors.category(catid)?.category;
+    const call_line_category_name_with_space = `${category?.display_flags?.call_line_name ?? ""} `;
+    // TODO: this is incomplete since both technically use the shortcode for now. so we don't get modifiers in the call line
+    // pending https://app.asana.com/0/1192054646278650/1192054646278651
+    switch (category?.display_flags?.call_line_display ?? CALL_LINE_DISPLAY.SHORTCODE) {
+      case CALL_LINE_DISPLAY.SHORTCODE:
+        var total = 0;
+        var product_shortcodes: string[] = [];
+        category_cart.forEach(item => {
+          total += item.quantity;
+          product_shortcodes = product_shortcodes.concat(Array(item.quantity).fill(GenerateShortCode(catalogSelectors.productInstance, item.product)));
+        });
+        return `${total.toString(10)}x ${call_line_category_name_with_space}${product_shortcodes.join(" ")}`;
+      case CALL_LINE_DISPLAY.SHORTNAME:
+        var product_shortcodes: string[] = category_cart.map(item => `${item.quantity}x${GenerateShortCode(catalogSelectors.productInstance, item.product)}`);
+        return `${call_line_category_name_with_space}${product_shortcodes.join(" ")}`;
+    }
+  });
+  return `${fulfillmentConfig.shortcode} ${customer}${GenerateDineInPlusString(dineInInfo)} ${titles.join(" ")}${has_special_instructions ? " *" : ""}`;
+};
 
 export function MoneyToDisplayString(money: IMoney, showCurrencyUnit: boolean) {
   return `${showCurrencyUnit ? '$' : ""}${(money.amount / 100).toFixed(2)}`;
