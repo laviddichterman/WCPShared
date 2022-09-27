@@ -10,7 +10,9 @@ import {
   formatISO,
   parseISO,
   startOfDay,
-  subMinutes
+  subMinutes,
+  subDays,
+  differenceInMinutes
 } from 'date-fns';
 
 import { AvailabilityInfoMap, DateIntervalsEntries, DayOfTheWeek, FulfillmentConfig, FulfillmentTime, IWInterval, OperatingHourSpecification } from '../types';
@@ -79,6 +81,13 @@ export class WDateUtils {
   }
 
   static ComputeServiceDateTime(fulfillmentTime: FulfillmentTime) { return subMinutes(addDays(parseISO(fulfillmentTime.selectedDate), 1), 1440 - fulfillmentTime.selectedTime); };
+
+  static ComputeFulfillmentTime(d: Date | number): FulfillmentTime {
+    //d - 1 day - selectedDate  + 1440 =  selectedTime min
+    const isoDate = WDateUtils.formatISODate(d);
+    const minutes = 1440 - differenceInMinutes(subDays(d, 1), startOfDay(d))
+    return { selectedDate: isoDate, selectedTime: minutes };
+  }
 
   static MinutesToPrintTime(minutes: number) {
     if (Number.isNaN(minutes) || minutes < 0) {

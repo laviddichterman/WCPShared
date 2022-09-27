@@ -1,7 +1,7 @@
 import { addMinutes, getTime } from "date-fns";
 import { CreateProductWithMetadataFromV2Dto } from "./objects/WCPProduct";
 import WDateUtils from "./objects/WDateUtils";
-import { CoreCartEntry, CURRENCY, DISABLE_REASON, FulfillmentConfig, IMoney, IWInterval, JSFECreditV2, ProductModifierEntry, OptionPlacement, OptionQualifier, TipSelection, WProduct, IOptionInstance, FulfillmentTime, WCPProductV2Dto, CategorizedRebuiltCart, ICatalogSelectors } from "./types";
+import { CoreCartEntry, CURRENCY, DISABLE_REASON, FulfillmentConfig, IMoney, IWInterval, JSFECreditV2, ProductModifierEntry, OptionPlacement, OptionQualifier, TipSelection, WProduct, IOptionInstance, FulfillmentTime, WCPProductV2Dto, CategorizedRebuiltCart, ICatalogSelectors, IProductInstance, PRODUCT_LOCATION, Selector } from "./types";
 
 export const CREDIT_REGEX = /[A-Za-z0-9]{3}-[A-Za-z0-9]{2}-[A-Za-z0-9]{3}-[A-Z0-9]{8}$/;
 
@@ -49,6 +49,12 @@ export function DisableDataCheck(disable_data: IWInterval | null, order_time: Da
       (disable_data.start <= getTime(order_time) && disable_data.end >= getTime(order_time)) ?
         { enable: DISABLE_REASON.DISABLED_TIME, interval: disable_data } :
         { enable: DISABLE_REASON.ENABLED }));
+}
+
+export const GenerateShortCode = function (productInstanceSelector: Selector<IProductInstance>, p: WProduct) {
+  return p.m.is_split && p.m.pi[PRODUCT_LOCATION.LEFT] !== p.m.pi[PRODUCT_LOCATION.RIGHT] ?
+    `${productInstanceSelector(p.m.pi[PRODUCT_LOCATION.LEFT])?.shortcode ?? "UNDEFINED"}|${productInstanceSelector(p.m.pi[PRODUCT_LOCATION.RIGHT])?.shortcode ?? "UNDEFINED"}` :
+    productInstanceSelector(p.m.pi[PRODUCT_LOCATION.LEFT])?.shortcode ?? "UNDEFINED";
 }
 
 export function MoneyToDisplayString(money: IMoney, showCurrencyUnit: boolean) {
