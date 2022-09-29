@@ -15,7 +15,7 @@ export const RebuildAndSortCart = (cart: CoreCartEntry<WCPProductV2Dto>[], catal
   return cart.reduce(
     (acc: CategorizedRebuiltCart, entry) => {
       const product = CreateProductWithMetadataFromV2Dto(entry.product, catalogSelectors, service_time, fulfillmentId);
-      const rebuiltEntry: CoreCartEntry<WProduct> = { ...entry, product };
+      const rebuiltEntry: CoreCartEntry<WProduct> = { product, categoryId: entry.categoryId, quantity: entry.quantity };
       return { ...acc, [entry.categoryId]: Object.hasOwn(acc, entry.categoryId) ? [...acc[entry.categoryId], rebuiltEntry] : [rebuiltEntry] }
     }, {});
 }
