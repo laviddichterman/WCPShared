@@ -85,7 +85,7 @@ export class WDateUtils {
   static ComputeFulfillmentTime(d: Date | number): FulfillmentTime {
     //d - 1 day - selectedDate  + 1440 =  selectedTime min
     const isoDate = WDateUtils.formatISODate(d);
-    const minutes = 1440 - differenceInMinutes(subDays(d, 1), startOfDay(d))
+    const minutes = 1440 - differenceInMinutes(startOfDay(d), subDays(d, 1))
     return { selectedDate: isoDate, selectedTime: minutes };
   }
 
