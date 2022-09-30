@@ -51,6 +51,10 @@ export function DisableDataCheck(disable_data: IWInterval | null, order_time: Da
         { enable: DISABLE_REASON.ENABLED }));
 }
 
+
+export const ComputeServiceTimeDisplayString = (minDuration: number, selectedTime: number) =>
+  minDuration !== 0 ? `${WDateUtils.MinutesToPrintTime(selectedTime)} to ${WDateUtils.MinutesToPrintTime(selectedTime + minDuration)}` : WDateUtils.MinutesToPrintTime(selectedTime);
+
 export const GenerateShortCode = function (productInstanceSelector: Selector<IProductInstance>, p: WProduct) {
   return p.m.is_split && p.m.pi[PRODUCT_LOCATION.LEFT] !== p.m.pi[PRODUCT_LOCATION.RIGHT] ?
     `${productInstanceSelector(p.m.pi[PRODUCT_LOCATION.LEFT])?.shortcode ?? "UNDEFINED"}|${productInstanceSelector(p.m.pi[PRODUCT_LOCATION.RIGHT])?.shortcode ?? "UNDEFINED"}` :
