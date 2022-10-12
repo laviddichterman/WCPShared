@@ -48,6 +48,7 @@ export enum FulfillmentType {
   DineIn = 'DineIn',
   Delivery = 'Delivery',
   Shipping = 'Shipping',
+  ThirdParty = 'ThirdParty'
 }
 
 export type OperatingHourSpecification = {
@@ -69,6 +70,8 @@ export interface FulfillmentConfig {
   id: string;
   // shorthand for the fulfillment
   shortcode: string;
+  // flag to indicate this is available for selection by guests
+  exposeFulfillment: boolean;
   // the user visible name of the fulfillment
   displayName: string;
   // display order of the fulfillment
