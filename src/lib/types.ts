@@ -423,6 +423,7 @@ export interface IOptionType {
   min_selected: number;
   max_selected: number | null;
   displayFlags: {
+    is3p: boolean;
     omit_section_if_no_available_options: boolean;
     omit_options_if_not_available: boolean;
     use_toggle_if_only_two_options: boolean;
@@ -509,6 +510,7 @@ export interface IProduct {
   serviceDisable: string[];
   externalIDs: KeyValue[];
   displayFlags: {
+    is3p: boolean;
     flavor_max: number;
     bake_max: number;
     bake_differential: number;
@@ -816,6 +818,10 @@ export interface DineInInfoDto {
   //tableId: string | null;
 };
 
+export interface ThirdPartyInfo {
+
+};
+
 export interface FulfillmentTime {
   // as formatISODate
   selectedDate: string;
@@ -836,6 +842,7 @@ export interface FulfillmentDto extends FulfillmentTime {
   selectedService: string;
   dineInInfo: DineInInfoDto | null;
   deliveryInfo: DeliveryInfoDto | null;
+  thirdPartyInfo: ThirdPartyInfo | null; // ??? maybe
 }
 
 export interface CustomerInfoDto {
