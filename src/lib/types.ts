@@ -966,7 +966,7 @@ export interface WOrderInstancePartial {
   readonly customerInfo: CustomerInfoDto;
   readonly fulfillment: FulfillmentDto;
   readonly cart: CoreCartEntry<WCPProductV2Dto>[];
-  readonly metrics: Metrics;
+  readonly metrics?: Metrics;
   readonly tip: TipSelection;
   readonly specialInstructions?: string;
 };
