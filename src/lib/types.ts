@@ -819,7 +819,7 @@ export interface DineInInfoDto {
 };
 
 export interface ThirdPartyInfo {
-
+  squareId: string;
 };
 
 export interface FulfillmentTime {
@@ -840,9 +840,9 @@ export enum WFulfillmentStatus {
 export interface FulfillmentDto extends FulfillmentTime {
   status: WFulfillmentStatus;
   selectedService: string;
-  dineInInfo: DineInInfoDto | null;
-  deliveryInfo: DeliveryInfoDto | null;
-  thirdPartyInfo: ThirdPartyInfo | null; // ??? maybe
+  dineInInfo?: DineInInfoDto;
+  deliveryInfo?: DeliveryInfoDto;
+  thirdPartyInfo?: ThirdPartyInfo;
 }
 
 export interface CustomerInfoDto {
