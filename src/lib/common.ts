@@ -56,36 +56,54 @@ export const ComputeServiceTimeDisplayString = (minDuration: number, selectedTim
   minDuration !== 0 ? `${WDateUtils.MinutesToPrintTime(selectedTime)} to ${WDateUtils.MinutesToPrintTime(selectedTime + minDuration)}` : WDateUtils.MinutesToPrintTime(selectedTime);
 
 export const GenerateShortCode = function (productInstanceSelector: Selector<IProductInstance>, p: WProduct) {
-  return p.m.is_split && p.m.pi[PRODUCT_LOCATION.LEFT] !== p.m.pi[PRODUCT_LOCATION.RIGHT] ?
-    `${productInstanceSelector(p.m.pi[PRODUCT_LOCATION.LEFT])?.shortcode ?? "UNDEFINED"}|${productInstanceSelector(p.m.pi[PRODUCT_LOCATION.RIGHT])?.shortcode ?? "UNDEFINED"}` :
-    productInstanceSelector(p.m.pi[PRODUCT_LOCATION.LEFT])?.shortcode ?? "UNDEFINED";
+  if (p.m.is_split && p.m.pi[PRODUCT_LOCATION.LEFT] !== p.m.pi[PRODUCT_LOCATION.RIGHT]) {
+    return `${productInstanceSelector(p.m.pi[PRODUCT_LOCATION.LEFT])?.shortcode ?? "UNDEFINED"}|${productInstanceSelector(p.m.pi[PRODUCT_LOCATION.RIGHT])?.shortcode ?? "UNDEFINED"}`;
+  }
+  return productInstanceSelector(p.m.pi[PRODUCT_LOCATION.LEFT])?.shortcode ?? "UNDEFINED";
 }
 
 export const GenerateDineInPlusString = (dineInInfo: DineInInfoDto | null) => dineInInfo && dineInInfo.partySize > 1 ? `+${dineInInfo.partySize - 1}` : "";
 
+const EventTitleSectionBuilder = (catalogSelectors: Pick<ICatalogSelectors, 'productInstance' | 'category'>, cart: CoreCartEntry<WProduct>[]) => {
+  if (cart.length === 0) {
+    return ''
+  }
+  const category = catalogSelectors.category(cart[0].categoryId)?.category;
+  if (!category) {
+    return ''
+  }
+  const callLineName = category.display_flags.call_line_name ?? "";
+  const callLineNameWithSpaceIfNeeded = callLineName.length > 0 ? `${callLineName} ` : "";
+  const callLineDisplay = category.display_flags.call_line_display;
+  // TODO: this is incomplete since both technically use the shortcode for now. so we don't get modifiers in the call line
+  // pending https://app.asana.com/0/1192054646278650/1192054646278651
+  switch (callLineDisplay) {
+    case CALL_LINE_DISPLAY.SHORTCODE: {
+      const { total, shortcodes } = cart.reduce((acc: { total: number; shortcodes: string[] }, entry) => ({
+        total: acc.total + entry.quantity,
+        shortcodes: [...acc.shortcodes, ...Array(entry.quantity).fill(GenerateShortCode(catalogSelectors.productInstance, entry.product))]
+      }), { total: 0, shortcodes: [] });
+      return `${callLineNameWithSpaceIfNeeded} ${total.toString(10)}x ${shortcodes.join(" ")}`;
+    }
+    case CALL_LINE_DISPLAY.SHORTNAME: {
+      const shortnames: string[] = cart.map(item => `${item.quantity > 1 ? `${item.quantity}x` : ""}${item.product.m.shortname}`);
+      return `${callLineNameWithSpaceIfNeeded}${shortnames.join(" ")}`;
+    }
+    case CALL_LINE_DISPLAY.QUANTITY: {
+      const total = cart.reduce((total, entry) => total + entry.quantity, 0);
+      return total > 0 ? total.toString(10) : "";
+    }
+  }
+}
+
 export const EventTitleStringBuilder = (catalogSelectors: Pick<ICatalogSelectors, 'category' | 'productInstance'>, fulfillmentConfig: FulfillmentConfig, customer: string, dineInInfo: DineInInfoDto | null, cart: CategorizedRebuiltCart, special_instructions: string) => {
   const has_special_instructions = special_instructions && special_instructions.length > 0;
-
-  const titles = Object.entries(cart).map(([catid, category_cart]) => {
-    const category = catalogSelectors.category(catid)?.category;
-    const call_line_category_name_with_space = `${category?.display_flags?.call_line_name ?? ""} `;
-    // TODO: this is incomplete since both technically use the shortcode for now. so we don't get modifiers in the call line
-    // pending https://app.asana.com/0/1192054646278650/1192054646278651
-    switch (category?.display_flags?.call_line_display ?? CALL_LINE_DISPLAY.SHORTCODE) {
-      case CALL_LINE_DISPLAY.SHORTCODE:
-        var total = 0;
-        var product_shortcodes: string[] = [];
-        category_cart.forEach(item => {
-          total += item.quantity;
-          product_shortcodes = product_shortcodes.concat(Array(item.quantity).fill(GenerateShortCode(catalogSelectors.productInstance, item.product)));
-        });
-        return `${total.toString(10)}x ${call_line_category_name_with_space}${product_shortcodes.join(" ")}`;
-      case CALL_LINE_DISPLAY.SHORTNAME:
-        var product_shortcodes: string[] = category_cart.map(item => `${item.quantity}x${GenerateShortCode(catalogSelectors.productInstance, item.product)}`);
-        return `${call_line_category_name_with_space}${product_shortcodes.join(" ")}`;
-    }
-  });
-  return `${fulfillmentConfig.shortcode} ${customer}${GenerateDineInPlusString(dineInInfo)} ${titles.join(" ")}${has_special_instructions ? " *" : ""}`;
+  const mainCategorySection = EventTitleSectionBuilder(catalogSelectors, cart[fulfillmentConfig.orderBaseCategoryId] ?? []);;
+  const supplementalSections = Object.entries(cart)
+    .sort(([cIdA, _], [cIdB, __]) => catalogSelectors.category(cIdA)!.category.ordinal - catalogSelectors.category(cIdB)!.category.ordinal)
+    .map(([_, catCart]) => EventTitleSectionBuilder(catalogSelectors, catCart))
+    .join(' ');
+  return `${fulfillmentConfig.shortcode} ${mainCategorySection ? `${mainCategorySection} ` : ''}${customer}${GenerateDineInPlusString(dineInInfo)} ${supplementalSections}${has_special_instructions ? " *" : ""}`;
 };
 
 export function MoneyToDisplayString(money: IMoney, showCurrencyUnit: boolean) {

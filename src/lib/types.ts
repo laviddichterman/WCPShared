@@ -215,7 +215,8 @@ export enum MODIFIER_CLASS {
 };
 export enum CALL_LINE_DISPLAY {
   'SHORTCODE' = 'SHORTCODE',
-  'SHORTNAME' = 'SHORTNAME'
+  'SHORTNAME' = 'SHORTNAME',
+  'QUANTITY' = 'QUANTITY'
 };
 export enum CURRENCY {
   USD = "USD"
@@ -853,10 +854,13 @@ export interface CustomerInfoDto {
   referral: string;
 }
 
-export interface CoreCartEntry<T> {
-  categoryId: string;
+export interface ItemWithQuantity<T> {
   quantity: number;
   product: T;
+}
+
+export interface CoreCartEntry<T> extends ItemWithQuantity<T> {
+  categoryId: string;
 };
 
 export interface CartEntry extends CoreCartEntry<WProduct> {
