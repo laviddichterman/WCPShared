@@ -494,7 +494,7 @@ export function WCPProductGenerateMetadata(a: WCPProduct, catalogSelectors: ICat
     metadata.name = leftPI.displayName;
     // NOTE: the following assignment of display name to shortname isn't really what we want for product naming, but the shortcode
     // wasn't being applied for modified products. the team wanted to see 4 Pepper + ex_mozz instead of F + ex_mozz for now
-    metadata.shortname = leftPI.displayName;
+    metadata.shortname = leftPI.shortcode;
     metadata.description = leftPI.description;
     return RunTemplating(PRODUCT_CLASS, catalogSelectors, metadata);
   }
@@ -578,7 +578,7 @@ export function WCPProductGenerateMetadata(a: WCPProduct, catalogSelectors: ICat
     // if exact match to base product, no need to show the name
     if (!is_compare_to_base[LEFT_SIDE] || PRODUCT_CLASS.displayFlags.show_name_of_base_product) {
       name_components_list.unshift(leftPI.displayName);
-      shortname_components_list.unshift(leftPI.displayName);
+      shortname_components_list.unshift(leftPI.shortcode);
     }
     metadata.description = leftPI.description;
   }

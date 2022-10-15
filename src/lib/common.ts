@@ -75,8 +75,6 @@ const EventTitleSectionBuilder = (catalogSelectors: Pick<ICatalogSelectors, 'pro
   const callLineName = category.display_flags.call_line_name ?? "";
   const callLineNameWithSpaceIfNeeded = callLineName.length > 0 ? `${callLineName} ` : "";
   const callLineDisplay = category.display_flags.call_line_display;
-  // TODO: this is incomplete since both technically use the shortcode for now. so we don't get modifiers in the call line
-  // pending https://app.asana.com/0/1192054646278650/1192054646278651
   switch (callLineDisplay) {
     case CALL_LINE_DISPLAY.SHORTCODE: {
       const { total, shortcodes } = cart.reduce((acc: { total: number; shortcodes: string[] }, entry) => ({
@@ -86,7 +84,7 @@ const EventTitleSectionBuilder = (catalogSelectors: Pick<ICatalogSelectors, 'pro
       return `${callLineNameWithSpaceIfNeeded} ${total.toString(10)}x ${shortcodes.join(" ")}`;
     }
     case CALL_LINE_DISPLAY.SHORTNAME: {
-      const shortnames: string[] = cart.map(item => `${item.quantity > 1 ? `${item.quantity}x` : ""}${item.product.m.shortname}`);
+      const shortnames: string[] = cart.map(item => `${item.quantity}x${item.product.m.shortname}`);
       return `${callLineNameWithSpaceIfNeeded}${shortnames.join(" ")}`;
     }
     case CALL_LINE_DISPLAY.QUANTITY: {
@@ -99,7 +97,7 @@ const EventTitleSectionBuilder = (catalogSelectors: Pick<ICatalogSelectors, 'pro
 export const EventTitleStringBuilder = (catalogSelectors: Pick<ICatalogSelectors, 'category' | 'productInstance'>, fulfillmentConfig: FulfillmentConfig, customer: string, dineInInfo: DineInInfoDto | null, cart: CategorizedRebuiltCart, special_instructions: string) => {
   const has_special_instructions = special_instructions && special_instructions.length > 0;
   const mainCategorySection = EventTitleSectionBuilder(catalogSelectors, cart[fulfillmentConfig.orderBaseCategoryId] ?? []);;
-  const supplementalSections = Object.entries(cart)
+  const supplementalSections = Object.entries(cart).filter(([cid, _]) => cid !== fulfillmentConfig.orderBaseCategoryId)
     .sort(([cIdA, _], [cIdB, __]) => catalogSelectors.category(cIdA)!.category.ordinal - catalogSelectors.category(cIdB)!.category.ordinal)
     .map(([_, catCart]) => EventTitleSectionBuilder(catalogSelectors, catCart))
     .join(' ');
