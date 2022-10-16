@@ -1,6 +1,6 @@
 {
   "name": "@wcp/wcpshared",
-  "version": "4.1.53",
+  "version": "4.1.55",
   "description": "Shared JS/TS modules for WARIO",
   "main": "build/main/index.js",
   "typings": "build/main/index.d.ts",

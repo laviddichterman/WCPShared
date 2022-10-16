@@ -89,7 +89,7 @@ const EventTitleSectionBuilder = (catalogSelectors: Pick<ICatalogSelectors, 'pro
     }
     case CALL_LINE_DISPLAY.QUANTITY: {
       const total = cart.reduce((total, entry) => total + entry.quantity, 0);
-      return total > 0 ? total.toString(10) : "";
+      return total > 1 ? `${total.toString(10)}x` : "";
     }
   }
 }
