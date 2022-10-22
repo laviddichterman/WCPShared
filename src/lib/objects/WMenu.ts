@@ -51,24 +51,33 @@ export function FilterProduct(item: IProductInstance, menu: IMenu, disable_from_
 /**
  * 
  * @param item product, potentially customized, as would be purchased
- * @param menu the current menu
+ * @param catalog selectors for catalog data
  * @param order_time the time the product would be ordered
+ * @param fulfillmentId 
+ * @param filterIncomplete 
  * @returns true if the product passes filters for availability
  */
-export function FilterWCPProduct(item: WCPProduct, catalog: ICatalogSelectors, menu: IMenu, order_time: Date | number, fulfillmentId: string) {
-  const productEntry = menu.product_classes[item.PRODUCT_CLASS.id];
+export function FilterWCPProduct(item: WCPProduct, catalog: ICatalogSelectors, order_time: Date | number, fulfillmentId: string, filterIncomplete: boolean) {
+  const productEntry = catalog.productEntry(item.PRODUCT_CLASS.id);
   const newMetadata = WCPProductGenerateMetadata(item, catalog, order_time, fulfillmentId);
-  return productEntry.product.serviceDisable.indexOf(fulfillmentId) === -1 &&
+  const failsIncompleteCheck = filterIncomplete && newMetadata.incomplete;
+  return productEntry && productEntry.product.serviceDisable.indexOf(fulfillmentId) === -1 &&
     DisableDataCheck(productEntry.product.disabled, order_time) &&
-    !newMetadata.incomplete &&
+    failsIncompleteCheck &&
+    // !newMetadata.incomplete && // WAS GOING to remove this check as it caused products that were in the process of being configured to be removed from the customizer
+    // I don't believe this check is actually needed as I'm not sure when a product would go FROM complete to incomplete with the change in time or a component being unselected
+    // maybe it comes into play with a dependent modifier. If it's needed, then we can't use this function to check if something needs to be pulled from the customizer. 
+    // INSTEAD: just added a flag to specify the intention
     item.modifiers.reduce((acc, modifier) => {
-      const menuModifier = menu.modifiers[modifier.modifierTypeId];
       const mdModifier = newMetadata.modifier_map[modifier.modifierTypeId];
-      return acc && modifier.options.reduce((moAcc, mo) => moAcc &&
-        ((mo.placement === OptionPlacement.LEFT && mdModifier.options[mo.optionId].enable_left.enable === DISABLE_REASON.ENABLED) ||
-          (mo.placement === OptionPlacement.RIGHT && mdModifier.options[mo.optionId].enable_right.enable === DISABLE_REASON.ENABLED) ||
-          (mo.placement === OptionPlacement.WHOLE && mdModifier.options[mo.optionId].enable_whole.enable === DISABLE_REASON.ENABLED)) &&
-        DisableDataCheck(menuModifier.options[mo.optionId].mo.disabled, order_time).enable === DISABLE_REASON.ENABLED, true);
+      return acc && modifier.options.reduce((moAcc, mo) => {
+        const modifierOption = catalog.option(mo.optionId);
+        return moAcc && modifierOption !== undefined &&
+          ((mo.placement === OptionPlacement.LEFT && mdModifier.options[mo.optionId].enable_left.enable === DISABLE_REASON.ENABLED) ||
+            (mo.placement === OptionPlacement.RIGHT && mdModifier.options[mo.optionId].enable_right.enable === DISABLE_REASON.ENABLED) ||
+            (mo.placement === OptionPlacement.WHOLE && mdModifier.options[mo.optionId].enable_whole.enable === DISABLE_REASON.ENABLED)) &&
+          DisableDataCheck(modifierOption.disabled, order_time).enable === DISABLE_REASON.ENABLED;
+      }, true);
     }, true);
 }
 
@@ -250,6 +259,6 @@ export function DoesProductExistInMenu(menu: IMenu, product: WCPProduct) {
       mod.options.reduce((optAcc, o) => optAcc && Object.hasOwn(menu.modifiers[mod.modifierTypeId].options, o.optionId), true), true);
 }
 
-export function CanThisBeOrderedAtThisTimeAndFulfillment(product: WCPProduct, menu: IMenu, catalog: ICatalogSelectors, serviceTime: Date | number, fulfillment: string) {
-  return DoesProductExistInMenu(menu, product) && FilterWCPProduct(product, catalog, menu, serviceTime, fulfillment);
+export function CanThisBeOrderedAtThisTimeAndFulfillment(product: WCPProduct, menu: IMenu, catalog: ICatalogSelectors, serviceTime: Date | number, fulfillment: string, filterIncomplete: boolean) {
+  return DoesProductExistInMenu(menu, product) && FilterWCPProduct(product, catalog, serviceTime, fulfillment, filterIncomplete);
 }
