@@ -380,6 +380,7 @@ export interface PrinterGroup {
   id: string;
   name: string;
   singleItemPerTicket: boolean;
+  isExpo: boolean;
   externalIDs: KeyValue[];
 };
 
@@ -800,6 +801,7 @@ export interface DeliveryAddressValidateResponse {
   readonly address_components: Array<AddressComponent>;
 };
 
+// TODO: unify this with CreditPayment or Discount
 export interface JSFECreditV2 {
   readonly validation: ValidateAndLockCreditResponseValid;
   readonly code: string;
@@ -814,13 +816,21 @@ export interface DeliveryInfoDto {
   validation: DeliveryAddressValidateResponse | null;
 };
 
+export interface SeatingResource {
+  id: string;
+  name: string;
+  capacity: number;
+  // TODO: add location and shape info
+};
+
 export interface DineInInfoDto {
   partySize: number;
-  //tableId: string | null;
+  tableId?: string;
 };
 
 export interface ThirdPartyInfo {
   squareId: string;
+  source: string;
 };
 
 export interface FulfillmentTime {
@@ -953,6 +963,7 @@ export type OrderPayment = CashPayment | CreditPayment | StoreCreditPayment; // 
 
 export enum DiscountMethod {
   CreditCodeAmount = "CreditCodeAmount"
+  // TODO: add manual discount
 };
 
 export interface OrderLineDiscountCodeAmount extends TenderBase {

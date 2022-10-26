@@ -1,7 +1,7 @@
 import { addMinutes, getTime } from "date-fns";
 import { CreateProductWithMetadataFromV2Dto } from "./objects/WCPProduct";
 import WDateUtils from "./objects/WDateUtils";
-import { CoreCartEntry, CURRENCY, DISABLE_REASON, FulfillmentConfig, IMoney, IWInterval, JSFECreditV2, ProductModifierEntry, OptionPlacement, OptionQualifier, TipSelection, WProduct, IOptionInstance, FulfillmentTime, WCPProductV2Dto, CategorizedRebuiltCart, ICatalogSelectors, IProductInstance, PRODUCT_LOCATION, Selector, DineInInfoDto, CALL_LINE_DISPLAY } from "./types";
+import { CoreCartEntry, CURRENCY, DISABLE_REASON, FulfillmentConfig, IMoney, IWInterval, JSFECreditV2, ProductModifierEntry, OptionPlacement, OptionQualifier, TipSelection, WProduct, IOptionInstance, FulfillmentTime, WCPProductV2Dto, CategorizedRebuiltCart, ICatalogSelectors, IProductInstance, PRODUCT_LOCATION, Selector, DineInInfoDto, CALL_LINE_DISPLAY, FulfillmentDto } from "./types";
 
 export const CREDIT_REGEX = /[A-Za-z0-9]{3}-[A-Za-z0-9]{2}-[A-Za-z0-9]{3}-[A-Z0-9]{8}$/;
 
@@ -94,14 +94,15 @@ const EventTitleSectionBuilder = (catalogSelectors: Pick<ICatalogSelectors, 'pro
   }
 }
 
-export const EventTitleStringBuilder = (catalogSelectors: Pick<ICatalogSelectors, 'category' | 'productInstance'>, fulfillmentConfig: FulfillmentConfig, customer: string, dineInInfo: DineInInfoDto | null, cart: CategorizedRebuiltCart, special_instructions: string) => {
+export const EventTitleStringBuilder = (catalogSelectors: Pick<ICatalogSelectors, 'category' | 'productInstance'>, fulfillmentConfig: FulfillmentConfig, customer: string, fulfillmentDto: FulfillmentDto, cart: CategorizedRebuiltCart, special_instructions: string) => {
   const has_special_instructions = special_instructions && special_instructions.length > 0;
-  const mainCategorySection = EventTitleSectionBuilder(catalogSelectors, cart[fulfillmentConfig.orderBaseCategoryId] ?? []);;
+  const mainCategorySection = EventTitleSectionBuilder(catalogSelectors, cart[fulfillmentConfig.orderBaseCategoryId] ?? []);
+  const fulfillmentShortcode = fulfillmentDto.thirdPartyInfo?.source ? fulfillmentDto.thirdPartyInfo?.source.slice(0, 2).toUpperCase() : fulfillmentConfig.shortcode
   const supplementalSections = Object.entries(cart).filter(([cid, _]) => cid !== fulfillmentConfig.orderBaseCategoryId)
     .sort(([cIdA, _], [cIdB, __]) => catalogSelectors.category(cIdA)!.category.ordinal - catalogSelectors.category(cIdB)!.category.ordinal)
     .map(([_, catCart]) => EventTitleSectionBuilder(catalogSelectors, catCart))
     .join(' ');
-  return `${fulfillmentConfig.shortcode} ${mainCategorySection ? `${mainCategorySection} ` : ''}${customer}${GenerateDineInPlusString(dineInInfo)} ${supplementalSections}${has_special_instructions ? " *" : ""}`;
+  return `${fulfillmentShortcode} ${mainCategorySection ? `${mainCategorySection} ` : ''}${customer}${GenerateDineInPlusString(fulfillmentDto.dineInInfo ?? null)} ${supplementalSections}${has_special_instructions ? " *" : ""}`;
 };
 
 export function MoneyToDisplayString(money: IMoney, showCurrencyUnit: boolean) {
