@@ -801,13 +801,6 @@ export interface DeliveryAddressValidateResponse {
   readonly address_components: Array<AddressComponent>;
 };
 
-// TODO: unify this with CreditPayment or Discount
-export interface JSFECreditV2 {
-  readonly validation: ValidateAndLockCreditResponseValid;
-  readonly code: string;
-  readonly amount_used: IMoney;
-};
-
 export interface DeliveryInfoDto {
   address: string;
   address2: string;
@@ -879,6 +872,7 @@ export interface CartEntry extends CoreCartEntry<WProduct> {
 };
 
 // Note: the timeToX should be adjusted by pageLoadTimeLocal to represent a duration
+// todo: perhaps change this to UxMetrics?
 export interface Metrics {
   // parsed from ISO string of the server time given during page load
   pageLoadTime: number;
@@ -899,6 +893,7 @@ export interface Metrics {
   // time when the user hit submit to send the order
   submitTime: number;
   useragent: string;
+  ipAddress?: string;
 }
 
 export enum PaymentMethod {
@@ -908,46 +903,78 @@ export enum PaymentMethod {
   //  External
 }
 
+
 export enum TenderBaseStatus {
+  PROPOSED = 'PROPOSED',
   AUTHORIZED = 'AUTHORIZED',
   COMPLETED = 'COMPLETED',
   CANCELED = 'CANCELED'
 }
-export interface TenderBase {
+
+export type TenderBaseAllocatedStatus = Exclude<TenderBaseStatus, TenderBaseStatus.PROPOSED>;
+
+export type TenderBaseProposed = {
   readonly createdAt: number; // millisecond ticks
-  readonly status: TenderBaseStatus;
+  readonly status: TenderBaseStatus.PROPOSED;
 }
 
-export interface PaymentBase extends TenderBase {
+export type TenderBaseAllocated = {
+  readonly createdAt: number; // millisecond ticks
+  readonly status: TenderBaseAllocatedStatus;
+}
+export type TenderBase = TenderBaseAllocated | TenderBaseProposed;
+
+export type PaymentBasePartial = {
   readonly t: PaymentMethod;
   readonly amount: IMoney;
-  // the portion of the total payment amount 
+  // the tipAmount below is PART OF the amount field above
   readonly tipAmount: IMoney;
+}
+
+type PaymentBaseProposed = PaymentBasePartial & TenderBaseProposed;
+type PaymentBaseAllocated = PaymentBasePartial & TenderBaseAllocated & {
+  readonly processorId: string;
 };
 
-export interface StoreCreditPayment extends PaymentBase {
+interface StoreCreditPaymentPartial extends PaymentBasePartial {
   readonly t: PaymentMethod.StoreCredit;
   readonly payment: {
-    readonly processorId: string;
     readonly code: string;
+    // the balance available at time of locking
+    readonly balance: IMoney;
     readonly lock: EncryptStringLock;
   };
 };
 
-export interface CashPayment extends PaymentBase {
+export type StoreCreditPaymentProposed = PaymentBaseProposed & StoreCreditPaymentPartial;
+export type StoreCreditPaymentAllocated = PaymentBaseAllocated & StoreCreditPaymentPartial;
+
+export type StoreCreditPayment = StoreCreditPaymentProposed | StoreCreditPaymentAllocated;
+
+interface CashPaymentPartial extends PaymentBasePartial {
   readonly t: PaymentMethod.Cash;
   readonly payment: {
-    readonly processorId: string;
     readonly amountTendered: IMoney;
     readonly change: IMoney;
   };
-};
+}
 
-export interface CreditPayment extends PaymentBase {
+export type CashPaymentProposed = CashPaymentPartial & PaymentBaseProposed;
+export type CashPaymentAllocated = CashPaymentPartial & PaymentBaseAllocated;
+export type CashPayment = CashPaymentAllocated | CashPaymentProposed;
+
+export type CreditPaymentProposed = PaymentBaseProposed & {
   readonly t: PaymentMethod.CreditCard;
   readonly payment: {
-    readonly processor: "SQUARE";// | "STRIPE";
-    readonly processorId: string;
+    sourceId: string;
+  }
+};
+
+export type CreditPaymentAllocated = PaymentBaseAllocated & {
+  readonly processorId: string;
+  readonly t: PaymentMethod.CreditCard;
+  readonly payment: {
+    readonly processor: "SQUARE";
     readonly receiptUrl: string;
     readonly last4: string;
     readonly cardBrand?: string;
@@ -957,25 +984,57 @@ export interface CreditPayment extends PaymentBase {
   };
 };
 
+export type CreditPayment = CreditPaymentProposed | CreditPaymentAllocated;
+
 export interface OrderTax { amount: IMoney; };
 
+export type OrderPaymentProposed = CashPaymentProposed | CreditPaymentProposed | StoreCreditPaymentProposed;
+export type OrderPaymentAllocated = CashPaymentAllocated | CreditPaymentAllocated | StoreCreditPaymentAllocated;
 export type OrderPayment = CashPayment | CreditPayment | StoreCreditPayment; // ExternalPayment;
 
+export type UnresolvedPayment = (Omit<StoreCreditPayment, 'amount' | 'tipAmount'> | Omit<CreditPayment, 'amount' | 'tipAmount'> | (Omit<CashPayment, 'amount' | 'tipAmount' | 'payment'> & { payment: Omit<CashPayment['payment'], 'change'> }));
+
 export enum DiscountMethod {
-  CreditCodeAmount = "CreditCodeAmount"
-  // TODO: add manual discount
+  CreditCodeAmount = 'CreditCodeAmount',
+  ManualPercentage = 'ManualPercentage',
+  ManualAmount = 'ManualAmount'
 };
 
-export interface OrderLineDiscountCodeAmount extends TenderBase {
+export type OrderManualPercentDiscount = TenderBaseAllocated & {
+  readonly t: DiscountMethod.ManualPercentage;
+  readonly discount: {
+    readonly reason: string;
+    readonly percentage: number;
+    // whatever the amount is computed to be
+    readonly amount: IMoney;
+    // maybe add restrictions or pricing rules somehow?
+  }
+}
+export type OrderManualAmountDiscount = TenderBaseAllocated & {
+  readonly t: DiscountMethod.ManualAmount;
+  readonly discount: {
+    readonly reason: string;
+    readonly amount: IMoney;
+    // the total amount this manual discount is good for
+    readonly balance: IMoney;
+    // maybe add restrictions or pricing rules somehow?
+  }
+}
+
+export type OrderLineDiscountCodeAmount = TenderBaseAllocated & {
   readonly t: DiscountMethod.CreditCodeAmount;
   readonly discount: {
     readonly amount: IMoney;
+    // the balance available at time of locking
+    readonly balance: IMoney;
     readonly code: string;
     readonly lock: EncryptStringLock;
   };
 }
 
-export type OrderLineDiscount = OrderLineDiscountCodeAmount;
+export type OrderLineDiscount = OrderLineDiscountCodeAmount | OrderManualAmountDiscount | OrderManualPercentDiscount;
+
+export type UnresolvedDiscount = (Omit<OrderLineDiscountCodeAmount, "discount"> & { discount: Omit<OrderLineDiscountCodeAmount['discount'], 'amount'> }) | (Omit<OrderManualPercentDiscount, "discount"> & { discount: Omit<OrderManualPercentDiscount['discount'], 'amount'> }) | (Omit<OrderManualAmountDiscount, "discount"> & { discount: Omit<OrderManualAmountDiscount['discount'], 'amount'> });
 
 export interface WOrderInstancePartial {
   readonly customerInfo: CustomerInfoDto;
@@ -987,9 +1046,9 @@ export interface WOrderInstancePartial {
 };
 
 export type CreateOrderRequestV2 = {
-  readonly nonce?: string;
-  readonly creditValidations: JSFECreditV2[];
-  readonly balance: IMoney;
+  // keep these fields differently named (with the word proposed) so we don't get lazy and accidentally accept a cash payment here
+  readonly proposedPayments: (CreditPaymentProposed | StoreCreditPaymentProposed)[]
+  readonly proposedDiscounts: OrderLineDiscountCodeAmount[];
 } & WOrderInstancePartial;
 
 export enum WOrderStatus {
@@ -1003,9 +1062,10 @@ export enum WOrderStatus {
 export interface WOrderInstance extends WOrderInstancePartial {
   readonly id: string;
   readonly status: WOrderStatus;
+  // NOTE: discounts are APPLIED IN THE ORDER LISTED, the order should be determined by the business logic
   readonly discounts: OrderLineDiscount[];
-  readonly payments: OrderPayment[];
-  readonly refunds: OrderPayment[];
+  readonly payments: OrderPaymentAllocated[];
+  readonly refunds: OrderPaymentAllocated[];
   readonly taxes: OrderTax[];
   // metadata is for storing state in 3p applications
   readonly metadata: KeyValue[];
@@ -1018,3 +1078,20 @@ export type CategorizedRebuiltCart = Record<string, CoreCartEntry<WProduct>[]>;
 export type CrudOrderResponse = ResponseSuccess<WOrderInstance> | ResponseFailure;
 
 export type ResponseWithStatusCode<T> = T & { status: number; };
+
+export interface RecomputeTotalsResult {
+  mainCategoryProductCount: number;
+  cartSubtotal: IMoney;
+  serviceFee: IMoney;
+  subtotalPreDiscount: IMoney;
+  subtotalAfterDiscount: IMoney;
+  discountApplied: OrderLineDiscount[];
+  taxAmount: IMoney;
+  tipBasis: IMoney;
+  tipMinimum: IMoney;
+  tipAmount: IMoney;
+  total: IMoney;
+  paymentsApplied: OrderPayment[];
+  balanceAfterPayments: IMoney;
+  hasBankersRoundingTaxSkew: boolean;
+}
