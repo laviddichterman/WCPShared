@@ -183,7 +183,14 @@ export const ComputeDiscountsApplied = (subtotalPreCredits: IMoney, creditValida
 
 
 type PaymentAccumulator = { remaining: number; remainingTip: number; payments: OrderPayment[]; };
-export const ComputePaymentsApplied = (balanceDueMinusTips: IMoney, tips: IMoney, paymentsToValidate: UnresolvedPayment[]): OrderPayment[] => {
+/**
+ * 
+ * @param total the total due, INCLUDING THE TIP
+ * @param tips the amount of the tip
+ * @param paymentsToValidate the payments to validate and return resolved versions of
+ * @returns 
+ */
+export const ComputePaymentsApplied = (total: IMoney, tips: IMoney, paymentsToValidate: UnresolvedPayment[]): OrderPayment[] => {
   const validations: PaymentAccumulator = paymentsToValidate.reduce((acc: PaymentAccumulator, payment: UnresolvedPayment) => {
     // we don't short circuit when remaining === 0 && remainingTip === 0 because we want to hold on to potential payments in case we need to authorize more
     switch (payment.t) {
@@ -197,7 +204,7 @@ export const ComputePaymentsApplied = (balanceDueMinusTips: IMoney, tips: IMoney
           payments: [...acc.payments,
           {
             ...payment,
-            amount: { currency: balanceDueMinusTips.currency, amount: amountToApply },
+            amount: { currency: total.currency, amount: amountToApply },
             tipAmount: { currency: tips.currency, amount: tipToApply },
           }]
         };
@@ -213,7 +220,7 @@ export const ComputePaymentsApplied = (balanceDueMinusTips: IMoney, tips: IMoney
           payments: [...acc.payments,
           {
             ...payment,
-            amount: { currency: balanceDueMinusTips.currency, amount: acc.remaining },
+            amount: { currency: total.currency, amount: acc.remaining },
             tipAmount: { currency: tips.currency, amount: acc.remainingTip },
           }]
         };
@@ -227,7 +234,7 @@ export const ComputePaymentsApplied = (balanceDueMinusTips: IMoney, tips: IMoney
           payments: [...acc.payments,
           {
             ...payment,
-            amount: { currency: balanceDueMinusTips.currency, amount: amountToApply },
+            amount: { currency: total.currency, amount: amountToApply },
             tipAmount: { currency: tips.currency, amount: tipToApply },
             payment: {
               ...payment.payment,
@@ -237,7 +244,7 @@ export const ComputePaymentsApplied = (balanceDueMinusTips: IMoney, tips: IMoney
         };
       }
     }
-  }, { remaining: balanceDueMinusTips.amount, remainingTip: tips.amount, payments: [] as OrderPayment[] });
+  }, { remaining: total.amount, remainingTip: tips.amount, payments: [] as OrderPayment[] });
   return validations.payments;
 }
 
@@ -259,10 +266,6 @@ export function ComputeSubtotalPreDiscount(cartTotal: IMoney, serviceFees: IMone
 
 export function ComputeSubtotalAfterDiscount(subtotalPreDiscount: IMoney, discountApplied: IMoney): IMoney {
   return { currency: subtotalPreDiscount.currency, amount: subtotalPreDiscount.amount - discountApplied.amount };
-}
-
-export function ComputeTotalWithoutTip(subtotalAfterDiscount: IMoney, taxAmount: IMoney): IMoney {
-  return { currency: subtotalAfterDiscount.currency, amount: subtotalAfterDiscount.amount + taxAmount.amount };
 }
 
 export function ComputeTotal(subtotalAfterDiscount: IMoney, taxAmount: IMoney, tipAmount: IMoney): IMoney {
@@ -306,9 +309,8 @@ export const RecomputeTotals = function ({ config, cart, payments, discounts, fu
   const tipBasis = ComputeTipBasis(subtotalPreDiscount, taxAmount);
   const tipMinimum = mainCategoryProductCount >= config.AUTOGRAT_THRESHOLD ? ComputeTipValue({ isPercentage: true, isSuggestion: true, value: .2 }, tipBasis) : { currency: CURRENCY.USD, amount: 0 };
   const tipAmount = ComputeTipValue(order.tip, tipBasis);
-  const totalWithoutTip = ComputeTotalWithoutTip(subtotalAfterDiscount, taxAmount);
   const total = ComputeTotal(subtotalAfterDiscount, taxAmount, tipAmount);
-  const paymentsApplied = ComputePaymentsApplied(totalWithoutTip, tipAmount, payments);
+  const paymentsApplied = ComputePaymentsApplied(total, tipAmount, payments);
   const amountPaid = { amount: paymentsApplied.reduce((acc, x) => acc + x.amount.amount, 0), currency: CURRENCY.USD };
   const balanceAfterPayments = ComputeBalance(total, amountPaid);
   return {
