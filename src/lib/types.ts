@@ -467,6 +467,8 @@ export interface IOptionInstance extends IOptionState {
   optionId: string;
 };
 export interface IProductDisplayFlags {
+  hideFromPos: boolean;
+
   menu: {
     // ordering within this product instance's category in menu page
     ordinal: number;
