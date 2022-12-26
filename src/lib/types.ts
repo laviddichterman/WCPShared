@@ -60,6 +60,7 @@ export type OperatingHourSpecification = {
   [DayOfTheWeek.FRIDAY]: IWInterval[];
   [DayOfTheWeek.SATURDAY]: IWInterval[];
 };
+
 export type DateIntervalEntry = {
   key: string;
   value: IWInterval[];
@@ -447,6 +448,7 @@ export interface IOption {
   price: IMoney;
   externalIDs: KeyValue[];
   disabled: IWInterval | null;
+  availability: string | null;
   ordinal: number;
   metadata: {
     flavor_factor: number;
@@ -511,6 +513,7 @@ export interface IProduct {
   id: string;
   price: IMoney;
   disabled: IWInterval | null;
+  availability: string | null;
   serviceDisable: string[];
   externalIDs: KeyValue[];
   displayFlags: {
@@ -612,7 +615,8 @@ export enum DISABLE_REASON {
   DISABLED_FUNCTION,
   DISABLED_NO_SPLITTING,
   DISABLED_SPLIT_DIFFERENTIAL,
-  DISABLED_FULFILLMENT_TYPE
+  DISABLED_FULFILLMENT_TYPE,
+  DISABLED_AVAILABILITY
 };
 export type OptionEnableState =
   { enable: DISABLE_REASON.ENABLED } |
@@ -624,7 +628,8 @@ export type OptionEnableState =
   { enable: DISABLE_REASON.DISABLED_SPLIT_DIFFERENTIAL } |
   { enable: DISABLE_REASON.DISABLED_MAXIMUM } |
   { enable: DISABLE_REASON.DISABLED_FULFILLMENT_TYPE, fulfillment: string } |
-  { enable: DISABLE_REASON.DISABLED_FUNCTION, functionId: string };
+  { enable: DISABLE_REASON.DISABLED_FUNCTION, functionId: string } |
+  { enable: DISABLE_REASON.DISABLED_AVAILABILITY, availability: string };
 
 export interface MetadataModifierOptionMapEntry extends IOptionState { enable_left: OptionEnableState; enable_right: OptionEnableState; enable_whole: OptionEnableState };
 export interface MetadataModifierMapEntry { has_selectable: boolean, meets_minimum: boolean, options: Record<string, MetadataModifierOptionMapEntry>; };
@@ -904,7 +909,6 @@ export enum PaymentMethod {
   StoreCredit = "StoreCredit",
   //  External
 }
-
 
 export enum TenderBaseStatus {
   PROPOSED = 'PROPOSED',
