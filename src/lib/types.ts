@@ -43,6 +43,11 @@ export interface IWInterval {
   end: number;
 };
 
+export interface IRecurringInterval {
+  interval: IWInterval;
+  rrule: string; // empty string means just use the interval
+}
+
 export enum FulfillmentType {
   PickUp = 'PickUp',
   DineIn = 'DineIn',
@@ -139,6 +144,43 @@ export interface PostBlockedOffToFulfillmentsRequest {
 };
 
 export type SetLeadTimesRequest = Record<string, number>;
+
+// export interface IPublicStoreConfiguration {
+//   SQUARE_LOCATION: string;
+//   SQUARE_APPLICATION_ID: string;
+//   STORE_NAME: string;
+//   STORE_ADDRESS: string;
+//   STORE_PHONE_NUMBER: string;
+//   DEFAULT_FULFILLMENTID: string;
+//   TAX_RATE: number;
+//   ALLOW_ADVANCED: boolean;
+//   DELIVERY_LINK: string;
+//   DELIVERY_FEE: IMoney;
+//   ALLOW_TIPPING: boolean;
+//   TIP_PREAMBLE: string;
+//   AUTOGRAT_THRESHOLD: number;
+//   ORDER_RESPONSE_PREAMBLE: string;
+//   LOCATION_INFO: string;
+//   EMAIL_ADDRESS: string;
+//   SPECIAL_REQUEST_MESSAGES: {
+//     VEGAN?: string;
+//     SLICING?: string;
+//     HALF?: string;
+//     WELLDONE?: string;
+//   }
+// };
+
+// export interface IStoreConfiguration {
+//   GOOGLE_CLIENTID: string;
+//   GOOGLE_CLIENT_SECRET: string;
+//   GOOGLE_REFRESH_TOKEN: string;
+//   GOOGLE_GEOCODE_KEY: string;
+//   SQUARE_TOKEN: string;
+//   SQUARE_LOCATION_ALTERNATE: string;
+//   SQUARE_LOCATION_3P: string;
+//   THIRD_PARTY_FULFILLMENT: string;
+//   STORE_CREDIT_SHEET: string;
+// };
 
 export type FulfillmentConfigMap = Record<string, FulfillmentConfig>;
 export interface IWSettings {
@@ -448,7 +490,7 @@ export interface IOption {
   price: IMoney;
   externalIDs: KeyValue[];
   disabled: IWInterval | null;
-  availability: string | null;
+  availability: IRecurringInterval | null;
   ordinal: number;
   metadata: {
     flavor_factor: number;
@@ -513,7 +555,7 @@ export interface IProduct {
   id: string;
   price: IMoney;
   disabled: IWInterval | null;
-  availability: string | null;
+  availability: IRecurringInterval | null;
   serviceDisable: string[];
   externalIDs: KeyValue[];
   displayFlags: {
@@ -530,8 +572,10 @@ export interface IProduct {
     }
   };
   timing?: {
-    min_prep_time: number;
-    additional_unit_prep_time: number;
+    prepTime: number;
+    additionalUnitPrepTime: number;
+    // additional unit prep times at a given station ID stack
+    prepStationId: number;
   };
   modifiers: IProductModifier[];
   category_ids: string[];
@@ -629,7 +673,7 @@ export type OptionEnableState =
   { enable: DISABLE_REASON.DISABLED_MAXIMUM } |
   { enable: DISABLE_REASON.DISABLED_FULFILLMENT_TYPE, fulfillment: string } |
   { enable: DISABLE_REASON.DISABLED_FUNCTION, functionId: string } |
-  { enable: DISABLE_REASON.DISABLED_AVAILABILITY, availability: string };
+  { enable: DISABLE_REASON.DISABLED_AVAILABILITY, availability: IRecurringInterval };
 
 export interface MetadataModifierOptionMapEntry extends IOptionState { enable_left: OptionEnableState; enable_right: OptionEnableState; enable_whole: OptionEnableState };
 export interface MetadataModifierMapEntry { has_selectable: boolean, meets_minimum: boolean, options: Record<string, MetadataModifierOptionMapEntry>; };
@@ -1096,6 +1140,7 @@ export interface RecomputeTotalsResult {
   tipBasis: IMoney;
   tipMinimum: IMoney;
   tipAmount: IMoney;
+  serviceChargeAmount: IMoney;
   total: IMoney;
   paymentsApplied: OrderPayment[];
   balanceAfterPayments: IMoney;

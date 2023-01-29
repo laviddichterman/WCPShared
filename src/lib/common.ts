@@ -2,7 +2,7 @@ import { addMinutes, getTime } from "date-fns";
 import { OrderFunctional } from "./objects/OrderFunctional";
 import { CreateProductWithMetadataFromV2Dto } from "./objects/WCPProduct";
 import WDateUtils from "./objects/WDateUtils";
-import { CoreCartEntry, CURRENCY, DISABLE_REASON, FulfillmentConfig, IMoney, IWInterval, ProductModifierEntry, OptionPlacement, OptionQualifier, TipSelection, WProduct, IOptionInstance, FulfillmentTime, WCPProductV2Dto, CategorizedRebuiltCart, ICatalogSelectors, IProductInstance, PRODUCT_LOCATION, Selector, DineInInfoDto, CALL_LINE_DISPLAY, FulfillmentDto, OrderLineDiscount, DiscountMethod, OrderPayment, PaymentMethod, UnresolvedPayment, UnresolvedDiscount, WOrderInstancePartial, RecomputeTotalsResult } from "./types";
+import { CoreCartEntry, CURRENCY, DISABLE_REASON, FulfillmentConfig, IMoney, IWInterval, ProductModifierEntry, OptionPlacement, OptionQualifier, TipSelection, WProduct, IOptionInstance, FulfillmentTime, WCPProductV2Dto, CategorizedRebuiltCart, ICatalogSelectors, IProductInstance, PRODUCT_LOCATION, Selector, DineInInfoDto, CALL_LINE_DISPLAY, FulfillmentDto, OrderLineDiscount, DiscountMethod, OrderPayment, PaymentMethod, UnresolvedPayment, UnresolvedDiscount, WOrderInstancePartial, RecomputeTotalsResult, CatalogProductEntry } from "./types";
 
 export const CREDIT_REGEX = /[A-Za-z0-9]{3}-[A-Za-z0-9]{2}-[A-Za-z0-9]{3}-[A-Z0-9]{8}$/;
 
@@ -19,6 +19,25 @@ export const RebuildAndSortCart = (cart: CoreCartEntry<WCPProductV2Dto>[], catal
       const rebuiltEntry: CoreCartEntry<WProduct> = { product, categoryId: entry.categoryId, quantity: entry.quantity };
       return { ...acc, [entry.categoryId]: Object.hasOwn(acc, entry.categoryId) ? [...acc[entry.categoryId], rebuiltEntry] : [rebuiltEntry] }
     }, {});
+}
+
+// at some point this can use an actual scheduling algorithm, but for the moment it needs to just be a best guess
+export const DetermineCartBasedLeadTime = (cart: CoreCartEntry<WCPProductV2Dto>[], productSelector: Selector<CatalogProductEntry>): number => {
+  const leadTimeMap: Record<number, { base: number; quant: number; }> = cart.reduce((acc, cartLine) => {
+    const product = productSelector(cartLine.product.pid);
+    return product?.product.timing ? {
+      ...acc,
+      // so we take the max of the base times at a station, then we sum the quantity times
+      [product.product.timing.prepStationId]: Object.hasOwn(leadTimeMap, product.product.timing.prepStationId) ? {
+        base: Math.max(leadTimeMap[product.product.timing.prepStationId].base, product.product.timing.prepTime - product.product.timing.additionalUnitPrepTime),
+        quant: leadTimeMap[product.product.timing.prepStationId].quant + (product.product.timing.additionalUnitPrepTime * cartLine.quantity)
+      } : {
+        base: product.product.timing.prepTime - product.product.timing.additionalUnitPrepTime,
+        quant: (product.product.timing.additionalUnitPrepTime * cartLine.quantity)
+      }
+    } : acc;
+  }, {} as Record<number, { base: number; quant: number; }>);
+  return Object.values(leadTimeMap).reduce((acc, entry) => Math.max(acc, entry.base + entry.quant), 0);
 }
 
 export const GetPlacementFromMIDOID = (modifiers: ProductModifierEntry[], mtid: string, oid: string): IOptionInstance => {
@@ -126,7 +145,9 @@ export function ComputeCartSubTotal(cart: CoreCartEntry<WProduct>[]): IMoney {
 type DiscountAccumulator = { remaining: number; credits: OrderLineDiscount[]; };
 export const ComputeDiscountsApplied = (subtotalPreCredits: IMoney, creditValidations: UnresolvedDiscount[]): OrderLineDiscount[] => {
   const validations = creditValidations.reduce((acc: DiscountAccumulator, credit) => {
-    const amountToApply = credit.t === DiscountMethod.CreditCodeAmount || credit.t === DiscountMethod.ManualAmount ? Math.min(acc.remaining, credit.discount.balance.amount) : Math.round(acc.remaining * credit.discount.percentage);
+    const amountToApply = credit.t === DiscountMethod.CreditCodeAmount || credit.t === DiscountMethod.ManualAmount ?
+      Math.min(acc.remaining, credit.discount.balance.amount) :
+      Math.round(RoundToTwoDecimalPlaces(acc.remaining * credit.discount.percentage));
     if (amountToApply === 0) {
       return acc;
     }
@@ -177,7 +198,7 @@ export const ComputeDiscountsApplied = (subtotalPreCredits: IMoney, creditValida
         };
       }
     }
-  }, { remaining: subtotalPreCredits.amount, credits: [] } as DiscountAccumulator);
+  }, { remaining: subtotalPreCredits.amount, credits: [] } satisfies DiscountAccumulator);
   return validations.credits;
 }
 
@@ -197,7 +218,7 @@ export const ComputePaymentsApplied = (total: IMoney, tips: IMoney, paymentsToVa
       case PaymentMethod.StoreCredit: {
         const amountToApply = Math.min(acc.remaining, payment.payment.balance.amount);
         // apply tip as a percentage of the balance due paid
-        const tipToApply = acc.remaining > 0 ? Math.round(acc.remainingTip * amountToApply / acc.remaining) : 0
+        const tipToApply = acc.remaining > 0 ? Math.round(RoundToTwoDecimalPlaces(acc.remainingTip * amountToApply / acc.remaining)) : 0
         return <PaymentAccumulator>{
           remaining: acc.remaining - amountToApply,
           remainingTip: acc.remainingTip - tipToApply,
@@ -227,7 +248,7 @@ export const ComputePaymentsApplied = (total: IMoney, tips: IMoney, paymentsToVa
       }
       case PaymentMethod.Cash: {
         const amountToApply = Math.min(acc.remaining, payment.payment.amountTendered.amount);
-        const tipToApply = acc.remaining > 0 ? Math.round(acc.remainingTip * amountToApply / acc.remaining) : 0
+        const tipToApply = acc.remaining > 0 ? Math.round(RoundToTwoDecimalPlaces(acc.remainingTip * amountToApply / acc.remaining)) : 0
         return <PaymentAccumulator>{
           remaining: acc.remaining - amountToApply,
           remainingTip: acc.remainingTip - tipToApply,
@@ -244,12 +265,16 @@ export const ComputePaymentsApplied = (total: IMoney, tips: IMoney, paymentsToVa
         };
       }
     }
-  }, { remaining: total.amount, remainingTip: tips.amount, payments: [] as OrderPayment[] });
+  }, { remaining: total.amount, remainingTip: tips.amount, payments: []satisfies OrderPayment[] });
   return validations.payments;
 }
 
+export function ComputeGratuityServiceCharge(serviceChargePercentage: number, basis: IMoney): IMoney {
+  return { currency: basis.currency, amount: Math.round(RoundToTwoDecimalPlaces(serviceChargePercentage * basis.amount)) };
+}
+
 export function ComputeTaxAmount(subtotalAfterDiscount: IMoney, taxRate: number): IMoney {
-  return { amount: Math.round(subtotalAfterDiscount.amount * taxRate), currency: subtotalAfterDiscount.currency };
+  return { amount: Math.round(RoundToTwoDecimalPlaces(subtotalAfterDiscount.amount * taxRate)), currency: subtotalAfterDiscount.currency };
 }
 
 export function ComputeTipBasis(subtotalPreDiscount: IMoney, taxAmount: IMoney): IMoney {
@@ -257,19 +282,19 @@ export function ComputeTipBasis(subtotalPreDiscount: IMoney, taxAmount: IMoney):
 }
 
 export function ComputeTipValue(tip: TipSelection | null, basis: IMoney): IMoney {
-  return { currency: basis.currency, amount: tip !== null ? (tip.isPercentage ? Math.round(tip.value * basis.amount) : tip.value.amount) : 0 };
+  return { currency: basis.currency, amount: tip !== null ? (tip.isPercentage ? Math.round(RoundToTwoDecimalPlaces(tip.value * basis.amount)) : tip.value.amount) : 0 };
 }
 
 export function ComputeSubtotalPreDiscount(cartTotal: IMoney, serviceFees: IMoney): IMoney {
   return { currency: cartTotal.currency, amount: cartTotal.amount + serviceFees.amount };
 }
 
-export function ComputeSubtotalAfterDiscount(subtotalPreDiscount: IMoney, discountApplied: IMoney): IMoney {
-  return { currency: subtotalPreDiscount.currency, amount: subtotalPreDiscount.amount - discountApplied.amount };
+export function ComputeSubtotalAfterDiscountAndGratuity(subtotalPreDiscount: IMoney, discountApplied: IMoney, gratuityServiceCharge: IMoney): IMoney {
+  return { currency: subtotalPreDiscount.currency, amount: subtotalPreDiscount.amount + gratuityServiceCharge.amount - discountApplied.amount };
 }
 
-export function ComputeTotal(subtotalAfterDiscount: IMoney, taxAmount: IMoney, tipAmount: IMoney): IMoney {
-  return { currency: subtotalAfterDiscount.currency, amount: subtotalAfterDiscount.amount + taxAmount.amount + tipAmount.amount };
+export function ComputeTotal(subtotalAfterDiscountAndGratuity: IMoney, taxAmount: IMoney, tipAmount: IMoney): IMoney {
+  return { currency: subtotalAfterDiscountAndGratuity.currency, amount: subtotalAfterDiscountAndGratuity.amount + taxAmount.amount + tipAmount.amount };
 }
 
 export function ComputeAutogratuityEnabled(mainProductCount: number, threshold: number, isDelivery: boolean): boolean {
@@ -283,6 +308,7 @@ export function ComputeBalance(total: IMoney, amountPaid: IMoney): IMoney {
 interface RecomputeTotalsArgs {
   config: {
     TAX_RATE: number;
+    SERVICE_CHARGE: number;
     AUTOGRAT_THRESHOLD: number;
     CATALOG_SELECTORS: ICatalogSelectors;
   };
@@ -303,15 +329,16 @@ export const RecomputeTotals = function ({ config, cart, payments, discounts, fu
   const subtotalPreDiscount = ComputeSubtotalPreDiscount(cartSubtotal, serviceFee);
   const discountApplied = ComputeDiscountsApplied(subtotalPreDiscount, discounts);
   const amountDiscounted = { amount: discountApplied.reduce((acc, x) => acc + x.discount.amount.amount, 0), currency: CURRENCY.USD };
-  const subtotalAfterDiscount = ComputeSubtotalAfterDiscount(subtotalPreDiscount, amountDiscounted);
+  const serviceChargeAmount = ComputeGratuityServiceCharge(config.SERVICE_CHARGE, subtotalPreDiscount);
+  const subtotalAfterDiscount = ComputeSubtotalAfterDiscountAndGratuity(subtotalPreDiscount, amountDiscounted, serviceChargeAmount);
   const taxAmount = ComputeTaxAmount(subtotalAfterDiscount, config.TAX_RATE);
-  const hasBankersRoundingTaxSkew = (subtotalAfterDiscount.amount * config.TAX_RATE) % 1 === 0.5;
+  const hasBankersRoundingTaxSkew = taxAmount.amount % 1 === 0.5;
   const tipBasis = ComputeTipBasis(subtotalPreDiscount, taxAmount);
   const tipMinimum = mainCategoryProductCount >= config.AUTOGRAT_THRESHOLD ? ComputeTipValue({ isPercentage: true, isSuggestion: true, value: .2 }, tipBasis) : { currency: CURRENCY.USD, amount: 0 };
   const tipAmount = ComputeTipValue(order.tip, tipBasis);
   const total = ComputeTotal(subtotalAfterDiscount, taxAmount, tipAmount);
   const paymentsApplied = ComputePaymentsApplied(total, tipAmount, payments);
-  const amountPaid = { amount: paymentsApplied.reduce((acc, x) => acc + x.amount.amount, 0), currency: CURRENCY.USD };
+  const amountPaid = { amount: RoundToTwoDecimalPlaces(paymentsApplied.reduce((acc, x) => acc + x.amount.amount, 0)), currency: CURRENCY.USD };
   const balanceAfterPayments = ComputeBalance(total, amountPaid);
   return {
     mainCategoryProductCount,
@@ -319,6 +346,7 @@ export const RecomputeTotals = function ({ config, cart, payments, discounts, fu
     serviceFee,
     subtotalPreDiscount,
     subtotalAfterDiscount,
+    serviceChargeAmount,
     discountApplied,
     taxAmount,
     tipBasis,

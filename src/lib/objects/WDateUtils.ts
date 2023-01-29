@@ -235,17 +235,15 @@ export class WDateUtils {
     return pushed_time > operatingIntervals[operatingIntervals.length - 1].end ? -1 : pushed_time;
   }
 
-  static GetInfoMapForAvailabilityComputation(configs: FulfillmentConfig[], date: string, stuff_to_depreciate_map: { cart_based_lead_time: number; size: number; }) {
+  static GetInfoMapForAvailabilityComputation(configs: FulfillmentConfig[], date: string, cartBasedLeadTime: number) {
     const jsDate = parseISO(date);
     const isoDate = WDateUtils.formatISODate(jsDate);
     const blockedOffUnion = BlockedOffIntervalsForServicesAndDate(configs.map(x => x.blockedOff), isoDate);
     const operatingIntervals = WDateUtils.GetOperatingHoursForServicesAndDate(configs, isoDate, getDay(jsDate));
     const minTimeStep = Math.min(...configs.map(config => config.timeStep));
     const minLeadTime = Math.min(...configs.map(config => config.leadTime));
-    const order_size = Math.max(stuff_to_depreciate_map.size, 1);
-    const cart_based_lead_time = Object.hasOwn(stuff_to_depreciate_map, "cart_based_lead_time") ? stuff_to_depreciate_map.cart_based_lead_time : 0;
-    // cart_based_lead_time and service/size lead time don't stack
-    const leadTime = Math.max(minLeadTime + ((order_size - 1) * ADDITIONAL_PIZZA_LEAD_TIME_TO_DEPRECATE), cart_based_lead_time);
+    // cartBasedLeadTime and service lead time don't stack
+    const leadTime = Math.max(minLeadTime, cartBasedLeadTime);
     return { blockedOffUnion, operatingIntervals, minTimeStep, leadTime } as AvailabilityInfoMap;
   }
 
@@ -350,7 +348,7 @@ export const HasOperatingHoursForFulfillments = (fulfillmentConfigs: Fulfillment
  * @param {FulfillmentConfig[]} fulfillmentConfigs map of the fulfillments we're interested in  
  * @param now - ISO string of the current date and time according to dog (the server, whatever)
  */
-export const GetNextAvailableServiceDate = (fulfillmentConfigs: FulfillmentConfig[], orderSize: number, now: string): FulfillmentTime | null => {
+export const GetNextAvailableServiceDate = (fulfillmentConfigs: FulfillmentConfig[], now: string, cartBasedLeadTime: number): FulfillmentTime | null => {
   if (!HasOperatingHoursForFulfillments(fulfillmentConfigs)) {
     return null;
   }
@@ -358,7 +356,7 @@ export const GetNextAvailableServiceDate = (fulfillmentConfigs: FulfillmentConfi
 
   while (1) {
     const isoDate = WDateUtils.formatISODate(dateAttempted);
-    const INFO = WDateUtils.GetInfoMapForAvailabilityComputation(fulfillmentConfigs, isoDate, { cart_based_lead_time: 0, size: orderSize });
+    const INFO = WDateUtils.GetInfoMapForAvailabilityComputation(fulfillmentConfigs, isoDate, cartBasedLeadTime);
     const firstAvailableTime = WDateUtils.ComputeFirstAvailableTimeForDate(INFO, isoDate, now);
     if (firstAvailableTime !== -1) {
       return { selectedDate: isoDate, selectedTime: firstAvailableTime };
