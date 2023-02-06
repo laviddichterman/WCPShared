@@ -551,6 +551,13 @@ export interface IProductModifier {
   serviceDisable: string[];
 };
 
+export interface PrepTiming {
+  prepTime: number;
+  additionalUnitPrepTime: number;
+  // additional unit prep times at a given station ID stack
+  prepStationId: number;
+};
+
 export interface IProduct {
   id: string;
   price: IMoney;
@@ -571,12 +578,7 @@ export interface IProduct {
       suggestions: string[];
     }
   };
-  timing?: {
-    prepTime: number;
-    additionalUnitPrepTime: number;
-    // additional unit prep times at a given station ID stack
-    prepStationId: number;
-  };
+  timing?: PrepTiming;
   modifiers: IProductModifier[];
   category_ids: string[];
   baseProductId: string;
