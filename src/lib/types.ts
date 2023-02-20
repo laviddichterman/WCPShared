@@ -43,6 +43,7 @@ export interface IWInterval {
   end: number;
 };
 
+// 
 export interface IRecurringInterval {
   interval: IWInterval;
   rrule: string; // empty string means just use the interval
@@ -103,6 +104,8 @@ export interface FulfillmentConfig {
   requirePrepayment: boolean;
   // if pre-payment is allowed
   allowPrepayment: boolean;
+  // if any form of tipping or gratuity is allowed
+  allowTipping: boolean;
   // OrderFunction and value of autogratuity 
   autograt: {
     // autograt refers to OrderInstanceFunction
@@ -578,7 +581,7 @@ export interface IProduct {
       suggestions: string[];
     }
   };
-  timing?: PrepTiming;
+  timing: PrepTiming | null;
   modifiers: IProductModifier[];
   category_ids: string[];
   baseProductId: string;
