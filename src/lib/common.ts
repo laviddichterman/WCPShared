@@ -28,9 +28,9 @@ export const DetermineCartBasedLeadTime = (cart: CoreCartEntry<WCPProductV2Dto>[
     return product?.product.timing ? {
       ...acc,
       // so we take the max of the base times at a station, then we sum the quantity times
-      [product.product.timing.prepStationId]: Object.hasOwn(leadTimeMap, product.product.timing.prepStationId) ? {
-        base: Math.max(leadTimeMap[product.product.timing.prepStationId].base, product.product.timing.prepTime - product.product.timing.additionalUnitPrepTime),
-        quant: leadTimeMap[product.product.timing.prepStationId].quant + (product.product.timing.additionalUnitPrepTime * cartLine.quantity)
+      [product.product.timing.prepStationId]: Object.hasOwn(acc, product.product.timing.prepStationId) ? {
+        base: Math.max(acc[product.product.timing.prepStationId].base, product.product.timing.prepTime - product.product.timing.additionalUnitPrepTime),
+        quant: acc[product.product.timing.prepStationId].quant + (product.product.timing.additionalUnitPrepTime * cartLine.quantity)
       } : {
         base: product.product.timing.prepTime - product.product.timing.additionalUnitPrepTime,
         quant: (product.product.timing.additionalUnitPrepTime * cartLine.quantity)
