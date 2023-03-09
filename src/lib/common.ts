@@ -273,6 +273,10 @@ export function ComputeGratuityServiceCharge(serviceChargePercentage: number, ba
   return { currency: basis.currency, amount: Math.round(RoundToTwoDecimalPlaces(serviceChargePercentage * basis.amount)) };
 }
 
+export function ComputeHasBankersRoundingSkew(subtotalAfterDiscount: IMoney, taxRate: number): boolean {
+  return RoundToTwoDecimalPlaces(subtotalAfterDiscount.amount * taxRate) % 1 === 0.5;
+}
+
 export function ComputeTaxAmount(subtotalAfterDiscount: IMoney, taxRate: number): IMoney {
   return { amount: Math.round(RoundToTwoDecimalPlaces(subtotalAfterDiscount.amount * taxRate)), currency: subtotalAfterDiscount.currency };
 }
@@ -332,7 +336,7 @@ export const RecomputeTotals = function ({ config, cart, payments, discounts, fu
   const serviceChargeAmount = ComputeGratuityServiceCharge(config.SERVICE_CHARGE, subtotalPreDiscount);
   const subtotalAfterDiscount = ComputeSubtotalAfterDiscountAndGratuity(subtotalPreDiscount, amountDiscounted, serviceChargeAmount);
   const taxAmount = ComputeTaxAmount(subtotalAfterDiscount, config.TAX_RATE);
-  const hasBankersRoundingTaxSkew = taxAmount.amount % 1 === 0.5;
+  const hasBankersRoundingTaxSkew = ComputeHasBankersRoundingSkew(subtotalAfterDiscount, config.TAX_RATE);
   const tipBasis = ComputeTipBasis(subtotalPreDiscount, taxAmount);
   const tipMinimum = mainCategoryProductCount >= config.AUTOGRAT_THRESHOLD ? ComputeTipValue({ isPercentage: true, isSuggestion: true, value: .2 }, tipBasis) : { currency: CURRENCY.USD, amount: 0 };
   const tipAmount = ComputeTipValue(order.tip, tipBasis);
