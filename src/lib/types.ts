@@ -515,6 +515,8 @@ export interface IOptionInstance extends IOptionState {
 };
 export interface IProductDisplayFlags {
   hideFromPos: boolean;
+  // name override for the point of sale integration (helps avoid selling a growler to a customer since every growler fill shouldn't have the words "growler fill" in the name)
+  posName: string;
 
   menu: {
     // ordering within this product instance's category in menu page
@@ -608,9 +610,6 @@ export interface IProductInstance {
   description: string;
 
   displayName: string;
-
-  // name override for the point of sale integration (helps avoid selling a growler to a customer since every growler fill shouldn't have the words "growler fill" in the name)
-  posName: string | null;
 
   shortcode: string;
 };
