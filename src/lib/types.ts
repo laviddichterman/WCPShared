@@ -114,7 +114,12 @@ export interface FulfillmentConfig {
   } | null;
   // serviceCharge refers to OrderInstanceFunction, currently not consumed
   serviceCharge: string | null;
+
+  // leadTimeOffset time (+ or -) to place an order of this type, in relation to the prep time for the products
+  leadTimeOffset: number;
+
   // minimum time to place an order of this type
+  // TODO: remove
   leadTime: number;
   // operating hours for this service type
   operatingHours: OperatingHourSpecification;
