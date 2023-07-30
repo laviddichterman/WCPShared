@@ -464,6 +464,7 @@ export interface ICategory {
     // nesting is a bad name, but it's basically how the category display is desired
     nesting: CategoryDisplay;
   };
+  // list of disabled fulfillmentIds
   serviceDisable: string[];
 };
 
@@ -558,6 +559,7 @@ export interface IProductDisplayFlags {
 export interface IProductModifier {
   mtid: string;
   enable: string | null;
+  // list of disabled fulfillmentIds
   serviceDisable: string[];
 };
 
@@ -573,6 +575,7 @@ export interface IProduct {
   price: IMoney;
   disabled: IWInterval | null;
   availability: IRecurringInterval | null;
+  // list of disabled fulfillmentIds
   serviceDisable: string[];
   externalIDs: KeyValue[];
   displayFlags: {
@@ -732,6 +735,7 @@ export interface CategoryEntry {
   subtitle: string | null;
   footer: string | null;
   nesting: CategoryDisplay;
+  // list of disabled fulfillmentIds
   serviceDisable: string[];
 };
 export type MenuCategories = Record<string, CategoryEntry>;
