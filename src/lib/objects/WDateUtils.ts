@@ -17,8 +17,6 @@ import {
 
 import { AvailabilityInfoMap, DateIntervalsEntries, DayOfTheWeek, FulfillmentConfig, FulfillmentTime, IWInterval, OperatingHourSpecification } from '../types';
 
-export const ADDITIONAL_PIZZA_LEAD_TIME_TO_DEPRECATE = 5;
-
 /**
  * 
  * @param {IntervalTupleList} intervals - array of IWIntervals
