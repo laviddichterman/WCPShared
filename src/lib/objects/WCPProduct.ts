@@ -417,7 +417,7 @@ export function WCPProductGenerateMetadata(a: WCPProduct, catalogSelectors: ICat
         return;
       }
       const can_split = option_object.metadata.can_split ? { enable: DISABLE_REASON.ENABLED } : { enable: DISABLE_REASON.DISABLED_NO_SPLITTING };
-      const is_enabled = enable_modifier_type.enable === DISABLE_REASON.ENABLED ? DisableDataCheck(option_object.disabled, service_time) : enable_modifier_type;
+      const is_enabled = enable_modifier_type.enable === DISABLE_REASON.ENABLED ? DisableDataCheck(option_object.disabled, option_object.availability, service_time) : enable_modifier_type;
       const option_info = {
         placement: OptionPlacement.NONE,
         qualifier: OptionQualifier.REGULAR,
