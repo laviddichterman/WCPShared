@@ -64,7 +64,7 @@ export function DisableDataCheck(disable_data: IWInterval | null, availability: 
 { enable: DISABLE_REASON.DISABLED_BLANKET } |
 { enable: DISABLE_REASON.DISABLED_TIME, interval: IWInterval }) |
 { enable: DISABLE_REASON.DISABLED_AVAILABILITY, availability: IRecurringInterval } {
-  if (disable_data !== null) {
+  if (disable_data) {
     if (disable_data.start > disable_data.end) {
       return { enable: DISABLE_REASON.DISABLED_BLANKET };
     }
@@ -72,7 +72,7 @@ export function DisableDataCheck(disable_data: IWInterval | null, availability: 
       return { enable: DISABLE_REASON.DISABLED_TIME, interval: disable_data };
     }
   }
-  if (availability !== null) {
+  if (availability) {
     if (availability.rrule === "") {
       // we check for if we're INSIDE the availability interval here since we'll return that we're not otherwise later
       if ((availability.interval.start === -1 || getTime(order_time) >= availability.interval.start) &&
