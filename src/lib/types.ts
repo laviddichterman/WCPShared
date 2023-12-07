@@ -43,7 +43,13 @@ export interface IWInterval {
   end: number;
 };
 
-// 
+/**
+ * Availability interval.
+ * if rrule === "" 
+ * then interval represents the start and end time of when the thing is available. 
+ * -1 for either start or end means the value is unbounded.
+ * if rrule !== "" then ...
+ **/
 export interface IRecurringInterval {
   interval: IWInterval;
   rrule: string; // empty string means just use the interval

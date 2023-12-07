@@ -34,7 +34,7 @@ export function FilterProduct(item: IProductInstance, menu: IMenu, disable_from_
   let passes = productClass !== undefined &&
     productClass.product.serviceDisable.indexOf(fulfillmentId) === -1 &&
     !disable_from_menu_flag_getter(item.displayFlags) &&
-    DisableDataCheck(productClass.product.disabled, order_time).enable === DISABLE_REASON.ENABLED;
+    DisableDataCheck(productClass.product.disabled, productClass.product.availability, order_time).enable === DISABLE_REASON.ENABLED;
   // this is better as a forEach as it gives us the ability to skip out of the loop early
   item.modifiers.forEach((productModifierEntry) => {
     // TODO: for incomplete product instances, this should check for a viable way to order the product
@@ -43,7 +43,7 @@ export function FilterProduct(item: IProductInstance, menu: IMenu, disable_from_
     const productModifierDefinition = productClass.product.modifiers.find(x => x.mtid === productModifierEntry.modifierTypeId)!;
     passes &&= productModifierDefinition.serviceDisable.indexOf(fulfillmentId) === -1 &&
       productModifierEntry.options.reduce((acc: boolean, x) =>
-        (acc && DisableDataCheck(mtOptions[x.optionId].mo.disabled, order_time).enable === DISABLE_REASON.ENABLED), true);
+        (acc && DisableDataCheck(mtOptions[x.optionId].mo.disabled, mtOptions[x.optionId].mo.availability, order_time).enable === DISABLE_REASON.ENABLED), true);
   });
   return passes;
 }
@@ -67,7 +67,7 @@ export function FilterWCPProduct(item: WCPProduct, catalog: ICatalogSelectors, o
   const failsIncompleteCheck = !filterIncomplete || !newMetadata.incomplete;
   return failsIncompleteCheck &&
     productEntry !== undefined && productEntry.product.serviceDisable.indexOf(fulfillmentId) === -1 &&
-    DisableDataCheck(productEntry.product.disabled, order_time) &&
+    DisableDataCheck(productEntry.product.disabled, productEntry.product.availability, order_time) &&
     item.modifiers.reduce((acc, modifier) => {
       const mdModifier = newMetadata.modifier_map[modifier.modifierTypeId];
       return acc && modifier.options.reduce((moAcc, mo) => {
@@ -76,7 +76,7 @@ export function FilterWCPProduct(item: WCPProduct, catalog: ICatalogSelectors, o
           ((mo.placement === OptionPlacement.LEFT && mdModifier.options[mo.optionId].enable_left.enable === DISABLE_REASON.ENABLED) ||
             (mo.placement === OptionPlacement.RIGHT && mdModifier.options[mo.optionId].enable_right.enable === DISABLE_REASON.ENABLED) ||
             (mo.placement === OptionPlacement.WHOLE && mdModifier.options[mo.optionId].enable_whole.enable === DISABLE_REASON.ENABLED)) &&
-          DisableDataCheck(modifierOption.disabled, order_time).enable === DISABLE_REASON.ENABLED;
+          DisableDataCheck(modifierOption.disabled, modifierOption.availability, order_time).enable === DISABLE_REASON.ENABLED;
       }, true);
     }, true);
 }
@@ -157,7 +157,7 @@ export function FilterWMenu(menu: IMenu, filter_products: (product: IProductInst
 
   // prune modifier options and types as appropriate
   Object.keys(menu.modifiers).forEach(mtid => {
-    menu.modifiers[mtid].options_list = menu.modifiers[mtid].options_list.filter((opt) => DisableDataCheck(opt.mo.disabled, order_time));
+    menu.modifiers[mtid].options_list = menu.modifiers[mtid].options_list.filter((opt) => DisableDataCheck(opt.mo.disabled, opt.mo.availability, order_time));
     if (menu.modifiers[mtid].options_list.length > 0) {
       menu.modifiers[mtid].options = menu.modifiers[mtid].options_list.reduce((acc, x) => Object.assign(acc, { [x.mo.id]: x }), {})
     }

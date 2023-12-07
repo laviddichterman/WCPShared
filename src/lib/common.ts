@@ -1,8 +1,9 @@
-import { addMinutes, getTime } from "date-fns";
+import { addMinutes, getTime, startOfDay } from "date-fns";
 import { OrderFunctional } from "./objects/OrderFunctional";
 import { CreateProductWithMetadataFromV2Dto } from "./objects/WCPProduct";
 import WDateUtils from "./objects/WDateUtils";
-import { CoreCartEntry, CURRENCY, DISABLE_REASON, FulfillmentConfig, IMoney, IWInterval, ProductModifierEntry, OptionPlacement, OptionQualifier, TipSelection, WProduct, IOptionInstance, FulfillmentTime, WCPProductV2Dto, CategorizedRebuiltCart, ICatalogSelectors, IProductInstance, PRODUCT_LOCATION, Selector, DineInInfoDto, CALL_LINE_DISPLAY, FulfillmentDto, OrderLineDiscount, DiscountMethod, OrderPayment, PaymentMethod, UnresolvedPayment, UnresolvedDiscount, WOrderInstancePartial, RecomputeTotalsResult, CatalogProductEntry } from "./types";
+import { CoreCartEntry, CURRENCY, DISABLE_REASON, FulfillmentConfig, IMoney, IWInterval, ProductModifierEntry, OptionPlacement, OptionQualifier, TipSelection, WProduct, IOptionInstance, FulfillmentTime, WCPProductV2Dto, CategorizedRebuiltCart, ICatalogSelectors, IProductInstance, PRODUCT_LOCATION, Selector, DineInInfoDto, CALL_LINE_DISPLAY, FulfillmentDto, OrderLineDiscount, DiscountMethod, OrderPayment, PaymentMethod, UnresolvedPayment, UnresolvedDiscount, WOrderInstancePartial, RecomputeTotalsResult, CatalogProductEntry, IRecurringInterval } from "./types";
+import { RRule } from "rrule";
 
 export const CREDIT_REGEX = /[A-Za-z0-9]{3}-[A-Za-z0-9]{2}-[A-Za-z0-9]{3}-[A-Z0-9]{8}$/;
 
@@ -57,18 +58,49 @@ export const DateTimeIntervalBuilder = (fulfillmentTime: FulfillmentTime, fulfil
  * Function to check if something is disabled
  * @param {IWInterval} disable_data - catalog sourced info as to if/when the product is enabled or disabled
  * @param {Date | number} order_time - the time to use to check for disabling
- * @returns {{ enable: DISABLE_REASON.ENABLED } |
-  { enable: DISABLE_REASON.DISABLED_BLANKET } |
-  { enable: DISABLE_REASON.DISABLED_TIME, interval: IWInterval }}
+ * @returns {{ enable: DISABLE_REASON.ENABLED } | { enable: DISABLE_REASON.DISABLED_BLANKET } | { enable: DISABLE_REASON.DISABLED_TIME, interval: IWInterval }}
  */
-export function DisableDataCheck(disable_data: IWInterval | null, order_time: Date | number): ({ enable: DISABLE_REASON.ENABLED } |
+export function DisableDataCheck(disable_data: IWInterval | null, availability: IRecurringInterval | null, order_time: Date | number): ({ enable: DISABLE_REASON.ENABLED } |
 { enable: DISABLE_REASON.DISABLED_BLANKET } |
-{ enable: DISABLE_REASON.DISABLED_TIME, interval: IWInterval }) {
-  return !disable_data ? ({ enable: DISABLE_REASON.ENABLED }) :
-    (disable_data.start > disable_data.end ? ({ enable: DISABLE_REASON.DISABLED_BLANKET }) : (
-      (disable_data.start <= getTime(order_time) && disable_data.end >= getTime(order_time)) ?
-        { enable: DISABLE_REASON.DISABLED_TIME, interval: disable_data } :
-        { enable: DISABLE_REASON.ENABLED }));
+{ enable: DISABLE_REASON.DISABLED_TIME, interval: IWInterval }) |
+{ enable: DISABLE_REASON.DISABLED_AVAILABILITY, availability: IRecurringInterval } {
+  if (disable_data !== null) {
+    if (disable_data.start > disable_data.end) {
+      return { enable: DISABLE_REASON.DISABLED_BLANKET };
+    }
+    if (disable_data.start <= getTime(order_time) && disable_data.end >= getTime(order_time)) {
+      return { enable: DISABLE_REASON.DISABLED_TIME, interval: disable_data };
+    }
+  }
+  if (availability !== null) {
+    if (availability.rrule === "") {
+      // we check for if we're INSIDE the availability interval here since we'll return that we're not otherwise later
+      if ((availability.interval.start === -1 || getTime(order_time) >= availability.interval.start) &&
+        (availability.interval.end === -1 && getTime(order_time) <= availability.interval.end)) {
+        return { enable: DISABLE_REASON.ENABLED };
+      }
+    } else {
+      try {
+        const beginningOfOrderDay = startOfDay(order_time);
+        const recRule = RRule.fromString(availability.rrule);
+        const nextRecurrence = recRule.after(beginningOfOrderDay, true);
+        if (nextRecurrence !== null && startOfDay(nextRecurrence) === beginningOfOrderDay) {
+          // the order day is part of the recurrence rule
+          // now determine if it's in the interval
+          const fulfillmentTime = WDateUtils.ComputeFulfillmentTime(order_time);
+          if (fulfillmentTime.selectedTime >= availability.interval.start && fulfillmentTime.selectedTime <= availability.interval.end) {
+            return { enable: DISABLE_REASON.ENABLED };
+          }
+        }
+      }
+      catch (_) {
+        console.error(`Unable to parse recurrence rule from ${availability.rrule}. Returning unavailable.`);
+      }
+    }
+    // if we haven't explicitly returned we're enabled, then we're disabled
+    return { enable: DISABLE_REASON.DISABLED_AVAILABILITY, availability: availability };
+  }
+  return { enable: DISABLE_REASON.ENABLED };
 }
 
 
@@ -265,7 +297,7 @@ export const ComputePaymentsApplied = (total: IMoney, tips: IMoney, paymentsToVa
         };
       }
     }
-  }, { remaining: total.amount, remainingTip: tips.amount, payments: []satisfies OrderPayment[] });
+  }, { remaining: total.amount, remainingTip: tips.amount, payments: [] satisfies OrderPayment[] });
   return validations.payments;
 }
 
