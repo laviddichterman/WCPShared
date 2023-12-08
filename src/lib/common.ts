@@ -1,4 +1,4 @@
-import { addMinutes, getTime, startOfDay } from "date-fns";
+import { addMinutes, getTime, isSameDay, startOfDay } from "date-fns";
 import { OrderFunctional } from "./objects/OrderFunctional";
 import { CreateProductWithMetadataFromV2Dto } from "./objects/WCPProduct";
 import WDateUtils from "./objects/WDateUtils";
@@ -82,9 +82,10 @@ export function DisableDataCheck(disable_data: IWInterval | null, availability: 
     } else {
       try {
         const beginningOfOrderDay = startOfDay(order_time);
-        const recRule = RRule.fromString(availability.rrule);
+        const recRuleOpts = RRule.parseString(availability.rrule);
+        const recRule = new RRule({ dtstart: beginningOfOrderDay, ...recRuleOpts });
         const nextRecurrence = recRule.after(beginningOfOrderDay, true);
-        if (nextRecurrence !== null && startOfDay(nextRecurrence) === beginningOfOrderDay) {
+        if (nextRecurrence !== null && isSameDay(nextRecurrence, beginningOfOrderDay)) {
           // the order day is part of the recurrence rule
           // now determine if it's in the interval
           const fulfillmentTime = WDateUtils.ComputeFulfillmentTime(order_time);

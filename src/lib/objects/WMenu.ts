@@ -67,7 +67,7 @@ export function FilterWCPProduct(item: WCPProduct, catalog: ICatalogSelectors, o
   const failsIncompleteCheck = !filterIncomplete || !newMetadata.incomplete;
   return failsIncompleteCheck &&
     productEntry !== undefined && productEntry.product.serviceDisable.indexOf(fulfillmentId) === -1 &&
-    DisableDataCheck(productEntry.product.disabled, productEntry.product.availability, order_time) &&
+    DisableDataCheck(productEntry.product.disabled, productEntry.product.availability, order_time).enable === DISABLE_REASON.ENABLED &&
     item.modifiers.reduce((acc, modifier) => {
       const mdModifier = newMetadata.modifier_map[modifier.modifierTypeId];
       return acc && modifier.options.reduce((moAcc, mo) => {
