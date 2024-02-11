@@ -2,7 +2,7 @@ import { addMinutes, getTime, isSameDay, startOfDay } from "date-fns";
 import { OrderFunctional } from "./objects/OrderFunctional";
 import { CreateProductWithMetadataFromV2Dto } from "./objects/WCPProduct";
 import WDateUtils from "./objects/WDateUtils";
-import { CoreCartEntry, CURRENCY, DISABLE_REASON, FulfillmentConfig, IMoney, IWInterval, ProductModifierEntry, OptionPlacement, OptionQualifier, TipSelection, WProduct, IOptionInstance, FulfillmentTime, WCPProductV2Dto, CategorizedRebuiltCart, ICatalogSelectors, IProductInstance, PRODUCT_LOCATION, Selector, DineInInfoDto, CALL_LINE_DISPLAY, FulfillmentDto, OrderLineDiscount, DiscountMethod, OrderPayment, PaymentMethod, UnresolvedPayment, UnresolvedDiscount, WOrderInstancePartial, RecomputeTotalsResult, CatalogProductEntry, IRecurringInterval } from "./types";
+import { CoreCartEntry, CURRENCY, DISABLE_REASON, FulfillmentConfig, IMoney, IWInterval, ProductModifierEntry, OptionPlacement, OptionQualifier, TipSelection, WProduct, IOptionInstance, FulfillmentTime, WCPProductV2Dto, CategorizedRebuiltCart, ICatalogSelectors, IProductInstance, PRODUCT_LOCATION, Selector, DineInInfoDto, CALL_LINE_DISPLAY, FulfillmentDto, OrderLineDiscount, DiscountMethod, OrderPayment, PaymentMethod, UnresolvedPayment, UnresolvedDiscount, WOrderInstancePartial, RecomputeTotalsResult, CatalogProductEntry, IRecurringInterval, WNormalizedInterval } from "./types";
 import { RRule } from "rrule";
 
 export const CREDIT_REGEX = /[A-Za-z0-9]{3}-[A-Za-z0-9]{2}-[A-Za-z0-9]{3}-[A-Z0-9]{8}$/;
@@ -51,7 +51,7 @@ export const DateTimeIntervalBuilder = (fulfillmentTime: FulfillmentTime, fulfil
   // hack for date computation on DST transition days since we're currently not open during the time jump
   const date_lower = WDateUtils.ComputeServiceDateTime(fulfillmentTime);
   const date_upper = addMinutes(date_lower, fulfillment.maxDuration);
-  return { start: date_lower, end: date_upper } as Interval;
+  return { start: date_lower, end: date_upper } as WNormalizedInterval;
 };
 
 /**
@@ -60,7 +60,7 @@ export const DateTimeIntervalBuilder = (fulfillmentTime: FulfillmentTime, fulfil
  * @param {Date | number} order_time - the time to use to check for disabling
  * @returns {{ enable: DISABLE_REASON.ENABLED } | { enable: DISABLE_REASON.DISABLED_BLANKET } | { enable: DISABLE_REASON.DISABLED_TIME, interval: IWInterval }}
  */
-export function DisableDataCheck(disable_data: IWInterval | null, availability: IRecurringInterval | null, order_time: Date | number): ({ enable: DISABLE_REASON.ENABLED } |
+export function DisableDataCheck(disable_data: IWInterval | null, availability: IRecurringInterval | null, order_time: Date | number | string): ({ enable: DISABLE_REASON.ENABLED } |
 { enable: DISABLE_REASON.DISABLED_BLANKET } |
 { enable: DISABLE_REASON.DISABLED_TIME, interval: IWInterval }) |
 { enable: DISABLE_REASON.DISABLED_AVAILABILITY, availability: IRecurringInterval } {

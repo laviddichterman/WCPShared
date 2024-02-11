@@ -38,6 +38,15 @@ export enum DayOfTheWeek {
   SATURDAY
 };
 
+/**
+ * A version of {@link Interval} that has both start and end resolved to DateType or number.
+ */
+export interface WNormalizedInterval<DateType extends Date = Date> {
+  /** The start of the interval. */
+  start: DateType | number;
+  /** The end of the interval. */
+  end: DateType | number;
+}
 export interface IWInterval {
   start: number;
   end: number;
@@ -735,6 +744,7 @@ export interface WCPOption {
 };
 
 export interface CategoryEntry {
+  // in a new version we should be passing the IDs instead of the instances  
   menu: IProductInstance[];
   children: string[];
   menu_name: string;
@@ -1125,9 +1135,9 @@ export type CreateOrderRequestV2 = {
 
 export enum WOrderStatus {
   'OPEN' = 'OPEN', // order submitted to WARIO, yet to be manually confirmed by staff
-  'CONFIRMED' = 'CONFIRMED', // confirmed by staff
-  'PROCESSING' = 'PROCESSING', // order has been started
-  'COMPLETED' = 'COMPLETED', // order has been completed and fulfilled
+  'CONFIRMED' = 'CONFIRMED', // confirmed by staff, not yet charged
+  'PROCESSING' = 'PROCESSING', // order has been started, is active
+  'COMPLETED' = 'COMPLETED', // order has been completed, fulfilled, and charged
   'CANCELED' = 'CANCELED' // order has been canceled and refunded
 };
 

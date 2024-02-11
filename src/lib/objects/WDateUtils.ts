@@ -74,13 +74,13 @@ export class WDateUtils {
     return "h:mma";
   }
 
-  static formatISODate(d: Date | number) {
+  static formatISODate(d: Date | number | string) {
     return formatISO(d, { format: 'basic', representation: 'date' });
   }
 
   static ComputeServiceDateTime(fulfillmentTime: FulfillmentTime) { return subMinutes(addDays(parseISO(fulfillmentTime.selectedDate), 1), 1440 - fulfillmentTime.selectedTime); };
 
-  static ComputeFulfillmentTime(d: Date | number): FulfillmentTime {
+  static ComputeFulfillmentTime(d: Date | number | string): FulfillmentTime {
     //d - 1 day - selectedDate  + 1440 =  selectedTime min
     const isoDate = WDateUtils.formatISODate(d);
     const minutes = 1440 - differenceInMinutes(startOfDay(d), subDays(d, 1))
