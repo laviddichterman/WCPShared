@@ -2,7 +2,7 @@ import { addMinutes, getTime, isSameDay, startOfDay } from "date-fns";
 import { OrderFunctional } from "./objects/OrderFunctional";
 import { CreateProductWithMetadataFromV2Dto } from "./objects/WCPProduct";
 import WDateUtils from "./objects/WDateUtils";
-import { CoreCartEntry, CURRENCY, DISABLE_REASON, FulfillmentConfig, IMoney, IWInterval, ProductModifierEntry, OptionPlacement, OptionQualifier, TipSelection, WProduct, IOptionInstance, FulfillmentTime, WCPProductV2Dto, CategorizedRebuiltCart, ICatalogSelectors, IProductInstance, PRODUCT_LOCATION, Selector, DineInInfoDto, CALL_LINE_DISPLAY, FulfillmentDto, OrderLineDiscount, DiscountMethod, OrderPayment, PaymentMethod, UnresolvedPayment, UnresolvedDiscount, WOrderInstancePartial, RecomputeTotalsResult, CatalogProductEntry, IRecurringInterval, WNormalizedInterval } from "./types";
+import { CoreCartEntry, CURRENCY, DISABLE_REASON, FulfillmentConfig, IMoney, IWInterval, ProductModifierEntry, OptionPlacement, OptionQualifier, TipSelection, WProduct, IOptionInstance, FulfillmentTime, WCPProductV2Dto, CategorizedRebuiltCart, ICatalogSelectors, IProductInstance, PRODUCT_LOCATION, Selector, DineInInfoDto, CALL_LINE_DISPLAY, FulfillmentDto, OrderLineDiscount, DiscountMethod, OrderPayment, PaymentMethod, UnresolvedPayment, UnresolvedDiscount, WOrderInstancePartial, RecomputeTotalsResult, CatalogProductEntry, IRecurringInterval, WNormalizedInterval, CatalogCategoryEntry } from "./types";
 import { RRule } from "rrule";
 
 export const CREDIT_REGEX = /[A-Za-z0-9]{3}-[A-Za-z0-9]{2}-[A-Za-z0-9]{3}-[A-Z0-9]{8}$/;
@@ -47,10 +47,10 @@ export const GetPlacementFromMIDOID = (modifiers: ProductModifierEntry[], mtid: 
   return modifierEntry !== undefined ? (modifierEntry.options.find((x) => x.optionId === oid) || NOT_FOUND) : NOT_FOUND;
 };
 
-export const DateTimeIntervalBuilder = (fulfillmentTime: FulfillmentTime, fulfillment: FulfillmentConfig) => {
+export const DateTimeIntervalBuilder = (fulfillmentTime: FulfillmentTime, fulfillmentMaxDuration: number) => {
   // hack for date computation on DST transition days since we're currently not open during the time jump
   const date_lower = WDateUtils.ComputeServiceDateTime(fulfillmentTime);
-  const date_upper = addMinutes(date_lower, fulfillment.maxDuration);
+  const date_upper = addMinutes(date_lower, fulfillmentMaxDuration);
   return { start: date_lower, end: date_upper } as WNormalizedInterval;
 };
 
@@ -147,7 +147,7 @@ const EventTitleSectionBuilder = (catalogSelectors: Pick<ICatalogSelectors, 'pro
   }
 }
 
-export const EventTitleStringBuilder = (catalogSelectors: Pick<ICatalogSelectors, 'category' | 'productInstance'>, fulfillmentConfig: FulfillmentConfig, customer: string, fulfillmentDto: FulfillmentDto, cart: CategorizedRebuiltCart, special_instructions: string) => {
+export const EventTitleStringBuilder = (catalogSelectors: Pick<ICatalogSelectors, 'category' | 'productInstance'>, fulfillmentConfig: Pick<FulfillmentConfig, 'orderBaseCategoryId' | 'shortcode'>, customer: string, fulfillmentDto: FulfillmentDto, cart: CategorizedRebuiltCart, special_instructions: string) => {
   const has_special_instructions = special_instructions && special_instructions.length > 0;
   const mainCategorySection = EventTitleSectionBuilder(catalogSelectors, cart[fulfillmentConfig.orderBaseCategoryId] ?? []);
   const fulfillmentShortcode = fulfillmentDto.thirdPartyInfo?.source ? fulfillmentDto.thirdPartyInfo?.source.slice(0, 2).toUpperCase() : fulfillmentConfig.shortcode
@@ -162,8 +162,19 @@ export function MoneyToDisplayString(money: IMoney, showCurrencyUnit: boolean) {
   return `${showCurrencyUnit ? '$' : ""}${(money.amount / 100).toFixed(2)}`;
 }
 
-export function ComputeMainProductCategoryCount(MAIN_CATID: string, cart: CoreCartEntry<any>[]) {
-  return cart.reduce((acc, e) => acc + (e.categoryId === MAIN_CATID ? e.quantity : 0), 0)
+/**
+ * Sums the total of products in a cart that match a list of Category IDs
+ * @param catIds
+ * @param cart 
+ * @returns the number products in the category ID list
+ */
+export function ComputeProductCategoryMatchCount(catIds: string[], cart: CoreCartEntry<any>[]) {
+  return cart.reduce((acc, e) => acc + (catIds.indexOf(e.categoryId) !== -1 ? e.quantity : 0), 0)
+}
+
+export const ComputeCategoryTreeIdList: (rootId: string, categorySelector: Selector<CatalogCategoryEntry>) => string[] = (rootId, categorySelector) => {
+  const category = categorySelector(rootId);
+  return [rootId, ...(category ? category.children.flatMap(x => ComputeCategoryTreeIdList(x, categorySelector)) : [])];
 }
 
 export function RoundToTwoDecimalPlaces(number: number) {
@@ -353,11 +364,12 @@ interface RecomputeTotalsArgs {
   cart: CategorizedRebuiltCart;
   payments: UnresolvedPayment[];
   discounts: UnresolvedDiscount[];
-  fulfillment: FulfillmentConfig;
+  fulfillment: Pick<FulfillmentConfig, 'orderBaseCategoryId' | 'serviceCharge'>;
 }
 
 export const RecomputeTotals = function ({ config, cart, payments, discounts, fulfillment, order }: RecomputeTotalsArgs): RecomputeTotalsResult {
-  const mainCategoryProductCount = ComputeMainProductCategoryCount(fulfillment.orderBaseCategoryId, order.cart);
+  const mainCategoryTree = ComputeCategoryTreeIdList(fulfillment.orderBaseCategoryId, config.CATALOG_SELECTORS.category);
+  const mainCategoryProductCount = ComputeProductCategoryMatchCount(mainCategoryTree, order.cart);
   const cartSubtotal = { currency: CURRENCY.USD, amount: Object.values(cart).reduce((acc, c) => acc + ComputeCartSubTotal(c).amount, 0) };
   const serviceFee = {
     currency: CURRENCY.USD,
