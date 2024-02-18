@@ -15,7 +15,8 @@ import {
   differenceInMinutes
 } from 'date-fns';
 
-import { AvailabilityInfoMap, DateIntervalsEntries, DayOfTheWeek, FulfillmentConfig, FulfillmentTime, IWInterval, OperatingHourSpecification } from '../types';
+import { AvailabilityInfoMap, DateIntervalsEntries, DayOfTheWeek, FulfillmentTime, IWInterval, OperatingHourSpecification } from '../types';
+import type { FulfillmentConfig } from '../types';
 
 /**
  * 
@@ -196,10 +197,7 @@ export class WDateUtils {
    * @returns 
    */
   static GetOperatingHoursForServicesAndDate(
-    configs: {
-      operatingHours: OperatingHourSpecification;
-      specialHours: DateIntervalsEntries;
-    }[],
+    configs: Pick<FulfillmentConfig, 'operatingHours' | 'specialHours'>[],
     isoDate: string,
     day_index: DayOfTheWeek) {
     const allHours = configs.reduce((acc, config) => {
@@ -233,7 +231,7 @@ export class WDateUtils {
     return pushed_time > operatingIntervals[operatingIntervals.length - 1].end ? -1 : pushed_time;
   }
 
-  static GetInfoMapForAvailabilityComputation(configs: FulfillmentConfig[], date: string, cartBasedLeadTime: number) {
+  static GetInfoMapForAvailabilityComputation(configs: Pick<FulfillmentConfig, 'blockedOff' | 'timeStep' | 'leadTime' | 'leadTimeOffset' | 'operatingHours' | 'specialHours'>[], date: string, cartBasedLeadTime: number) {
     const jsDate = parseISO(date);
     const isoDate = WDateUtils.formatISODate(jsDate);
     const blockedOffUnion = BlockedOffIntervalsForServicesAndDate(configs.map(x => x.blockedOff), isoDate);
