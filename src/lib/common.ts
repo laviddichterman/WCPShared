@@ -153,7 +153,7 @@ export const EventTitleStringBuilder = (catalogSelectors: Pick<ICatalogSelectors
   const mainCategoryTree = ComputeCategoryTreeIdList(fulfillmentConfig.orderBaseCategoryId, catalogSelectors.category);
   const mainCategorySection = mainCategoryTree.map(x => EventTitleSectionBuilder(catalogSelectors, cart[x] ?? [])).filter(x => x.length > 0).join(" ");
   const fulfillmentShortcode = fulfillmentDto.thirdPartyInfo?.source ? fulfillmentDto.thirdPartyInfo?.source.slice(0, 2).toUpperCase() : fulfillmentConfig.shortcode
-  const supplementalSections = Object.entries(cart).filter(([cid, _]) => cid !== fulfillmentConfig.orderBaseCategoryId)
+  const supplementalSections = Object.entries(cart).filter(([cid, _]) => mainCategoryTree.findIndex(x => x === cid) === -1)
     .sort(([cIdA, _], [cIdB, __]) => catalogSelectors.category(cIdA)!.category.ordinal - catalogSelectors.category(cIdB)!.category.ordinal)
     .map(([_, catCart]) => EventTitleSectionBuilder(catalogSelectors, catCart))
     .join(' ');
@@ -174,9 +174,18 @@ export function ComputeProductCategoryMatchCount(catIds: string[], cart: CoreCar
   return cart.reduce((acc, e) => acc + (catIds.indexOf(e.categoryId) !== -1 ? e.quantity : 0), 0)
 }
 
-export const ComputeCategoryTreeIdList: (rootId: string, categorySelector: Selector<CatalogCategoryEntry>) => string[] = (rootId, categorySelector) => {
-  const category = categorySelector(rootId);
-  return [rootId, ...(category ? category.children.flatMap(x => ComputeCategoryTreeIdList(x, categorySelector)) : [])];
+/**
+ * Returns the full list of category IDs including the passed root category node ID
+ * @param rootId 
+ * @param categorySelector 
+ * @returns child category list sorted by ordinal (only sorted at the end)
+ */
+export const ComputeCategoryTreeIdList = (rootId: string, categorySelector: Selector<CatalogCategoryEntry>) => {
+  const ComputeCategoryTreeIdListInternal: (cId: string) => { id: string; ordinal: number; }[] = (cId) => {
+    const category = categorySelector(cId)!;
+    return [{ id: cId, ordinal: category.category.ordinal }, ...(category.children.flatMap(x => ComputeCategoryTreeIdListInternal(x)))];
+  }
+  return ComputeCategoryTreeIdListInternal(rootId).sort((a, b) => a.ordinal - b.ordinal).map(x => x.id);
 }
 
 export function RoundToTwoDecimalPlaces(number: number) {
