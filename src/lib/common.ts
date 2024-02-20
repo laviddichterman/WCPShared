@@ -141,15 +141,17 @@ const EventTitleSectionBuilder = (catalogSelectors: Pick<ICatalogSelectors, 'pro
       return `${callLineNameWithSpaceIfNeeded}${shortnames.join(" ")}`;
     }
     case CALL_LINE_DISPLAY.QUANTITY: {
+      // would be nice to have a 
       const total = cart.reduce((total, entry) => total + entry.quantity, 0);
-      return total > 1 ? `${total.toString(10)}x` : "";
+      return `${total.toString(10)}${callLineName ?? 'x'}`;
     }
   }
 }
 
 export const EventTitleStringBuilder = (catalogSelectors: Pick<ICatalogSelectors, 'category' | 'productInstance'>, fulfillmentConfig: Pick<FulfillmentConfig, 'orderBaseCategoryId' | 'shortcode'>, customer: string, fulfillmentDto: FulfillmentDto, cart: CategorizedRebuiltCart, special_instructions: string) => {
   const has_special_instructions = special_instructions && special_instructions.length > 0;
-  const mainCategorySection = EventTitleSectionBuilder(catalogSelectors, cart[fulfillmentConfig.orderBaseCategoryId] ?? []);
+  const mainCategoryTree = ComputeCategoryTreeIdList(fulfillmentConfig.orderBaseCategoryId, catalogSelectors.category);
+  const mainCategorySection = mainCategoryTree.map(x => EventTitleSectionBuilder(catalogSelectors, cart[x] ?? [])).filter(x => x.length > 0).join(" ");
   const fulfillmentShortcode = fulfillmentDto.thirdPartyInfo?.source ? fulfillmentDto.thirdPartyInfo?.source.slice(0, 2).toUpperCase() : fulfillmentConfig.shortcode
   const supplementalSections = Object.entries(cart).filter(([cid, _]) => cid !== fulfillmentConfig.orderBaseCategoryId)
     .sort(([cIdA, _], [cIdB, __]) => catalogSelectors.category(cIdA)!.category.ordinal - catalogSelectors.category(cIdB)!.category.ordinal)

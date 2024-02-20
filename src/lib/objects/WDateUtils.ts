@@ -337,14 +337,14 @@ export class WDateUtils {
   }
 }
 
-export const HasOperatingHoursForFulfillments = (fulfillmentConfigs: FulfillmentConfig[]) =>
+export const HasOperatingHoursForFulfillments = (fulfillmentConfigs: Pick<FulfillmentConfig, 'operatingHours'>[]) =>
   fulfillmentConfigs.reduce((acc, fulfillment) => acc || WDateUtils.HasOperatingHours(fulfillment.operatingHours), false);
 
 /**
- * @param {FulfillmentConfig[]} fulfillmentConfigs map of the fulfillments we're interested in  
+ * @param {Pick<FulfillmentConfig, 'blockedOff' | 'timeStep' | 'leadTime' | 'leadTimeOffset' | 'operatingHours' | 'specialHours'>[]} fulfillmentConfigs map of the fulfillment timing info we're interested in  
  * @param now - ISO string of the current date and time according to dog (the server, whatever)
  */
-export const GetNextAvailableServiceDate = (fulfillmentConfigs: FulfillmentConfig[], now: string, cartBasedLeadTime: number): FulfillmentTime | null => {
+export const GetNextAvailableServiceDate = (fulfillmentConfigs: Pick<FulfillmentConfig, 'blockedOff' | 'timeStep' | 'leadTime' | 'leadTimeOffset' | 'operatingHours' | 'specialHours'>[], now: string, cartBasedLeadTime: number): FulfillmentTime | null => {
   if (!HasOperatingHoursForFulfillments(fulfillmentConfigs)) {
     return null;
   }
