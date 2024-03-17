@@ -728,7 +728,7 @@ export interface WProductMetadata {
 }
 
 export interface WCPProduct {
-  PRODUCT_CLASS: IProduct;
+  productId: string;
   modifiers: ProductModifierEntry[];
 };
 

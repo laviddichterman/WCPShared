@@ -13,7 +13,8 @@ import {
   WCPProduct,
   OptionPlacement,
   DISABLE_REASON,
-  ICatalogSelectors
+  ICatalogSelectors,
+  CatalogCategoryEntry
 } from "../types";
 
 import { CreateWCPProduct, WCPProductGenerateMetadata } from "./WCPProduct";
@@ -62,7 +63,7 @@ export function FilterProduct(item: IProductInstance, menu: IMenu, disable_from_
  * @returns true if the product passes filters for availability
  */
 export function FilterWCPProduct(item: WCPProduct, catalog: ICatalogSelectors, order_time: Date | number, fulfillmentId: string, filterIncomplete: boolean) {
-  const productEntry = catalog.productEntry(item.PRODUCT_CLASS.id);
+  const productEntry = catalog.productEntry(item.productId);
   const newMetadata = WCPProductGenerateMetadata(item, catalog, order_time, fulfillmentId);
   const failsIncompleteCheck = !filterIncomplete || !newMetadata.incomplete;
   return failsIncompleteCheck &&
@@ -217,8 +218,8 @@ function ComputeCategories(cat: ICatalogSelectors, product_classes: MenuProducts
       menu: [],
       children: [...catalogCategory.children].sort((a, b) => cat.category(a)!.category.ordinal - cat.category(b)!.category.ordinal),
       menu_name: catalogCategory.category.description || catalogCategory.category.name,
-      subtitle: catalogCategory.category?.subheading || null,
-      footer: catalogCategory.category?.footnotes || null,
+      subtitle: catalogCategory.category.subheading || null,
+      footer: catalogCategory.category.footnotes || null,
       serviceDisable: [...catalogCategory.category.serviceDisable],
       nesting: catalogCategory.category.display_flags.nesting
     }
@@ -237,7 +238,7 @@ function ComputeProductInstanceMetadata(menuProducts: MenuProducts, catalog: ICa
   const md: MenuProductInstanceMetadata = {};
   Object.values(menuProducts).forEach(productEntry => {
     productEntry.instances_list.forEach(pi => {
-      md[pi.id] = WCPProductGenerateMetadata(CreateWCPProduct(productEntry.product, pi.modifiers), catalog, service_time, fulfillmentId)
+      md[pi.id] = WCPProductGenerateMetadata(CreateWCPProduct(productEntry.product.id, pi.modifiers), catalog, service_time, fulfillmentId)
     });
   });
   return md;
@@ -253,7 +254,7 @@ export function GenerateMenu(catalog: ICatalogSelectors, version: string, servic
 }
 
 export function DoesProductExistInMenu(menu: IMenu, product: WCPProduct) {
-  return Object.hasOwn(menu.product_classes, product.PRODUCT_CLASS.id) &&
+  return Object.hasOwn(menu.product_classes, product.productId) &&
     product.modifiers.reduce((acc, mod) => acc &&
       Object.hasOwn(menu.modifiers, mod.modifierTypeId) &&
       mod.options.reduce((optAcc, o) => optAcc && Object.hasOwn(menu.modifiers[mod.modifierTypeId].options, o.optionId), true), true);
@@ -261,4 +262,16 @@ export function DoesProductExistInMenu(menu: IMenu, product: WCPProduct) {
 
 export function CanThisBeOrderedAtThisTimeAndFulfillment(product: WCPProduct, menu: IMenu, catalog: ICatalogSelectors, serviceTime: Date | number, fulfillment: string, filterIncomplete: boolean) {
   return DoesProductExistInMenu(menu, product) && FilterWCPProduct(product, catalog, serviceTime, fulfillment, filterIncomplete);
+}
+
+// these following functions are meant to remove the WMenu object and function as cacheable selectors
+
+export function SelectProductInstancesInCategory(catalogCategory: CatalogCategoryEntry, productSelector: ICatalogSelectors['productEntry']) {
+  return catalogCategory.products.reduce((acc, productId) => {
+    const product = productSelector(productId);
+    if (product) {
+      return [...acc, ...product.instances];
+    }
+    return acc;
+  }, [] as string[])
 }

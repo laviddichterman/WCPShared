@@ -1,6 +1,6 @@
 import { DisableDataCheck, PRODUCT_NAME_MODIFIER_TEMPLATE_REGEX } from "../common";
 import { WFunctional } from "./WFunctional";
-import type { IProduct, IProductInstance, ProductModifierEntry, WCPProduct, WProductMetadata, MTID_MOID, IOptionInstance, MetadataModifierMap, ModifierDisplayListByLocation, MetadataModifierOptionMapEntry, WProduct, WCPProductV2Dto, IMoney, Selector, CatalogModifierEntry, ICatalogSelectors, ICatalogModifierSelectors, IOption } from '../types';
+import type { IProduct, IProductInstance, ProductModifierEntry, WCPProduct, WProductMetadata, MTID_MOID, IOptionInstance, MetadataModifierMap, ModifierDisplayListByLocation, MetadataModifierOptionMapEntry, WProduct, WCPProductV2Dto, IMoney, Selector, CatalogModifierEntry, ICatalogSelectors, ICatalogModifierSelectors, IOption, IProductModifier } from '../types';
 import { MODIFIER_MATCH, PRODUCT_LOCATION, DISPLAY_AS, DISABLE_REASON, OptionPlacement, OptionQualifier } from '../types';
 import { HandleOptionCurry, HandleOptionNameFilterOmitByName, HandleOptionNameNoFilter, IsOptionEnabled } from './WCPOption';
 import { cloneDeep } from 'lodash';
@@ -81,14 +81,13 @@ const MATCH_MATRIX: [MODIFIER_MATCH, MODIFIER_MATCH, boolean][][] = [
   // [[ NONE ], [ LEFT ], [ RIGHT], [ WHOLE]]
 ];
 
-export function CreateWCPProduct(product_class: IProduct, modifiers: ProductModifierEntry[]) {
-  return { PRODUCT_CLASS: product_class, modifiers: cloneDeep(modifiers) } as WCPProduct;
+export function CreateWCPProduct(productId: string, modifiers: ProductModifierEntry[]) {
+  return { productId: productId, modifiers: cloneDeep(modifiers) } as WCPProduct;
 }
 
 export function CreateProductWithMetadataFromV2Dto(dto: WCPProductV2Dto, catalogSelectors: ICatalogSelectors, service_time: Date | number, fulfillmentId: string): WProduct {
-  const productEntry = catalogSelectors.productEntry(dto.pid)!;
   // TODO: remove this sort and do the sort in the metadata computation
-  const wcpProduct = CreateWCPProduct(productEntry.product, dto.modifiers.slice().sort((a, b) => catalogSelectors.modifierEntry(a.modifierTypeId)!.modifierType.ordinal - catalogSelectors.modifierEntry(b.modifierTypeId)!.modifierType.ordinal));
+  const wcpProduct = CreateWCPProduct(dto.pid, dto.modifiers.slice().sort((a, b) => catalogSelectors.modifierEntry(a.modifierTypeId)!.modifierType.ordinal - catalogSelectors.modifierEntry(b.modifierTypeId)!.modifierType.ordinal));
   const productMetadata = WCPProductGenerateMetadata(wcpProduct, catalogSelectors, service_time, fulfillmentId);
   return { p: wcpProduct, m: productMetadata };
 }
@@ -119,25 +118,25 @@ function MetadataModifiersInstanceListGetter(mil: MetadataModifierMap): (mtid: s
 type ModifierGetter = (mtid: string) => IOptionInstance[];
 /**
  * Takes two products, a and b, and computes comparison info
- * @param productClass the shared IProduct of A and B
+ * @param productModifierDefinition the shared productModifierDefinition of A and B
  * @param aModifiersGetter getter/transformation function for the modifiers of the product 'a'
  * @param bModifiersGetter getter/transformation function for the modifiers of the product we're comparing "a" to, 
  * required to be of the same product class
  * @param partialCatalog the modifiers and options section of the ICatalog
  */
-function WProductCompareGeneric(productClass: IProduct, aModifiersGetter: ModifierGetter, bModifiersGetter: ModifierGetter, selectModifierEntry: Selector<CatalogModifierEntry>) {
+function WProductCompareGeneric(productModifierDefinition: IProductModifier[], aModifiersGetter: ModifierGetter, bModifiersGetter: ModifierGetter, selectModifierEntry: Selector<CatalogModifierEntry>) {
   // this is a multi-dim array, in order of the MTID as it exists in the product class definition
   // disabled modifier types and modifier options are all present as they shouldn't contribute to comparison mismatch
   // elements of the modifiers_match_matrix are arrays of <LEFT_MATCH, RIGHT_MATCH> tuples
   const modifiers_match_matrix: LR_MODIFIER_MATCH_MATRIX = [[], []];
-  productClass.modifiers.forEach((modifier) => {
+  productModifierDefinition.forEach((modifier) => {
     const modifierOptionsLength = selectModifierEntry(modifier.mtid)?.options?.length ?? 0;
     modifiers_match_matrix[LEFT_SIDE].push(Array(modifierOptionsLength).fill(EXACT_MATCH));
     modifiers_match_matrix[RIGHT_SIDE].push(Array(modifierOptionsLength).fill(EXACT_MATCH));
   })
   let is_mirror = true;
   // main comparison loop!
-  productClass.modifiers.forEach((modifier, mIdX) => {
+  productModifierDefinition.forEach((modifier, mIdX) => {
     const mtid = modifier.mtid;
     const first_option_list = aModifiersGetter(mtid);
     const other_option_list = bModifiersGetter(mtid);
@@ -187,25 +186,28 @@ function WProductCompareGeneric(productClass: IProduct, aModifiersGetter: Modifi
 }
 
 export function WProductMetadataCompareProducts(productClass: IProduct, a: MetadataModifierMap, b: MetadataModifierMap, selectModifierEntry: Selector<CatalogModifierEntry>) {
-  return WProductCompareGeneric(productClass, MetadataModifiersInstanceListGetter(a), MetadataModifiersInstanceListGetter(b), selectModifierEntry);
+  return WProductCompareGeneric(productClass.modifiers, MetadataModifiersInstanceListGetter(a), MetadataModifiersInstanceListGetter(b), selectModifierEntry);
 }
 
-export function WProductCompareToIProductInstance(a: WCPProduct, b: IProductInstance, selectModifierEntry: Selector<CatalogModifierEntry>) {
+export function WProductCompareToIProductInstance(a: WCPProduct, b: IProductInstance, catalogSelectors: Pick<ICatalogSelectors, "modifierEntry" | "productEntry">) {
+  const productA = catalogSelectors.productEntry(a.productId);
   // need to compare PIDs of first and other, then use the PID to develop the modifiers matrix since one of the two product instances might not have a value for every modifier.
-  if (a.PRODUCT_CLASS.id !== b.productId) {
+  if (a.productId !== b.productId || !productA) {
     // no match on PID so we need to return 0
     return { mirror: false, match_matrix: [[], []], match: [NO_MATCH, NO_MATCH] } as WProductCompareResult;
   }
-  return WProductCompareGeneric(a.PRODUCT_CLASS, ProductModifierEntriesGetter(a.modifiers), ProductModifierEntriesGetter(b.modifiers), selectModifierEntry);
+
+  return WProductCompareGeneric(productA.product.modifiers, ProductModifierEntriesGetter(a.modifiers), ProductModifierEntriesGetter(b.modifiers), catalogSelectors.modifierEntry);
 }
 
-export function WProductCompare(a: WCPProduct, b: WCPProduct, selectModifierEntry: Selector<CatalogModifierEntry>) {
+export function WProductCompare(a: WCPProduct, b: WCPProduct, catalogSelectors: Pick<ICatalogSelectors, "modifierEntry" | "productEntry">) {
+  const productA = catalogSelectors.productEntry(a.productId);
   // need to compare PIDs of first and other, then use the PID to develop the modifiers matrix since one of the two product instances might not have a value for every modifier.
-  if (a.PRODUCT_CLASS.id !== b.PRODUCT_CLASS.id) {
+  if (a.productId !== b.productId || !productA) {
     // no match on PID so we need to return 0
     return { mirror: false, match_matrix: [[], []], match: [NO_MATCH, NO_MATCH] } as WProductCompareResult;
   }
-  return WProductCompareGeneric(a.PRODUCT_CLASS, ProductModifierEntriesGetter(a.modifiers), ProductModifierEntriesGetter(b.modifiers), selectModifierEntry);
+  return WProductCompareGeneric(productA.product.modifiers, ProductModifierEntriesGetter(a.modifiers), ProductModifierEntriesGetter(b.modifiers), catalogSelectors.modifierEntry);
 }
 
 export function WProductEquals(comparison: WProductCompareResult) {
@@ -285,10 +287,11 @@ const RunTemplating = (product: IProduct, catModSelectors: ICatalogModifierSelec
 
 interface IMatchInfo { product: [IProductInstance | null, IProductInstance | null], comparison: LR_MODIFIER_MATCH_MATRIX; comparison_value: [MODIFIER_MATCH, MODIFIER_MATCH] };
 
+
 export function WCPProductGenerateMetadata(a: WCPProduct, catalogSelectors: ICatalogSelectors, service_time: Date | number, fulfillmentId: string) {
-  const PRODUCT_CLASS_ENTRY = catalogSelectors.productEntry(a.PRODUCT_CLASS.id);
+  const PRODUCT_CLASS_ENTRY = catalogSelectors.productEntry(a.productId);
   if (!PRODUCT_CLASS_ENTRY) {
-    const errMsg = `Cannot find product class ID ${a.PRODUCT_CLASS.id}`;
+    const errMsg = `Cannot find product class ID ${a.productId}`;
     console.error(errMsg);
     throw (errMsg);
   }
@@ -322,7 +325,7 @@ export function WCPProductGenerateMetadata(a: WCPProduct, catalogSelectors: ICat
     .sort((a, b) => a.ordinal - b.ordinal)
     .forEach(comparison_product => {
       if (match_info.product[LEFT_SIDE] === null || match_info.product[RIGHT_SIDE] === null) {
-        const comparison_info = WProductCompareToIProductInstance(a, comparison_product, catalogSelectors.modifierEntry);
+        const comparison_info = WProductCompareToIProductInstance(a, comparison_product, catalogSelectors);
         CheckMatchForSide(LEFT_SIDE, comparison_info, comparison_product);
         CheckMatchForSide(RIGHT_SIDE, comparison_info, comparison_product);
       }
@@ -405,7 +408,7 @@ export function WCPProductGenerateMetadata(a: WCPProduct, catalogSelectors: ICat
     { enable: DISABLE_REASON.DISABLED_FUNCTION, functionId: string } |
     { enable: DISABLE_REASON.DISABLED_FULFILLMENT_TYPE, fulfillment: string }) =
       pc_modifier.serviceDisable.indexOf(fulfillmentId) !== -1 ? { enable: DISABLE_REASON.DISABLED_FULFILLMENT_TYPE, fulfillment: fulfillmentId } :
-        (!modifier_type_enable_function || WFunctional.ProcessProductInstanceFunction(a, modifier_type_enable_function, catalogSelectors) ?
+        (!modifier_type_enable_function || WFunctional.ProcessProductInstanceFunction(a.modifiers, modifier_type_enable_function, catalogSelectors) ?
           { enable: DISABLE_REASON.ENABLED } :
           { enable: DISABLE_REASON.DISABLED_FUNCTION, functionId: modifier_type_enable_function.id });
 

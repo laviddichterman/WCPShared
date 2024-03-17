@@ -22,6 +22,22 @@ export const RebuildAndSortCart = (cart: CoreCartEntry<WCPProductV2Dto>[], catal
     }, {});
 }
 
+// TODO: this could get generified to take WCPProductV2Dto or WCPProduct or WProduct
+type MapPrinterGroupToCartEntry = Record<string, CoreCartEntry<WProduct>[]>;
+export const CartByPrinterGroup = (cart: CoreCartEntry<WProduct>[], productSelector: ICatalogSelectors['productEntry']): MapPrinterGroupToCartEntry =>
+  cart
+    .flat()
+    .map(x => ({ entry: x, printerGroupId: productSelector(x.product.p.productId)?.product.printerGroup ?? null }))
+    .filter(x => x.printerGroupId !== null)
+    .reduce((acc: MapPrinterGroupToCartEntry, x) =>
+    ({
+      ...acc,
+      [x.printerGroupId!]: Object.hasOwn(acc, x.printerGroupId!) ?
+        [...acc[x.printerGroupId!], x.entry] :
+        [x.entry]
+    }), {});
+
+
 // at some point this can use an actual scheduling algorithm, but for the moment it needs to just be a best guess
 export const DetermineCartBasedLeadTime = (cart: CoreCartEntry<WCPProductV2Dto>[], productSelector: Selector<CatalogProductEntry>): number => {
   const leadTimeMap: Record<number, { base: number; quant: number; }> = cart.reduce((acc, cartLine) => {

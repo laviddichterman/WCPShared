@@ -62,9 +62,10 @@ export function IsOptionEnabled(option: IOption, product: WCPProduct, bake_count
   // TODO: needs to factor in disable data for time based disable
   // TODO: needs to return false if we would exceed the limit for this modifier, IF that limit is > 1, because if it's === 1
   // we would handle the limitation by using smarts at the wcpmodifierdir level
+  const productClassEntry = catalogSelectors.productEntry(product.productId)!
   const placement = GetPlacementFromMIDOID(product.modifiers, option.modifierTypeId, option.id);
   // TODO: bake and flavor stuff should move into the enable_filter itself, the option itself should just hold generalized metadata the enable filter function can use/reference
-  const { bake_max, flavor_max, bake_differential } = product.PRODUCT_CLASS.displayFlags;
+  const { bake_max, flavor_max, bake_differential } = productClassEntry.product.displayFlags;
   const proposed_delta = DELTA_MATRIX[placement.placement][location];
 
   const bake_after = [bake_count[LEFT_SIDE] + (option.metadata.bake_factor * proposed_delta[LEFT_SIDE]), bake_count[RIGHT_SIDE] + (option.metadata.bake_factor * proposed_delta[1])];
@@ -82,7 +83,7 @@ export function IsOptionEnabled(option: IOption, product: WCPProduct, bake_count
     return { enable: DISABLE_REASON.DISABLED_FLAVORS };
   }
   const enableFunction = option.enable ? catalogSelectors.productInstanceFunction(option.enable) : undefined;
-  const passesEnableFunction = !enableFunction || WFunctional.ProcessProductInstanceFunction(product, enableFunction, catalogSelectors) as boolean;
+  const passesEnableFunction = !enableFunction || WFunctional.ProcessProductInstanceFunction(product.modifiers, enableFunction, catalogSelectors) as boolean;
   if (!passesEnableFunction) {
     return { enable: DISABLE_REASON.DISABLED_FUNCTION, functionId: option.enable! };
   }
