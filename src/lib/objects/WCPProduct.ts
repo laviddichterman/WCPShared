@@ -82,13 +82,14 @@ const MATCH_MATRIX: [MODIFIER_MATCH, MODIFIER_MATCH, boolean][][] = [
 ];
 
 export function CreateWCPProduct(productId: string, modifiers: ProductModifierEntry[]) {
+  // todo: check if cloneDeep is still needed here
   return { productId: productId, modifiers: cloneDeep(modifiers) } as WCPProduct;
 }
 
 export function CreateProductWithMetadataFromV2Dto(dto: WCPProductV2Dto, catalogSelectors: ICatalogSelectors, service_time: Date | number, fulfillmentId: string): WProduct {
   // TODO: remove this sort and do the sort in the metadata computation
-  const wcpProduct = CreateWCPProduct(dto.pid, dto.modifiers.slice().sort((a, b) => catalogSelectors.modifierEntry(a.modifierTypeId)!.modifierType.ordinal - catalogSelectors.modifierEntry(b.modifierTypeId)!.modifierType.ordinal));
-  const productMetadata = WCPProductGenerateMetadata(wcpProduct, catalogSelectors, service_time, fulfillmentId);
+  const wcpProduct = CreateWCPProduct(dto.pid, dto.modifiers);
+  const productMetadata = WCPProductGenerateMetadata(wcpProduct.productId, wcpProduct.modifiers, catalogSelectors, service_time, fulfillmentId);
   return { p: wcpProduct, m: productMetadata };
 }
 
@@ -288,10 +289,10 @@ const RunTemplating = (product: IProduct, catModSelectors: ICatalogModifierSelec
 interface IMatchInfo { product: [IProductInstance | null, IProductInstance | null], comparison: LR_MODIFIER_MATCH_MATRIX; comparison_value: [MODIFIER_MATCH, MODIFIER_MATCH] };
 
 
-export function WCPProductGenerateMetadata(a: WCPProduct, catalogSelectors: ICatalogSelectors, service_time: Date | number, fulfillmentId: string) {
-  const PRODUCT_CLASS_ENTRY = catalogSelectors.productEntry(a.productId);
+export function WCPProductGenerateMetadata(productId: string, modifiers: ProductModifierEntry[], catalogSelectors: ICatalogSelectors, service_time: Date | number, fulfillmentId: string) {
+  const PRODUCT_CLASS_ENTRY = catalogSelectors.productEntry(productId);
   if (!PRODUCT_CLASS_ENTRY) {
-    const errMsg = `Cannot find product class ID ${a.productId}`;
+    const errMsg = `Cannot find product class ID ${productId}`;
     console.error(errMsg);
     throw (errMsg);
   }
@@ -325,7 +326,7 @@ export function WCPProductGenerateMetadata(a: WCPProduct, catalogSelectors: ICat
     .sort((a, b) => a.ordinal - b.ordinal)
     .forEach(comparison_product => {
       if (match_info.product[LEFT_SIDE] === null || match_info.product[RIGHT_SIDE] === null) {
-        const comparison_info = WProductCompareToIProductInstance(a, comparison_product, catalogSelectors);
+        const comparison_info = WProductCompareToIProductInstance({ productId, modifiers }, comparison_product, catalogSelectors);
         CheckMatchForSide(LEFT_SIDE, comparison_info, comparison_product);
         CheckMatchForSide(RIGHT_SIDE, comparison_info, comparison_product);
       }
@@ -343,13 +344,13 @@ export function WCPProductGenerateMetadata(a: WCPProduct, catalogSelectors: ICat
   const leftPI = match_info.product[LEFT_SIDE];
   const rightPI = match_info.product[RIGHT_SIDE];
   if (leftPI === null || rightPI === null) {
-    throw (`Unable to determine product metadata. Match info for PC_ID ${PRODUCT_CLASS.id} with modifiers of ${JSON.stringify(a.modifiers)}: ${JSON.stringify(match_info)}.`);
+    throw (`Unable to determine product metadata. Match info for PC_ID ${PRODUCT_CLASS.id} with modifiers of ${JSON.stringify(modifiers)}: ${JSON.stringify(match_info)}.`);
   }
 
   let price = PRODUCT_CLASS.price.amount;
 
   // We need to compute this before the modifier match matrix, otherwise the metadata limits won't be pre-computed
-  a.modifiers.forEach((modifierEntry: ProductModifierEntry) => {
+  modifiers.forEach((modifierEntry: ProductModifierEntry) => {
     modifierEntry.options.forEach((opt: IOptionInstance) => {
       const mo = catalogSelectors.option(opt.optionId);
       if (!mo) {
@@ -393,102 +394,104 @@ export function WCPProductGenerateMetadata(a: WCPProduct, catalogSelectors: ICat
 
   // split out options beyond the base product into left additions, right additions, and whole additions
   // each entry in these arrays represents the modifier index on the product class and the option index in that particular modifier
-  PRODUCT_CLASS.modifiers.forEach((pc_modifier, mtIdX) => {
-    const { mtid } = pc_modifier;
-    const modifier_type_enable_function = pc_modifier.enable !== null ? catalogSelectors.productInstanceFunction(pc_modifier.enable) : undefined;
-    const CATALOG_MODIFIER_INFO = catalogSelectors.modifierEntry(mtid);
-    if (!CATALOG_MODIFIER_INFO) {
-      console.error(`Cannot find modifier ID ${mtid} specified in product class ID ${PRODUCT_CLASS.id}`);
-      return;
-    }
-    const is_single_select = CATALOG_MODIFIER_INFO.modifierType.min_selected === 1 && CATALOG_MODIFIER_INFO.modifierType.max_selected === 1;
-    const is_base_product_edge_case = is_single_select && !PRODUCT_CLASS.displayFlags.show_name_of_base_product;
-    metadata.modifier_map[mtid] = { has_selectable: false, meets_minimum: false, options: {} };
-    const enable_modifier_type: ({ enable: DISABLE_REASON.ENABLED } |
-    { enable: DISABLE_REASON.DISABLED_FUNCTION, functionId: string } |
-    { enable: DISABLE_REASON.DISABLED_FULFILLMENT_TYPE, fulfillment: string }) =
-      pc_modifier.serviceDisable.indexOf(fulfillmentId) !== -1 ? { enable: DISABLE_REASON.DISABLED_FULFILLMENT_TYPE, fulfillment: fulfillmentId } :
-        (!modifier_type_enable_function || WFunctional.ProcessProductInstanceFunction(a.modifiers, modifier_type_enable_function, catalogSelectors) ?
-          { enable: DISABLE_REASON.ENABLED } :
-          { enable: DISABLE_REASON.DISABLED_FUNCTION, functionId: modifier_type_enable_function.id });
-
-    // this is a dangerous swap from menu to catalog where we don't have a contract on if we should be going through filtered modifiers at this point or not
-    CATALOG_MODIFIER_INFO.options.forEach((oId) => {
-      const option_object = catalogSelectors.option(oId);
-      if (!option_object) {
-        console.error(`Unable to find modifier option ${oId} of modifier type: ${CATALOG_MODIFIER_INFO.modifierType.name} (${mtid})`)
+  PRODUCT_CLASS.modifiers
+    .map(productModifier => ({ modifierEntry: catalogSelectors.modifierEntry(productModifier.mtid), productModifier })) // get the catalog modifier entry
+    .sort((a, b) => (a.modifierEntry?.modifierType.ordinal ?? 0) - (b.modifierEntry?.modifierType.ordinal ?? 0))
+    .forEach(({ modifierEntry, productModifier }, mtIdX) => {
+      const { mtid } = productModifier;
+      if (!modifierEntry) {
+        console.error(`Cannot find modifier ID ${mtid} specified in product class ID ${PRODUCT_CLASS.id}`);
         return;
       }
-      const can_split = option_object.metadata.can_split ? { enable: DISABLE_REASON.ENABLED } : { enable: DISABLE_REASON.DISABLED_NO_SPLITTING };
-      const is_enabled = enable_modifier_type.enable === DISABLE_REASON.ENABLED ? DisableDataCheck(option_object.disabled, option_object.availability, service_time) : enable_modifier_type;
-      const option_info = {
-        placement: OptionPlacement.NONE,
-        qualifier: OptionQualifier.REGULAR,
-        // do we need to figure out if we can de-select? answer: probably
-        enable_left: can_split.enable !== DISABLE_REASON.ENABLED ? can_split : (is_enabled.enable !== DISABLE_REASON.ENABLED ? is_enabled : IsOptionEnabled(option_object, a, metadata.bake_count, metadata.flavor_count, OptionPlacement.LEFT, catalogSelectors)),
-        enable_right: can_split.enable !== DISABLE_REASON.ENABLED ? can_split : (is_enabled.enable !== DISABLE_REASON.ENABLED ? is_enabled : IsOptionEnabled(option_object, a, metadata.bake_count, metadata.flavor_count, OptionPlacement.RIGHT, catalogSelectors)),
-        enable_whole: is_enabled.enable !== DISABLE_REASON.ENABLED ? is_enabled : IsOptionEnabled(option_object, a, metadata.bake_count, metadata.flavor_count, OptionPlacement.WHOLE, catalogSelectors),
-      } as MetadataModifierOptionMapEntry;
-      const enable_left_or_right = option_info.enable_left.enable === DISABLE_REASON.ENABLED || option_info.enable_right.enable === DISABLE_REASON.ENABLED;
-      metadata.advanced_option_eligible ||= enable_left_or_right;
-      metadata.modifier_map[mtid].options[option_object.id] = option_info;
-      metadata.modifier_map[mtid].has_selectable ||= enable_left_or_right || option_info.enable_whole.enable === DISABLE_REASON.ENABLED;
-    })
+      const modifier_type_enable_function = productModifier.enable !== null ? catalogSelectors.productInstanceFunction(productModifier.enable) : undefined;
+      const is_single_select = modifierEntry.modifierType.min_selected === 1 && modifierEntry.modifierType.max_selected === 1;
+      const is_base_product_edge_case = is_single_select && !PRODUCT_CLASS.displayFlags.show_name_of_base_product;
+      metadata.modifier_map[mtid] = { has_selectable: false, meets_minimum: false, options: {} };
+      const enable_modifier_type: ({ enable: DISABLE_REASON.ENABLED } |
+      { enable: DISABLE_REASON.DISABLED_FUNCTION, functionId: string } |
+      { enable: DISABLE_REASON.DISABLED_FULFILLMENT_TYPE, fulfillment: string }) =
+        productModifier.serviceDisable.indexOf(fulfillmentId) !== -1 ? { enable: DISABLE_REASON.DISABLED_FULFILLMENT_TYPE, fulfillment: fulfillmentId } :
+          (!modifier_type_enable_function || WFunctional.ProcessProductInstanceFunction(modifiers, modifier_type_enable_function, catalogSelectors) ?
+            { enable: DISABLE_REASON.ENABLED } :
+            { enable: DISABLE_REASON.DISABLED_FUNCTION, functionId: modifier_type_enable_function.id });
 
-    const num_selected = [0, 0];
-    const foundProductModifierEntry = a.modifiers.find(x => x.modifierTypeId === mtid);
-    if (foundProductModifierEntry) {
-      foundProductModifierEntry.options.forEach((placed_option) => {
-        const moid = placed_option.optionId;
-        const location = placed_option.placement;
-        const moIdX = CATALOG_MODIFIER_INFO.options.indexOf(moid);
-        metadata.modifier_map[mtid].options[moid].placement = location;
-        switch (location) {
-          case OptionPlacement.LEFT: metadata.exhaustive_modifiers.left.push([mtid, moid]); ++num_selected[LEFT_SIDE]; metadata.advanced_option_selected = true; break;
-          case OptionPlacement.RIGHT: metadata.exhaustive_modifiers.right.push([mtid, moid]); ++num_selected[RIGHT_SIDE]; metadata.advanced_option_selected = true; break;
-          case OptionPlacement.WHOLE: metadata.exhaustive_modifiers.whole.push([mtid, moid]); ++num_selected[LEFT_SIDE]; ++num_selected[RIGHT_SIDE]; break;
-          default: break;
+      // this is a dangerous swap from menu to catalog where we don't have a contract on if we should be going through filtered modifiers at this point or not
+      modifierEntry.options.forEach((oId) => {
+        const option_object = catalogSelectors.option(oId);
+        if (!option_object) {
+          console.error(`Unable to find modifier option ${oId} of modifier type: ${modifierEntry.modifierType.name} (${mtid})`)
+          return;
         }
-        const opt_compare_info = [match_info.comparison[LEFT_SIDE][mtIdX][moIdX], match_info.comparison[RIGHT_SIDE][mtIdX][moIdX]];
-        if ((opt_compare_info[LEFT_SIDE] === AT_LEAST && opt_compare_info[RIGHT_SIDE] === AT_LEAST) ||
-          (is_base_product_edge_case && is_compare_to_base[LEFT_SIDE] && is_compare_to_base[RIGHT_SIDE] &&
-            opt_compare_info[LEFT_SIDE] === EXACT_MATCH && opt_compare_info[RIGHT_SIDE] === EXACT_MATCH)) {
-          metadata.additional_modifiers.whole.push([mtid, moid]);
-        }
-        else if (opt_compare_info[RIGHT_SIDE] === AT_LEAST ||
-          (is_base_product_edge_case && is_compare_to_base[RIGHT_SIDE] && opt_compare_info[RIGHT_SIDE] === EXACT_MATCH)) {
-          metadata.additional_modifiers.right.push([mtid, moid]);
-        }
-        else if (opt_compare_info[LEFT_SIDE] === AT_LEAST ||
-          (is_base_product_edge_case && is_compare_to_base[LEFT_SIDE] && opt_compare_info[LEFT_SIDE] === EXACT_MATCH)) {
-          metadata.additional_modifiers.left.push([mtid, moid]);
-        }
-      });
-    }
-    const EMPTY_DISPLAY_AS = CATALOG_MODIFIER_INFO.modifierType.displayFlags.empty_display_as;
-    const MIN_SELECTED = CATALOG_MODIFIER_INFO.modifierType.min_selected;
-    // we check for an incomplete modifier and add an entry if the empty_display_as flag is anything other than OMIT
-    if (num_selected[LEFT_SIDE] < MIN_SELECTED &&
-      num_selected[RIGHT_SIDE] < MIN_SELECTED) {
-      if (EMPTY_DISPLAY_AS !== DISPLAY_AS.OMIT && metadata.modifier_map[mtid].has_selectable) { metadata.exhaustive_modifiers.whole.push([mtid, ""]); }
-      metadata.modifier_map[mtid].meets_minimum = !metadata.modifier_map[mtid].has_selectable;
-      metadata.incomplete ||= metadata.modifier_map[mtid].has_selectable;
-    }
-    else if (num_selected[LEFT_SIDE] < MIN_SELECTED) {
-      if (EMPTY_DISPLAY_AS !== DISPLAY_AS.OMIT && metadata.modifier_map[mtid].has_selectable) { metadata.exhaustive_modifiers.left.push([mtid, ""]); }
-      metadata.modifier_map[mtid].meets_minimum = !metadata.modifier_map[mtid].has_selectable;
-      metadata.incomplete ||= metadata.modifier_map[mtid].has_selectable;
-    }
-    else if (num_selected[RIGHT_SIDE] < MIN_SELECTED) {
-      if (EMPTY_DISPLAY_AS !== DISPLAY_AS.OMIT && metadata.modifier_map[mtid].has_selectable) { metadata.exhaustive_modifiers.right.push([mtid, ""]); }
-      metadata.modifier_map[mtid].meets_minimum = !metadata.modifier_map[mtid].has_selectable;
-      metadata.incomplete ||= metadata.modifier_map[mtid].has_selectable;
-    }
-    else {
-      // both left and right meet the minimum selected criteria
-      metadata.modifier_map[mtid].meets_minimum = true;
-    }
-  });
+        const can_split = option_object.metadata.can_split ? { enable: DISABLE_REASON.ENABLED } : { enable: DISABLE_REASON.DISABLED_NO_SPLITTING };
+        const is_enabled = enable_modifier_type.enable === DISABLE_REASON.ENABLED ? DisableDataCheck(option_object.disabled, option_object.availability, service_time) : enable_modifier_type;
+        const option_info = {
+          placement: OptionPlacement.NONE,
+          qualifier: OptionQualifier.REGULAR,
+          // do we need to figure out if we can de-select? answer: probably
+          enable_left: can_split.enable !== DISABLE_REASON.ENABLED ? can_split : (is_enabled.enable !== DISABLE_REASON.ENABLED ? is_enabled : IsOptionEnabled(option_object, { productId, modifiers }, metadata.bake_count, metadata.flavor_count, OptionPlacement.LEFT, catalogSelectors)),
+          enable_right: can_split.enable !== DISABLE_REASON.ENABLED ? can_split : (is_enabled.enable !== DISABLE_REASON.ENABLED ? is_enabled : IsOptionEnabled(option_object, { productId, modifiers }, metadata.bake_count, metadata.flavor_count, OptionPlacement.RIGHT, catalogSelectors)),
+          enable_whole: is_enabled.enable !== DISABLE_REASON.ENABLED ? is_enabled : IsOptionEnabled(option_object, { productId, modifiers }, metadata.bake_count, metadata.flavor_count, OptionPlacement.WHOLE, catalogSelectors),
+        } as MetadataModifierOptionMapEntry;
+        const enable_left_or_right = option_info.enable_left.enable === DISABLE_REASON.ENABLED || option_info.enable_right.enable === DISABLE_REASON.ENABLED;
+        metadata.advanced_option_eligible ||= enable_left_or_right;
+        metadata.modifier_map[mtid].options[option_object.id] = option_info;
+        metadata.modifier_map[mtid].has_selectable ||= enable_left_or_right || option_info.enable_whole.enable === DISABLE_REASON.ENABLED;
+      })
+
+      const num_selected = [0, 0];
+      const foundProductModifierEntry = modifiers.find(x => x.modifierTypeId === mtid);
+      if (foundProductModifierEntry) {
+        foundProductModifierEntry.options.forEach((placed_option) => {
+          const moid = placed_option.optionId;
+          const location = placed_option.placement;
+          const moIdX = modifierEntry.options.indexOf(moid);
+          metadata.modifier_map[mtid].options[moid].placement = location;
+          switch (location) {
+            case OptionPlacement.LEFT: metadata.exhaustive_modifiers.left.push([mtid, moid]); ++num_selected[LEFT_SIDE]; metadata.advanced_option_selected = true; break;
+            case OptionPlacement.RIGHT: metadata.exhaustive_modifiers.right.push([mtid, moid]); ++num_selected[RIGHT_SIDE]; metadata.advanced_option_selected = true; break;
+            case OptionPlacement.WHOLE: metadata.exhaustive_modifiers.whole.push([mtid, moid]); ++num_selected[LEFT_SIDE]; ++num_selected[RIGHT_SIDE]; break;
+            default: break;
+          }
+          const opt_compare_info = [match_info.comparison[LEFT_SIDE][mtIdX][moIdX], match_info.comparison[RIGHT_SIDE][mtIdX][moIdX]];
+          if ((opt_compare_info[LEFT_SIDE] === AT_LEAST && opt_compare_info[RIGHT_SIDE] === AT_LEAST) ||
+            (is_base_product_edge_case && is_compare_to_base[LEFT_SIDE] && is_compare_to_base[RIGHT_SIDE] &&
+              opt_compare_info[LEFT_SIDE] === EXACT_MATCH && opt_compare_info[RIGHT_SIDE] === EXACT_MATCH)) {
+            metadata.additional_modifiers.whole.push([mtid, moid]);
+          }
+          else if (opt_compare_info[RIGHT_SIDE] === AT_LEAST ||
+            (is_base_product_edge_case && is_compare_to_base[RIGHT_SIDE] && opt_compare_info[RIGHT_SIDE] === EXACT_MATCH)) {
+            metadata.additional_modifiers.right.push([mtid, moid]);
+          }
+          else if (opt_compare_info[LEFT_SIDE] === AT_LEAST ||
+            (is_base_product_edge_case && is_compare_to_base[LEFT_SIDE] && opt_compare_info[LEFT_SIDE] === EXACT_MATCH)) {
+            metadata.additional_modifiers.left.push([mtid, moid]);
+          }
+        });
+      }
+      const EMPTY_DISPLAY_AS = modifierEntry.modifierType.displayFlags.empty_display_as;
+      const MIN_SELECTED = modifierEntry.modifierType.min_selected;
+      // we check for an incomplete modifier and add an entry if the empty_display_as flag is anything other than OMIT
+      if (num_selected[LEFT_SIDE] < MIN_SELECTED &&
+        num_selected[RIGHT_SIDE] < MIN_SELECTED) {
+        if (EMPTY_DISPLAY_AS !== DISPLAY_AS.OMIT && metadata.modifier_map[mtid].has_selectable) { metadata.exhaustive_modifiers.whole.push([mtid, ""]); }
+        metadata.modifier_map[mtid].meets_minimum = !metadata.modifier_map[mtid].has_selectable;
+        metadata.incomplete ||= metadata.modifier_map[mtid].has_selectable;
+      }
+      else if (num_selected[LEFT_SIDE] < MIN_SELECTED) {
+        if (EMPTY_DISPLAY_AS !== DISPLAY_AS.OMIT && metadata.modifier_map[mtid].has_selectable) { metadata.exhaustive_modifiers.left.push([mtid, ""]); }
+        metadata.modifier_map[mtid].meets_minimum = !metadata.modifier_map[mtid].has_selectable;
+        metadata.incomplete ||= metadata.modifier_map[mtid].has_selectable;
+      }
+      else if (num_selected[RIGHT_SIDE] < MIN_SELECTED) {
+        if (EMPTY_DISPLAY_AS !== DISPLAY_AS.OMIT && metadata.modifier_map[mtid].has_selectable) { metadata.exhaustive_modifiers.right.push([mtid, ""]); }
+        metadata.modifier_map[mtid].meets_minimum = !metadata.modifier_map[mtid].has_selectable;
+        metadata.incomplete ||= metadata.modifier_map[mtid].has_selectable;
+      }
+      else {
+        // both left and right meet the minimum selected criteria
+        metadata.modifier_map[mtid].meets_minimum = true;
+      }
+    });
 
   // check for an exact match before going through all the name computation
   if (!is_split && match_info.comparison_value[LEFT_SIDE] === EXACT_MATCH && match_info.comparison_value[RIGHT_SIDE] === EXACT_MATCH) {
