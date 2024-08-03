@@ -754,19 +754,19 @@ export interface CategoryEntry {
   // list of disabled fulfillmentIds
   serviceDisable: string[];
 };
-export type MenuCategories = Record<string, CategoryEntry>;
-export interface ProductEntry { product: IProduct; instances_list: IProductInstance[]; instances: RecordProductInstances; };
-export type MenuProducts = Record<string, ProductEntry>;
-export type MenuProductInstanceMetadata = Record<string, WProductMetadata>;
-export interface ModifierEntry { modifier_type: IOptionType; options_list: WCPOption[]; options: Record<string, WCPOption>; };
-export type MenuModifiers = Record<string, ModifierEntry>;
-export interface IMenu {
-  readonly modifiers: MenuModifiers;
-  readonly product_classes: MenuProducts;
-  readonly categories: MenuCategories;
-  readonly product_instance_metadata: MenuProductInstanceMetadata;
-  readonly version: string;
-};
+// export type MenuCategories = Record<string, CategoryEntry>;
+// export interface ProductEntry { product: IProduct; instances_list: IProductInstance[]; instances: RecordProductInstances; };
+// export type MenuProducts = Record<string, ProductEntry>;
+// export type MenuProductInstanceMetadata = Record<string, WProductMetadata>;
+// export interface ModifierEntry { modifier_type: IOptionType; options_list: WCPOption[]; options: Record<string, WCPOption>; };
+// export type MenuModifiers = Record<string, ModifierEntry>;
+// export interface IMenu {
+//   readonly modifiers: MenuModifiers;
+//   readonly product_classes: MenuProducts;
+//   readonly categories: MenuCategories;
+//   readonly product_instance_metadata: MenuProductInstanceMetadata;
+//   readonly version: string;
+// };
 
 export interface WCPProductV2Dto {
   pid: string;
@@ -949,6 +949,7 @@ export interface CoreCartEntry<T> extends ItemWithQuantity<T> {
   categoryId: string;
 };
 
+// TODO: change CartEntry from WProduct to WCPProduct and derive the metadata via a selector
 export interface CartEntry extends CoreCartEntry<WProduct> {
   id: string;
   isLocked: boolean;
