@@ -1166,3 +1166,14 @@ export interface RecomputeTotalsResult {
   balanceAfterPayments: IMoney;
   hasBankersRoundingTaxSkew: boolean;
 }
+
+// UpsertProductBatch types
+export type CreateIProduct = Omit<IProduct, 'id' | 'baseProductId'>; // CompleteProductWithoutIDs
+export type UpdateIProduct = (Pick<IProduct, 'id'> & Partial<Omit<IProduct, 'id'>>); // PartialProductWithIDs
+// aka CompleteProductInstanceWithoutIDsOrPartialProductInstanceWithIDs
+export type CreateIProductInstance = Omit<IProductInstance, 'id' | 'productId'>;
+export type UpdateIProductUpdateIProductInstance = Pick<IProductInstance, 'id'> & Partial<Omit<IProductInstance, 'id' | 'productId'>>;
+export type CreateProductBatch = { product: CreateIProduct; instances: CreateIProductInstance[] };
+export type UpdateProductBatch = { product: UpdateIProduct; instances: (CreateIProductInstance | UpdateIProductUpdateIProductInstance)[] };
+export type UpsertProductBatch = (CreateProductBatch | UpdateProductBatch);
+// end UpsertProductBatch types
