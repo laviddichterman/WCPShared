@@ -74,12 +74,12 @@ export const DateTimeIntervalBuilder = (fulfillmentTime: FulfillmentTime, fulfil
  * Function to check if something is disabled
  * @param {IWInterval} disable_data - catalog sourced info as to if/when the product is enabled or disabled
  * @param {Date | number} order_time - the time to use to check for disabling
- * @returns {{ enable: DISABLE_REASON.ENABLED } | { enable: DISABLE_REASON.DISABLED_BLANKET } | { enable: DISABLE_REASON.DISABLED_TIME, interval: IWInterval }}
+ * @returns {{ enable: DISABLE_REASON.ENABLED } | { enable: DISABLE_REASON.DISABLED_BLANKET } | { enable: DISABLE_REASON.DISABLED_TIME, interval: IWInterval } | { enable: DISABLE_REASON.DISABLED_AVAILABILITY, availability: IRecurringInterval[] }}
  */
-export function DisableDataCheck(disable_data: IWInterval | null, availability: IRecurringInterval | null, order_time: Date | number | string): ({ enable: DISABLE_REASON.ENABLED } |
+export function DisableDataCheck(disable_data: IWInterval | null, availabilities: IRecurringInterval[], order_time: Date | number | string): ({ enable: DISABLE_REASON.ENABLED } |
 { enable: DISABLE_REASON.DISABLED_BLANKET } |
 { enable: DISABLE_REASON.DISABLED_TIME, interval: IWInterval }) |
-{ enable: DISABLE_REASON.DISABLED_AVAILABILITY, availability: IRecurringInterval } {
+{ enable: DISABLE_REASON.DISABLED_AVAILABILITY, availability: IRecurringInterval[] } {
   if (disable_data) {
     if (disable_data.start > disable_data.end) {
       return { enable: DISABLE_REASON.DISABLED_BLANKET };
@@ -88,34 +88,35 @@ export function DisableDataCheck(disable_data: IWInterval | null, availability: 
       return { enable: DISABLE_REASON.DISABLED_TIME, interval: disable_data };
     }
   }
-  if (availability) {
-    if (availability.rrule === "") {
-      // we check for if we're INSIDE the availability interval here since we'll return that we're not otherwise later
-      if ((availability.interval.start === -1 || getTime(order_time) >= availability.interval.start) &&
-        (availability.interval.end === -1 && getTime(order_time) <= availability.interval.end)) {
-        return { enable: DISABLE_REASON.ENABLED };
-      }
-    } else {
-      try {
-        const beginningOfOrderDay = startOfDay(order_time);
-        const recRuleOpts = RRule.parseString(availability.rrule);
-        const recRule = new RRule({ dtstart: beginningOfOrderDay, ...recRuleOpts });
-        const nextRecurrence = recRule.after(beginningOfOrderDay, true);
-        if (nextRecurrence !== null && isSameDay(nextRecurrence, beginningOfOrderDay)) {
-          // the order day is part of the recurrence rule
-          // now determine if it's in the interval
-          const fulfillmentTime = WDateUtils.ComputeFulfillmentTime(order_time);
-          if (fulfillmentTime.selectedTime >= availability.interval.start && fulfillmentTime.selectedTime <= availability.interval.end) {
-            return { enable: DISABLE_REASON.ENABLED };
+  if (availabilities.length > 0) {
+    for (const availability of availabilities) {
+      if (availability.rrule === "") {
+        // we check for if we're INSIDE the availability interval here since we'll return that we're not otherwise later
+        if ((availability.interval.start === -1 || getTime(order_time) >= availability.interval.start) &&
+          (availability.interval.end === -1 && getTime(order_time) <= availability.interval.end)) {
+          return { enable: DISABLE_REASON.ENABLED };
+        }
+      } else {
+        try {
+          const beginningOfOrderDay = startOfDay(order_time);
+          const recRuleOpts = RRule.parseString(availability.rrule);
+          const recRule = new RRule({ dtstart: beginningOfOrderDay, ...recRuleOpts });
+          const nextRecurrence = recRule.after(beginningOfOrderDay, true);
+          if (nextRecurrence !== null && isSameDay(nextRecurrence, beginningOfOrderDay)) {
+            // the order day is part of the recurrence rule
+            // now determine if it's in the interval
+            const fulfillmentTime = WDateUtils.ComputeFulfillmentTime(order_time);
+            if (fulfillmentTime.selectedTime >= availability.interval.start && fulfillmentTime.selectedTime <= availability.interval.end) {
+              return { enable: DISABLE_REASON.ENABLED };
+            }
           }
         }
-      }
-      catch (_) {
-        console.error(`Unable to parse recurrence rule from ${availability.rrule}. Returning unavailable.`);
+        catch (_) {
+          console.error(`Unable to parse recurrence rule from ${availability.rrule}. Returning unavailable for this rule.`);
+        }
       }
     }
-    // if we haven't explicitly returned we're enabled, then we're disabled
-    return { enable: DISABLE_REASON.DISABLED_AVAILABILITY, availability: availability };
+    return { enable: DISABLE_REASON.DISABLED_AVAILABILITY, availability: availabilities }
   }
   return { enable: DISABLE_REASON.ENABLED };
 }

@@ -514,7 +514,7 @@ export interface IOption {
   price: IMoney;
   externalIDs: KeyValue[];
   disabled: IWInterval | null;
-  availability: IRecurringInterval | null;
+  availability: IRecurringInterval[];
   ordinal: number;
   metadata: {
     flavor_factor: number;
@@ -589,7 +589,7 @@ export interface IProduct {
   id: string;
   price: IMoney;
   disabled: IWInterval | null;
-  availability: IRecurringInterval | null;
+  availability: IRecurringInterval[];
   // list of disabled fulfillmentIds
   serviceDisable: string[];
   externalIDs: KeyValue[];
@@ -703,7 +703,7 @@ export type OptionEnableState =
   { enable: DISABLE_REASON.DISABLED_MAXIMUM } |
   { enable: DISABLE_REASON.DISABLED_FULFILLMENT_TYPE, fulfillment: string } |
   { enable: DISABLE_REASON.DISABLED_FUNCTION, functionId: string } |
-  { enable: DISABLE_REASON.DISABLED_AVAILABILITY, availability: IRecurringInterval };
+  { enable: DISABLE_REASON.DISABLED_AVAILABILITY, availability: IRecurringInterval[] };
 
 export interface MetadataModifierOptionMapEntry extends IOptionState { enable_left: OptionEnableState; enable_right: OptionEnableState; enable_whole: OptionEnableState };
 export interface MetadataModifierMapEntry { has_selectable: boolean, meets_minimum: boolean, options: Record<string, MetadataModifierOptionMapEntry>; };
