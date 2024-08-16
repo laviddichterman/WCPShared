@@ -42,3 +42,13 @@ test('DisableDataCheck: should return DISABLED_AVAILABILITY when availabilities 
   const result = DisableDataCheck(null, availabilities, orderTime);
   expect(result).toEqual({ enable: DISABLE_REASON.DISABLED_AVAILABILITY, availability: availabilities });
 });
+
+test('DisableDataCheck: should return ENABLED when availability has a match for a non-rrule availability', () => {
+  const orderTime = new Date(1723770000000);
+  const availabilities: IRecurringInterval[] = [{
+    rrule: '',
+    interval: { start: 1723705200000, end: 1723788000000 }
+  }];
+  const result = DisableDataCheck(null, availabilities, orderTime);
+  expect(result).toEqual({ enable: DISABLE_REASON.ENABLED });
+});

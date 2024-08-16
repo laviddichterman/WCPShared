@@ -80,11 +80,12 @@ export function DisableDataCheck(disable_data: IWInterval | null, availabilities
 { enable: DISABLE_REASON.DISABLED_BLANKET } |
 { enable: DISABLE_REASON.DISABLED_TIME, interval: IWInterval }) |
 { enable: DISABLE_REASON.DISABLED_AVAILABILITY, availability: IRecurringInterval[] } {
+  const orderTimeAsNumber = getTime(order_time);
   if (disable_data) {
     if (disable_data.start > disable_data.end) {
       return { enable: DISABLE_REASON.DISABLED_BLANKET };
     }
-    if (disable_data.start <= getTime(order_time) && disable_data.end >= getTime(order_time)) {
+    if (disable_data.start <= orderTimeAsNumber && disable_data.end >= orderTimeAsNumber) {
       return { enable: DISABLE_REASON.DISABLED_TIME, interval: disable_data };
     }
   }
@@ -92,8 +93,8 @@ export function DisableDataCheck(disable_data: IWInterval | null, availabilities
     for (const availability of availabilities) {
       if (availability.rrule === "") {
         // we check for if we're INSIDE the availability interval here since we'll return that we're not otherwise later
-        if ((availability.interval.start === -1 || getTime(order_time) >= availability.interval.start) &&
-          (availability.interval.end === -1 && getTime(order_time) <= availability.interval.end)) {
+        if ((availability.interval.start === -1 || orderTimeAsNumber >= availability.interval.start) &&
+          (availability.interval.end === -1 || orderTimeAsNumber <= availability.interval.end)) {
           return { enable: DISABLE_REASON.ENABLED };
         }
       } else {
