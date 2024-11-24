@@ -84,6 +84,18 @@ export function FilterWCPProduct(productId: string, modifiers: ProductModifierEn
 
 /**
  * 
+ * @param categorySelector category selector from the catalog
+ * @param categoryId the category to look for fulfillment visibility
+ * @param fulfillmentId the fullfillment to check for visibility
+ * @returns true if the category is visible for the fulfillment
+ */
+export function IsThisCategoryVisibleForFulfillment(categorySelector: ICatalogSelectors['category'], categoryId: string, fulfillmentId: string): boolean {
+  const category = categorySelector(categoryId);
+  return category !== undefined && (!category.category.parent_id || IsThisCategoryVisibleForFulfillment(categorySelector, category.category.parent_id, fulfillmentId)) && category.category.serviceDisable.indexOf(fulfillmentId) === -1;
+}
+
+/**
+ * 
  * @param product IProduct from the catalog
  * @param modifiers modifiers as the instance would be purchased
  * @param metadata the WProductMetadata computed with the same parameters passed to this function (exposed here for selector caching)
@@ -120,18 +132,19 @@ export function FilterProductSelector(product: IProduct, modifiers: ProductModif
  * Does not check for availability/orderability 
  * @param productId product type to look for in the catalog
  * @param modifiers product modifier placements
+ * @param fulfillmentId the fulfillment to check for visibility
  * @param catalog catalog source
  * @returns true if all the referenced objects exist in the catalog, else false. 
  */
-export function DoesProductExistInCatalog(productId: string, modifiers: ProductModifierEntry[], catalog: Pick<ICatalogSelectors, "option" | "modifierEntry" | "productEntry">) {
+export function DoesProductExistInCatalog(productId: string, modifiers: ProductModifierEntry[], fulfillmentId: string, catalog: Pick<ICatalogSelectors, "category" | "option" | "modifierEntry" | "productEntry">) {
   const product = catalog.productEntry(productId);
-  return product !== undefined &&
+  return product !== undefined && product.product.category_ids.reduce((acc, catId) => acc || IsThisCategoryVisibleForFulfillment(catalog.category, catId, fulfillmentId), false) &&
     modifiers.reduce((acc, mod) => acc && catalog.modifierEntry(mod.modifierTypeId) !== undefined &&
       mod.options.reduce((optAcc, o) => optAcc && catalog.option(o.optionId) !== undefined, true), true);
 }
 
 export function CanThisBeOrderedAtThisTimeAndFulfillmentCatalog(productId: string, modifiers: ProductModifierEntry[], catalog: ICatalogSelectors, serviceTime: Date | number, fulfillment: string, filterIncomplete: boolean) {
-  return DoesProductExistInCatalog(productId, modifiers, catalog) && FilterWCPProduct(productId, modifiers, catalog, serviceTime, fulfillment, filterIncomplete);
+  return DoesProductExistInCatalog(productId, modifiers, fulfillment, catalog) && FilterWCPProduct(productId, modifiers, catalog, serviceTime, fulfillment, filterIncomplete);
 }
 
 export function SelectProductInstancesInCategory(catalogCategory: CatalogCategoryEntry, productSelector: ICatalogSelectors['productEntry']) {
