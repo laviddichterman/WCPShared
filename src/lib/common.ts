@@ -374,8 +374,8 @@ export function ComputeTotal(subtotalAfterDiscountAndGratuity: IMoney, taxAmount
   return { currency: subtotalAfterDiscountAndGratuity.currency, amount: subtotalAfterDiscountAndGratuity.amount + taxAmount.amount + tipAmount.amount };
 }
 
-export function ComputeAutogratuityEnabled(mainProductCount: number, threshold: number, isDelivery: boolean): boolean {
-  return mainProductCount >= threshold || isDelivery;
+export function ComputeAutogratuityEnabled(allowTipping: boolean, mainProductCount: number, threshold: number, isDelivery: boolean): boolean {
+  return allowTipping && (mainProductCount >= threshold || isDelivery);
 }
 
 export function ComputeBalance(total: IMoney, amountPaid: IMoney): IMoney {
@@ -393,7 +393,7 @@ interface RecomputeTotalsArgs {
   cart: CategorizedRebuiltCart;
   payments: UnresolvedPayment[];
   discounts: UnresolvedDiscount[];
-  fulfillment: Pick<FulfillmentConfig, 'orderBaseCategoryId' | 'serviceCharge'>;
+  fulfillment: Pick<FulfillmentConfig, 'orderBaseCategoryId' | 'serviceCharge' | 'allowTipping'>;
 }
 
 export const RecomputeTotals = function ({ config, cart, payments, discounts, fulfillment, order }: RecomputeTotalsArgs): RecomputeTotalsResult {
@@ -412,7 +412,7 @@ export const RecomputeTotals = function ({ config, cart, payments, discounts, fu
   const taxAmount = ComputeTaxAmount(subtotalAfterDiscount, config.TAX_RATE);
   const hasBankersRoundingTaxSkew = ComputeHasBankersRoundingSkew(subtotalAfterDiscount, config.TAX_RATE);
   const tipBasis = ComputeTipBasis(subtotalPreDiscount, taxAmount);
-  const tipMinimum = mainCategoryProductCount >= config.AUTOGRAT_THRESHOLD ? ComputeTipValue({ isPercentage: true, isSuggestion: true, value: .2 }, tipBasis) : { currency: CURRENCY.USD, amount: 0 };
+  const tipMinimum = fulfillment.allowTipping && mainCategoryProductCount >= config.AUTOGRAT_THRESHOLD ? ComputeTipValue({ isPercentage: true, isSuggestion: true, value: .2 }, tipBasis) : { currency: CURRENCY.USD, amount: 0 };
   const tipAmount = ComputeTipValue(order.tip, tipBasis);
   const total = ComputeTotal(subtotalAfterDiscount, taxAmount, tipAmount);
   const paymentsApplied = ComputePaymentsApplied(total, tipAmount, payments);

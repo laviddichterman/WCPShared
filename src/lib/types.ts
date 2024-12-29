@@ -144,9 +144,13 @@ export interface FulfillmentConfig {
   // blocked off times for this service
   // string in formatISODate format */
   blockedOff: DateIntervalsEntries;
-  // minimum "length" of the service. Pickup could be over a period of time, or it could be just one moment
+  // // relative start time (in minutes) of the fulfillment resource allocation. Could be when the reservation starts or when the delivery window starts relative to the time the order will be ready.
+  // relativeStartTime: number;
+  // // relative end time (in minutes) of the fulfillment resource allocation. Could be when the reservation ends or when the delivery window ends, relative to the time the order is ready.
+  // relativeEndTime: number;
+  // DEPRECIATED minimum "length" of the service. Pickup could be over a period of time, or it could be just one moment
   minDuration: number;
-  // maximum duration of the service. For time-limited dine-ins this would be the length of their reservation
+  // DEPRECIATED maximum duration of the service. For time-limited dine-ins this would be the length of their reservation
   maxDuration: number;
   // allow service time start selection every {timeStep} minutes
   timeStep: number;
