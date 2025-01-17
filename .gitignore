@@ -112,3 +112,4 @@ yarn.lock
 ./package-lock.json
 ./pnpm-lock.yaml
 src/*.code-workspace
+pnpm-lock.yaml
