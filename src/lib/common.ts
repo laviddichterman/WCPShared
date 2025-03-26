@@ -133,7 +133,7 @@ export const GenerateShortCode = function (productInstanceSelector: Selector<IPr
   return productInstanceSelector(p.m.pi[PRODUCT_LOCATION.LEFT])?.shortcode ?? "UNDEFINED";
 }
 
-export const GenerateDineInPlusString = (dineInInfo: DineInInfoDto | null) => dineInInfo && dineInInfo.partySize > 1 ? `+${dineInInfo.partySize - 1}` : "";
+export const GenerateDineInGuestCountString = (dineInInfo: DineInInfoDto | null) => dineInInfo && dineInInfo.partySize > 0 ? ` (${dineInInfo.partySize})` : "";
 
 const EventTitleSectionBuilder = (catalogSelectors: Pick<ICatalogSelectors, 'productInstance' | 'category'>, cart: CoreCartEntry<WProduct>[]) => {
   if (cart.length === 0) {
@@ -175,7 +175,7 @@ export const EventTitleStringBuilder = (catalogSelectors: Pick<ICatalogSelectors
     .sort(([cIdA, _], [cIdB, __]) => catalogSelectors.category(cIdA)!.category.ordinal - catalogSelectors.category(cIdB)!.category.ordinal)
     .map(([_, catCart]) => EventTitleSectionBuilder(catalogSelectors, catCart))
     .join(' ');
-  return `${fulfillmentShortcode} ${mainCategorySection ? `${mainCategorySection} ` : ''}${customer}${GenerateDineInPlusString(fulfillmentDto.dineInInfo ?? null)} ${supplementalSections}${has_special_instructions ? " *" : ""}`;
+  return `${fulfillmentShortcode} ${mainCategorySection ? `${mainCategorySection} ` : ''}${customer}${GenerateDineInGuestCountString(fulfillmentDto.dineInInfo ?? null)} ${supplementalSections}${has_special_instructions ? " *" : ""}`;
 };
 
 export function MoneyToDisplayString(money: IMoney, showCurrencyUnit: boolean) {
