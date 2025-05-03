@@ -190,6 +190,24 @@ export class WDateUtils {
   }
 
   /**
+   * @description checks if the current time is within the operating hours of the provided services
+   * @param {Pick<FulfillmentConfig, 'operatingHours' | 'specialHours'>[]} configs - the operating hour and special hour override configuration
+   * @param {Number | String | Date} now - the date and time to check against
+   * @returns {Boolean} true if the current time is within the operating hours of the provided services
+   */
+  static AreWeOpenNow(configs: Pick<FulfillmentConfig, 'operatingHours' | 'specialHours'>[],
+    now: number | string | Date) {
+    const fulfillmentTime = WDateUtils.ComputeFulfillmentTime(now);
+    const operatingIntervals = WDateUtils.GetOperatingHoursForServicesAndDate(configs, fulfillmentTime.selectedDate, getDay(now));
+    for (let i = 0; i < operatingIntervals.length; ++i) {
+      if (operatingIntervals[i].start <= fulfillmentTime.selectedTime && operatingIntervals[i].end >= fulfillmentTime.selectedTime) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
    * gets the union of operating hours for a given day and the provided services
    * @param {{ operatingHours: OperatingHourSpecification; specialHours: DateIntervalsEntries; }[]} config - operating hour and special hour override configuration
    * @param {string} isoDate - YYYYMMDD string of when we're looking for hours
