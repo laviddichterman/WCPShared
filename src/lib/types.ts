@@ -905,13 +905,15 @@ export enum WSeatingStatus {
   "COMPLETED" = "COMPLETED", // guests have left the table
 }
 
+export interface WSeatingInfo {
+  tableId: [string]; // list of seating resources assigned to this order
+  status: WSeatingStatus;
+  mtime: number; // modification time
+};
+
 export interface DineInInfoDto {
   partySize: number;
-  seating?: {
-    tableId: [string]; // list of seating resources assigned to this order
-    status: WSeatingStatus;
-    mtime: number; // modification time
-  };
+  seating?: WSeatingInfo;
 };
 
 export interface ThirdPartyInfo {
