@@ -539,10 +539,13 @@ export interface IOptionInstance extends IOptionState {
   optionId: string;
 };
 export interface IProductDisplayFlags {
-  hideFromPos: boolean;
-  // name override for the point of sale integration (helps avoid selling a growler to a customer since every growler fill shouldn't have the words "growler fill" in the name)
-  posName: string;
-
+  pos: {
+    hide: boolean;
+    // name override for the point of sale integration (helps avoid selling a growler to a customer since every growler fill shouldn't have the words "growler fill" in the name)
+    posName: string;
+    // flag to skip going right to customization when a server adds this to a guest check
+    skip_customization: boolean;
+  }
   menu: {
     // ordering within this product instance's category in menu page
     ordinal: number;
@@ -563,7 +566,7 @@ export interface IProductDisplayFlags {
     ordinal: number;
     // flag to hide this from the ordering page
     hide: boolean;
-    // flag to skip going right to customization when the user adds this to their order
+    // flag to skip going right to customization when the guest adds this to their order
     skip_customization: boolean;
     // governs how prices get displayed in the order page according to the enum
     price_display: keyof typeof PriceDisplay;
@@ -886,13 +889,29 @@ export interface DeliveryInfoDto {
 export interface SeatingResource {
   id: string;
   name: string;
+  // the number of seats at this resource, not a hard limit
   capacity: number;
   // TODO: add location and shape info
 };
 
+export enum WSeatingStatus {
+  "PENDING" = "PENDING", // seating not yet confirmed
+  "ASSIGNED" = "ASSIGNED", // seating has been assigned by a human
+  "WAITING_ARRIVAL" = "WAITING_ARRIVAL", // waiting for guests to arrive
+  "SEATED_WAITING" = "SEATED_WAITING", // some guests are seated, some guests still pending arrival
+  "SEATED" = "SEATED", // all guests have arrived and are seated
+  "WAITING_FOR_CHECK" = "WAITING_FOR_CHECK", // guests are waiting for the check
+  "PAID" = "PAID", // guests have paid the check
+  "COMPLETED" = "COMPLETED", // guests have left the table
+}
+
 export interface DineInInfoDto {
   partySize: number;
-  tableId?: string;
+  seating?: {
+    tableId: [string]; // list of seating resources assigned to this order
+    status: WSeatingStatus;
+    mtime: number; // modification time
+  };
 };
 
 export interface ThirdPartyInfo {
