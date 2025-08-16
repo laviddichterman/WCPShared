@@ -542,7 +542,7 @@ export interface IProductDisplayFlags {
   pos: {
     hide: boolean;
     // name override for the point of sale integration (helps avoid selling a growler to a customer since every growler fill shouldn't have the words "growler fill" in the name)
-    posName: string;
+    name: string;
     // flag to skip going right to customization when a server adds this to a guest check
     skip_customization: boolean;
   }
