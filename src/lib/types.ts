@@ -908,8 +908,9 @@ export interface SeatingResource {
   // shapeDims is either radius in x and y direction for ellipses or half the x length and y length for rectangles, pre-rotation 
   shapeDims: { x: number; y: number; };
   rotation: number; // degrees
+  // we can't delete seating resources, just disable them
+  disabled: boolean;
 };
-
 
 export enum WSeatingStatus {
   "PENDING" = "PENDING", // seating not yet confirmed
