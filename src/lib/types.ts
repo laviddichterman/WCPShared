@@ -886,13 +886,30 @@ export interface DeliveryInfoDto {
   validation: DeliveryAddressValidateResponse | null;
 };
 
+export interface SeatingSection {
+  id: string;
+  name: string;
+};
+
+export enum SeatingShape {
+  RECTANGLE = "RECTANGLE",
+  ELLIPSE = "ELLIPSE"
+}
+
 export interface SeatingResource {
   id: string;
   name: string;
+  // capacity is a soft limit, it indicates the typical or recommended number of guests for this resource
   // the number of seats at this resource, not a hard limit
   capacity: number;
-  // TODO: add location and shape info
+  shape: SeatingShape;
+  sectionId: string;
+  center: { x: number; y: number; };
+  // shapeDims is either radius in x and y direction for ellipses or half the x length and y length for rectangles, pre-rotation 
+  shapeDims: { x: number; y: number; };
+  rotation: number; // degrees
 };
+
 
 export enum WSeatingStatus {
   "PENDING" = "PENDING", // seating not yet confirmed
